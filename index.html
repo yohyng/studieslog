@@ -199,7 +199,7 @@
                 : '';
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" ${overrideStyle}>
-                    <div class="cursor-pointer group" onclick="toggleArticle(this)">
+                    <div class="cursor-pointer group" onclick="toggleArticle(this, event)">
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
                         <h2 class="text-lg font-normal mb-4 article-title">${article.title}</h2>
                         ${tagsHtml}
@@ -502,11 +502,14 @@
             renderArticles(3);
         }
 
-        function toggleArticle(wrapperNode) {
+        function toggleArticle(wrapperNode, evt) {
             const snippet = wrapperNode.querySelector('.article-snippet');
+            const isOpen = snippet.classList.contains('open-full');
+            // 開いている間は、本文エリアのクリックでは閉じない(読んだり選択したりの邪魔をしない)。閉じるのはタイトル部分か「↑閉じる」ボタンのみ
+            if (isOpen && evt && evt.target.closest('.content-body')) return;
             const articleEl = wrapperNode.closest('article');
             const id = articleEl.dataset.id;
-            if (snippet.classList.contains('open-full')) {
+            if (isOpen) {
                 closeArticle(wrapperNode);
                 history.pushState({}, '', '/');
             } else {
