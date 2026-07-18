@@ -177,7 +177,7 @@
         }
 
         function articleShareUrl(id) {
-            return `${location.origin}${location.pathname}#article-${id}`;
+            return `${location.origin}/article/${id}`;
         }
 
         function shareToInstagram(id) {
@@ -254,6 +254,12 @@
             lineHeightResizeTimer = setTimeout(reapplyLineHeightToAllArticles, 150);
         });
 
+        function getPathArticleId() {
+            const m = location.pathname.match(/^\/article\/(\d+)\/?$/);
+            return m ? Number(m[1]) : null;
+        }
+
+        // 旧形式の共有リンク(#article-数字)も念のため引き続き開けるようにしておく
         function getHashArticleId() {
             const m = location.hash.match(/^#article-(\d+)$/);
             return m ? Number(m[1]) : null;
@@ -270,12 +276,12 @@
             displayedCount = 0;
             listContainer.innerHTML = '';
 
-            // 共有リンク(#article-数字)からアクセスした場合、その記事まで表示して開く
-            const hashId = getHashArticleId();
-            const targetIndex = hashId != null ? articles.findIndex(a => a.id === hashId) : -1;
+            // 記事専用URL(/article/数字)や旧形式の共有リンク(#article-数字)からアクセスした場合、その記事まで表示して開く
+            const targetId = getPathArticleId() ?? getHashArticleId();
+            const targetIndex = targetId != null ? articles.findIndex(a => a.id === targetId) : -1;
             if (targetIndex !== -1) {
                 renderArticles(targetIndex + 1);
-                const targetArticle = document.getElementById(`article-${hashId}`);
+                const targetArticle = document.getElementById(`article-${targetId}`);
                 if (targetArticle) {
                     openArticle(targetArticle.querySelector('.cursor-pointer.group'));
                     targetArticle.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -287,12 +293,19 @@
 
         function toggleArticle(wrapperNode) {
             const snippet = wrapperNode.querySelector('.article-snippet');
+            const articleEl = wrapperNode.closest('article');
+            const id = articleEl.dataset.id;
             if (snippet.classList.contains('open-full')) {
                 closeArticle(wrapperNode);
+                history.pushState({}, '', '/');
             } else {
                 openArticle(wrapperNode);
+                history.pushState({}, '', `/article/${id}`);
             }
         }
+
+        // ブラウザの戻る/進むが押されたら、URLに応じた状態を素直に再構築する
+        window.addEventListener('popstate', () => location.reload());
 
         function openArticle(wrapperNode) {
             const snippet = wrapperNode.querySelector('.article-snippet');
