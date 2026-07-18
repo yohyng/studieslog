@@ -17,6 +17,7 @@
             --tag-font-size: 12px;
             --tag-description-color: #ffffff;
             --tag-description-size: 12px;
+            --footnote-color: #7dd3fc;
             --selection-bg-color: #ffffff;
             --selection-text-color: #6b7278;
             --content-width: 42rem;
@@ -113,7 +114,7 @@
         }
         .content-body blockquote { border-left: 1px solid var(--text-color-solid); padding-left: 1.5em; margin: 2em 0; font-style: italic; opacity: 0.7; }
         .content-body h2 { font-size: 1.2em; margin: 2em 0 1em 0; opacity: 0.9; }
-        .footnote-ref { cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
+        .footnote-ref { cursor: pointer; color: var(--footnote-color); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
         .footnote-note { font-size: 0.8em; opacity: 0.65; border-bottom: 1px dotted currentColor; padding: 0 0.3em; }
     </style>
 
@@ -206,6 +207,7 @@
             document.documentElement.style.setProperty('--tag-text-color', data.tag_text_color || data.bg_color);
             document.documentElement.style.setProperty('--tag-font-size', (data.tag_font_size || 12) + 'px');
             document.documentElement.style.setProperty('--tag-description-color', data.tag_description_color || data.text_color);
+            document.documentElement.style.setProperty('--footnote-color', data.footnote_color || data.text_color);
             document.documentElement.style.setProperty('--tag-description-size', (data.tag_description_size || 12) + 'px');
             document.documentElement.style.setProperty('--selection-bg-color', data.selection_bg_color || data.text_color);
             document.documentElement.style.setProperty('--selection-text-color', data.selection_text_color || data.bg_color);
