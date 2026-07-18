@@ -92,6 +92,7 @@
             document.body.style.fontFamily = data.font;
             document.body.style.lineHeight = data.line_height;
             document.body.style.letterSpacing = data.letter_spacing + 'em';
+            document.body.style.textAlign = data.text_align || 'left';
             previewLines = data.preview_lines || 3;
             const lineBoxPx = data.font_size * data.line_height;
             document.documentElement.style.setProperty('--snippet-max-height', (lineBoxPx * previewLines) + 'px');
@@ -106,7 +107,7 @@
             let overrideStyle = '';
             let snippetStyle = '';
             if (article.font != null) {
-                overrideStyle = `style="font-family:${article.font}; font-size:${article.font_size}px; line-height:${article.line_height}; letter-spacing:${article.letter_spacing}em;"`;
+                overrideStyle = `style="font-family:${article.font}; font-size:${article.font_size}px; line-height:${article.line_height}; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};"`;
                 const lineBoxPx = article.font_size * article.line_height;
                 snippetStyle = `style="max-height:${lineBoxPx * previewLines}px;"`;
             }

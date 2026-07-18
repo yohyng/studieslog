@@ -13,6 +13,7 @@ alter table public.articles add column if not exists font text;
 alter table public.articles add column if not exists font_size int;
 alter table public.articles add column if not exists line_height numeric;
 alter table public.articles add column if not exists letter_spacing numeric;
+alter table public.articles add column if not exists text_align text;
 
 alter table public.articles enable row level security;
 
@@ -58,6 +59,7 @@ create table if not exists public.site_settings (
   site_subtitle text not null default '記憶の集積。言葉は静かに積もっていく。',
   preview_lines int not null default 3,
   content_width int not null default 672,
+  text_align text not null default 'left',
   updated_at timestamptz not null default now(),
   constraint site_settings_singleton check (id = 1)
 );
@@ -68,6 +70,7 @@ alter table public.site_settings add column if not exists site_title text not nu
 alter table public.site_settings add column if not exists site_subtitle text not null default '記憶の集積。言葉は静かに積もっていく。';
 alter table public.site_settings add column if not exists preview_lines int not null default 3;
 alter table public.site_settings add column if not exists content_width int not null default 672;
+alter table public.site_settings add column if not exists text_align text not null default 'left';
 
 insert into public.site_settings (id) values (1)
 on conflict (id) do nothing;
