@@ -216,9 +216,25 @@
                     <label class="text-xs text-white/50 block mb-2">ページタイトル(ブラウザのタブに表示される名前)</label>
                     <input id="set-page-title" type="text" placeholder="静謐な執筆アーカイブ" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30">
                     <label class="text-xs text-white/50 block mb-2">サイトタイトル(ページ上部の見出し)</label>
-                    <input id="set-site-title" type="text" placeholder="断片" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30">
+                    <input id="set-site-title" type="text" placeholder="断片" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-white/40">サイズ</span>
+                            <input id="set-site-title-size" type="range" min="10" max="40" step="1" class="w-24" oninput="document.getElementById('set-site-title-size-value').textContent = this.value + 'px'">
+                            <span id="set-site-title-size-value" class="text-xs text-white/40 w-10"></span>
+                        </div>
+                        <input id="set-site-title-color" type="color" class="w-8 h-8 rounded cursor-pointer" title="サイトタイトルの色">
+                    </div>
                     <label class="text-xs text-white/50 block mb-2">サブタイトル</label>
-                    <input id="set-site-subtitle" type="text" placeholder="記憶の集積。言葉は静かに積もっていく。" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                    <input id="set-site-subtitle" type="text" placeholder="記憶の集積。言葉は静かに積もっていく。" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-white/40">サイズ</span>
+                            <input id="set-site-subtitle-size" type="range" min="10" max="40" step="1" class="w-24" oninput="document.getElementById('set-site-subtitle-size-value').textContent = this.value + 'px'">
+                            <span id="set-site-subtitle-size-value" class="text-xs text-white/40 w-10"></span>
+                        </div>
+                        <input id="set-site-subtitle-color" type="color" class="w-8 h-8 rounded cursor-pointer" title="サブタイトルの色">
+                    </div>
                 </div>
 
                 <!-- フォント -->
@@ -327,6 +343,21 @@
                         <button onclick="pickColor('set-text-color', '#3a2f28')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#3a2f28;" title="焦茶"></button>
                     </div>
                     <div id="set-contrast-warning" class="hidden text-xs mt-3 leading-relaxed" style="color:#f0b429;">⚠ 背景色とのコントラストが低く、文字が読みにくくなっています</div>
+                </div>
+
+                <!-- ハッシュタグ -->
+                <div class="mb-6 pb-6 border-b border-white/10">
+                    <label class="text-xs text-white/50 block mb-2">ハッシュタグの配色</label>
+                    <div class="flex items-center gap-6">
+                        <div class="flex items-center gap-2">
+                            <input id="set-tag-bg-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                            <span class="text-xs text-white/40">背景色</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input id="set-tag-text-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                            <span class="text-xs text-white/40">文字色</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- アバウトページ -->
@@ -917,7 +948,13 @@
             }
             document.getElementById('set-page-title').value = data.page_title || '';
             document.getElementById('set-site-title').value = data.site_title || '';
+            document.getElementById('set-site-title-size').value = data.site_title_size;
+            document.getElementById('set-site-title-size-value').textContent = data.site_title_size + 'px';
+            document.getElementById('set-site-title-color').value = data.site_title_color;
             document.getElementById('set-site-subtitle').value = data.site_subtitle || '';
+            document.getElementById('set-site-subtitle-size').value = data.site_subtitle_size;
+            document.getElementById('set-site-subtitle-size-value').textContent = data.site_subtitle_size + 'px';
+            document.getElementById('set-site-subtitle-color').value = data.site_subtitle_color;
             document.getElementById('set-font').value = data.font;
             document.getElementById('set-font-size').value = data.font_size;
             document.getElementById('set-font-size-value').textContent = data.font_size + 'px';
@@ -934,6 +971,8 @@
             document.getElementById('set-bg-color-value').textContent = data.bg_color;
             document.getElementById('set-text-color').value = data.text_color;
             document.getElementById('set-text-color-value').textContent = data.text_color;
+            document.getElementById('set-tag-bg-color').value = data.tag_bg_color;
+            document.getElementById('set-tag-text-color').value = data.tag_text_color;
             document.getElementById('set-about-content').value = data.about_content || '';
             checkSetContrast();
         }
@@ -942,7 +981,11 @@
             const payload = {
                 page_title: document.getElementById('set-page-title').value.trim(),
                 site_title: document.getElementById('set-site-title').value.trim(),
+                site_title_size: Number(document.getElementById('set-site-title-size').value),
+                site_title_color: document.getElementById('set-site-title-color').value,
                 site_subtitle: document.getElementById('set-site-subtitle').value.trim(),
+                site_subtitle_size: Number(document.getElementById('set-site-subtitle-size').value),
+                site_subtitle_color: document.getElementById('set-site-subtitle-color').value,
                 bg_color: document.getElementById('set-bg-color').value,
                 text_color: document.getElementById('set-text-color').value,
                 font: document.getElementById('set-font').value,
@@ -952,6 +995,8 @@
                 text_align: document.getElementById('set-text-align').value,
                 preview_lines: Number(document.getElementById('set-preview-lines').value),
                 content_width: Number(document.getElementById('set-content-width').value),
+                tag_bg_color: document.getElementById('set-tag-bg-color').value,
+                tag_text_color: document.getElementById('set-tag-text-color').value,
                 about_content: document.getElementById('set-about-content').value.trim()
             };
             const { error } = await sb.from('site_settings').update(payload).eq('id', 1);

@@ -12,6 +12,8 @@
             --bg-color: #6b7278;
             --text-color: rgba(255, 255, 255, 0.9);
             --text-color-solid: #ffffff;
+            --tag-bg-color: #ffffff;
+            --tag-text-color: #6b7278;
             --content-width: 42rem;
             --base-line-height: 2.2;
             --base-font-size: 16px;
@@ -117,8 +119,8 @@
     </div>
 
     <header class="w-full content-width mb-24 opacity-0 fade-in" style="animation-delay: 0.2s;">
-        <h1 id="site-title" class="text-sm font-medium tracking-widest opacity-80 cursor-pointer inline-block" onclick="goHome()">空間試論</h1>
-        <p id="site-subtitle" class="text-xs opacity-40 mt-4">空間にまつわる議論をプロトタイプする</p>
+        <h1 id="site-title" class="font-medium tracking-widest cursor-pointer inline-block" onclick="goHome()">空間試論</h1>
+        <p id="site-subtitle" class="mt-4">空間にまつわる議論をプロトタイプする</p>
     </header>
 
     <main id="article-list" class="w-full content-width flex flex-col gap-16 relative"></main>
@@ -163,6 +165,8 @@
             document.documentElement.style.setProperty('--bg-color', data.bg_color);
             document.documentElement.style.setProperty('--text-color', data.text_color);
             document.documentElement.style.setProperty('--text-color-solid', data.text_color);
+            document.documentElement.style.setProperty('--tag-bg-color', data.tag_bg_color || data.text_color);
+            document.documentElement.style.setProperty('--tag-text-color', data.tag_text_color || data.bg_color);
             siteFontSize = data.font_size;
             document.documentElement.style.setProperty('--base-font-size', data.font_size + 'px');
             document.body.style.fontFamily = data.font;
@@ -173,8 +177,14 @@
             previewLines = data.preview_lines || 3;
             if (data.content_width) document.documentElement.style.setProperty('--content-width', data.content_width + 'px');
             if (data.page_title) document.title = data.page_title;
-            if (data.site_title) document.getElementById('site-title').textContent = data.site_title;
-            if (data.site_subtitle) document.getElementById('site-subtitle').textContent = data.site_subtitle;
+            const titleEl = document.getElementById('site-title');
+            const subtitleEl = document.getElementById('site-subtitle');
+            if (data.site_title) titleEl.textContent = data.site_title;
+            titleEl.style.fontSize = (data.site_title_size || 14) + 'px';
+            titleEl.style.color = data.site_title_color || data.text_color;
+            if (data.site_subtitle) subtitleEl.textContent = data.site_subtitle;
+            subtitleEl.style.fontSize = (data.site_subtitle_size || 12) + 'px';
+            subtitleEl.style.color = data.site_subtitle_color || data.text_color;
             siteAboutContent = data.about_content || '';
         }
 
@@ -198,7 +208,7 @@
                 overrideStyle = `style="font-family:${article.font}; font-size:${article.font_size}px; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};"`;
             }
             const tagsHtml = (article.tags && article.tags.length > 0)
-                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="text-xs px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: var(--text-color-solid); color: var(--bg-color);">#${t.name}</a>`).join('')}</div>`
+                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="text-xs px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: var(--tag-bg-color); color: var(--tag-text-color);">#${t.name}</a>`).join('')}</div>`
                 : '';
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" ${overrideStyle}>
