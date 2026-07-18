@@ -159,7 +159,7 @@
             }
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" ${overrideStyle}>
-                    <div class="cursor-pointer group" onclick="openArticle(this)">
+                    <div class="cursor-pointer group" onclick="toggleArticle(this)">
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
                         <h2 class="text-lg font-normal mb-4 article-title">${article.title}</h2>
                         <div class="article-snippet text-sm opacity-70 content-body">${article.content}</div>
@@ -283,6 +283,15 @@
                 return;
             }
             renderArticles(3);
+        }
+
+        function toggleArticle(wrapperNode) {
+            const snippet = wrapperNode.querySelector('.article-snippet');
+            if (snippet.classList.contains('open-full')) {
+                closeArticle(wrapperNode);
+            } else {
+                openArticle(wrapperNode);
+            }
         }
 
         function openArticle(wrapperNode) {
