@@ -73,7 +73,7 @@
 
     <!-- 表示設定サイドパネル(本体を隠さずリアルタイムに調整できる) -->
     <div id="display-settings-modal" class="fixed inset-0 z-50 pointer-events-none">
-        <div class="absolute inset-0 pointer-events-auto opacity-0" onclick="toggleDisplaySettings()"></div>
+        <div id="settings-catcher" class="absolute inset-0 pointer-events-none opacity-0" onclick="toggleDisplaySettings()"></div>
         <div id="settings-sidebar" class="absolute top-0 right-0 h-full w-full max-w-xs sm:max-w-sm p-6 overflow-y-auto pointer-events-auto transform translate-x-full ui-chrome-bg ui-chrome-fg-strong backdrop-blur-md border-l" style="border-color: var(--chrome-border);">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-sm font-medium">表示設定</h2>
@@ -224,14 +224,14 @@
         // 表示設定関連関数
         function toggleDisplaySettings() {
             const sidebar = document.getElementById('settings-sidebar');
-            const overlay = document.getElementById('display-settings-modal');
+            const catcher = document.getElementById('settings-catcher');
             const opening = sidebar.classList.contains('translate-x-full');
             if (opening) {
-                overlay.classList.remove('pointer-events-none');
+                catcher.classList.remove('pointer-events-none');
                 sidebar.classList.remove('translate-x-full');
                 loadDisplaySettings();
             } else {
-                overlay.classList.add('pointer-events-none');
+                catcher.classList.add('pointer-events-none');
                 sidebar.classList.add('translate-x-full');
             }
         }
