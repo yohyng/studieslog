@@ -22,6 +22,7 @@
         .content-editor blockquote { border-left: 2px solid rgba(255,255,255,0.3); padding-left: 1em; margin: 1em 0; opacity: 0.8; font-style: italic; }
         .content-editor h2 { font-size: 1.2em; margin: 1em 0 0.5em; }
         .content-editor .footnote-ref { color: #7dd3fc; cursor: default; }
+        .content-editor .footnote-note { font-size: 0.8em; opacity: 0.65; border-bottom: 1px dotted currentColor; padding: 0 0.3em; }
         .article-preview { max-height: 3.2em; overflow: hidden; }
         /* ブラウザ既定のドロップダウン展開部は背景が白になることが多く、継承した白文字のままだと見えなくなるため明示的に指定する */
         select option, select optgroup { color: #1a1a1a; background-color: #ffffff; }
@@ -947,7 +948,7 @@
             sel.removeAllRanges();
             if (range) sel.addRange(range);
             const num = editor.querySelectorAll('.footnote-ref').length + 1;
-            document.execCommand('insertHTML', false, `<sup class="footnote-ref" data-note="${escapeAttr(note)}">[${num}]</sup>`);
+            document.execCommand('insertHTML', false, `<sup class="footnote-ref" data-note="${escapeAttr(note)}">[${num}]</sup><span class="footnote-note">${escapeAttr(note)}</span>`);
         }
 
         // 本文全体を書式なしのプレーンテキストに変換する(画像・太字・見出しなどは全て失われます)
