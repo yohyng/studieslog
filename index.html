@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>空間試論</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500&family=Noto+Serif+JP:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Maru+Gothic:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;500;700&family=Kaisei+Tokumin:wght@400;500;700&family=Klee+One:wght@400;600&family=Kosugi+Maru&display=swap" rel="stylesheet">
 
+    <!-- 自前のCSSをTailwind(CDN版、読み込み・生成が非同期で少し遅れる)より先に置き、
+         最低限の見た目(背景色・中央寄せ・余白)がすぐ効くようにしておく -->
     <style>
         :root {
             --bg-color: #6b7278;
@@ -40,12 +39,22 @@
         }
 
         body {
+            /* Tailwind(CDN版)の読み込みを待たずに最低限のレイアウトが効くよう、素のCSSでも指定しておく */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 6rem 2rem;
             font-family: 'Shippori Mincho', serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             line-height: calc(var(--base-line-height) * var(--line-height-scale));
             letter-spacing: 0.08em;
             transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        @media (min-width: 768px) {
+            body { padding-left: 0; padding-right: 0; }
         }
 
         .fade-in { animation: fadeIn 1.5s ease-out forwards; opacity: 0; transform: translateY(10px); }
@@ -72,6 +81,10 @@
         .content-body blockquote { border-left: 1px solid var(--text-color-solid); padding-left: 1.5em; margin: 2em 0; font-style: italic; opacity: 0.7; }
         .content-body h2 { font-size: 1.2em; margin: 2em 0 1em 0; opacity: 0.9; }
     </style>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500&family=Noto+Serif+JP:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Maru+Gothic:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;500;700&family=Kaisei+Tokumin:wght@400;500;700&family=Klee+One:wght@400;600&family=Kosugi+Maru&display=swap" rel="stylesheet">
 </head>
 <body class="min-h-screen flex flex-col items-center py-24 px-8 sm:px-10 md:px-0">
 
@@ -204,17 +217,23 @@
         // CSSのカスケード(Tailwindのtext-*クラスや、コピペ由来のインラインスタイル)に邪魔されないよう、
         // 本文内の全要素にJSから直接「!important付きの行間」を書き込んで確実に反映する。
         // 頭出し(閉じているときのプレビュー)の高さも、実際に表示されるフォントサイズ・行間に合わせて計算する
+        function collapsedSnippetHeightPx(article) {
+            const fontSize = (article.font != null ? article.font_size : siteFontSize) * currentFontSizeScale();
+            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
+            return fontSize * lineHeight * previewLines;
+        }
+
         function forceLineHeight(article, articleEl) {
             if (!articleEl) return;
-            const fontSizeScale = currentFontSizeScale();
-            const lineHeightScale = currentLineHeightScale();
-            const fontSize = (article.font != null ? article.font_size : siteFontSize) * fontSizeScale;
-            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * lineHeightScale;
+            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
             articleEl.querySelectorAll('.content-body, .content-body *').forEach(el => {
                 el.style.setProperty('line-height', String(lineHeight), 'important');
             });
+            // 開いている記事の高さ(インラインstyleでmax-heightを固定しない)は上書きしない
             const snippet = articleEl.querySelector('.article-snippet');
-            if (snippet) snippet.style.maxHeight = (fontSize * lineHeight * previewLines) + 'px';
+            if (snippet && !snippet.classList.contains('open-full')) {
+                snippet.style.maxHeight = collapsedSnippetHeightPx(article) + 'px';
+            }
         }
 
         function reapplyLineHeightToAllArticles() {
@@ -263,12 +282,16 @@
         function openArticle(wrapperNode) {
             const snippet = wrapperNode.querySelector('.article-snippet');
             snippet.classList.add('open-full');
+            snippet.style.maxHeight = 'none';
             wrapperNode.nextElementSibling.classList.remove('hidden');
         }
 
         function closeArticle(wrapperNode) {
             const snippet = wrapperNode.querySelector('.article-snippet');
             snippet.classList.remove('open-full');
+            const articleEl = wrapperNode.closest('article');
+            const article = articles.find(a => a.id === Number(articleEl.dataset.id));
+            if (article) snippet.style.maxHeight = collapsedSnippetHeightPx(article) + 'px';
             wrapperNode.nextElementSibling.classList.add('hidden');
         }
 
