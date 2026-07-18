@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>静謐な執筆アーカイブ</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500&family=Noto+Serif+JP:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Maru+Gothic:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;500;700&family=Kaisei+Tokumin:wght@400;500;700&family=Klee+One:wght@400;600&family=Kosugi+Maru&display=swap" rel="stylesheet">
     
     <style>
         body {
@@ -55,6 +55,31 @@
                 <button onclick="toggleDisplaySettings()" class="text-white/50 hover:text-white text-lg">×</button>
             </div>
             
+            <!-- フォント -->
+            <div class="mb-6">
+                <label class="text-xs text-white/70 block mb-2">本文フォント</label>
+                <select id="font-select" class="w-full bg-white/10 text-white text-xs rounded px-3 py-2 border border-white/20 focus:outline-none" onchange="applyFont(this.value); saveDisplaySettings()">
+                    <optgroup label="明朝体">
+                        <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                        <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                        <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                        <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                    </optgroup>
+                    <optgroup label="ゴシック体">
+                        <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                        <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                        <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                    </optgroup>
+                    <optgroup label="丸ゴシック体">
+                        <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                        <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                    </optgroup>
+                    <optgroup label="手書き風">
+                        <option value="'Klee One', cursive">Klee One</option>
+                    </optgroup>
+                </select>
+            </div>
+
             <!-- 背景色 -->
             <div class="mb-6">
                 <label class="text-xs text-white/70 block mb-2">背景色</label>
@@ -86,6 +111,18 @@
                     <div class="flex-1 flex flex-col justify-center">
                         <span id="text-color-value" class="text-xs text-white/60 font-mono"></span>
                     </div>
+                </div>
+                <!-- 文字色プリセット -->
+                <div class="text-xs text-white/50 mb-2 mt-3">プリセット:</div>
+                <div class="grid grid-cols-4 gap-2">
+                    <button onclick="applyTextColor('#ffffff'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #ffffff;" title="白"></button>
+                    <button onclick="applyTextColor('#e8e4d8'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #e8e4d8;" title="生成り"></button>
+                    <button onclick="applyTextColor('#d4c9a8'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #d4c9a8;" title="砂色"></button>
+                    <button onclick="applyTextColor('#f0d9b5'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #f0d9b5;" title="淡黄"></button>
+                    <button onclick="applyTextColor('#c9d6df'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #c9d6df;" title="薄氷"></button>
+                    <button onclick="applyTextColor('#a8b5a0'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #a8b5a0;" title="若竹"></button>
+                    <button onclick="applyTextColor('#111111'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #111111;" title="漆黒"></button>
+                    <button onclick="applyTextColor('#3a2f28'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #3a2f28;" title="焦茶"></button>
                 </div>
             </div>
             
@@ -145,6 +182,7 @@
         // デフォルト値
         const DEFAULT_BG_COLOR = '#6b7278';
         const DEFAULT_TEXT_COLOR = '#ffffff';
+        const DEFAULT_FONT = "'Shippori Mincho', serif";
         
         let articles = [
             { id: 3, date: "2023.11.14", title: "朝の境界", content: `<p>目が覚めると、部屋はまだ青かった。</p><img src="https://placehold.co/600x300/333/666?text=Morning+Fog" alt="Morning Fog"><p>コーヒーを淹れる音だけが、静寂の中で輪郭を持っている。</p>` },
@@ -168,39 +206,48 @@
             const settings = JSON.parse(localStorage.getItem('displaySettings') || '{}');
             const bgColor = settings.bgColor || DEFAULT_BG_COLOR;
             const textColor = settings.textColor || DEFAULT_TEXT_COLOR;
-            
+            const font = settings.font || DEFAULT_FONT;
+
             document.getElementById('bg-color-picker').value = bgColor;
             document.getElementById('text-color-picker').value = textColor;
             document.getElementById('bg-color-value').textContent = bgColor;
             document.getElementById('text-color-value').textContent = textColor;
+            document.getElementById('font-select').value = font;
         }
-        
+
         function applyBackgroundColor(color) {
             document.body.style.backgroundColor = color;
             document.getElementById('bg-color-picker').value = color;
             document.getElementById('bg-color-value').textContent = color;
         }
-        
+
         function applyTextColor(color) {
             document.body.style.color = color;
             document.getElementById('text-color-picker').value = color;
             document.getElementById('text-color-value').textContent = color;
         }
-        
+
+        function applyFont(font) {
+            document.body.style.fontFamily = font;
+            document.getElementById('font-select').value = font;
+        }
+
         function saveDisplaySettings() {
             const settings = {
                 bgColor: document.getElementById('bg-color-picker').value,
-                textColor: document.getElementById('text-color-picker').value
+                textColor: document.getElementById('text-color-picker').value,
+                font: document.getElementById('font-select').value
             };
             localStorage.setItem('displaySettings', JSON.stringify(settings));
         }
-        
+
         function resetDisplaySettings() {
             applyBackgroundColor(DEFAULT_BG_COLOR);
             applyTextColor(DEFAULT_TEXT_COLOR);
+            applyFont(DEFAULT_FONT);
             saveDisplaySettings();
         }
-        
+
         function restoreDisplaySettings() {
             const settings = JSON.parse(localStorage.getItem('displaySettings') || '{}');
             if (settings.bgColor) {
@@ -208,6 +255,9 @@
             }
             if (settings.textColor) {
                 applyTextColor(settings.textColor);
+            }
+            if (settings.font) {
+                applyFont(settings.font);
             }
         }
 
