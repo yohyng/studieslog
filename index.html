@@ -408,17 +408,29 @@
             return (div.textContent || '').trim();
         }
 
-        // タイトルと日付だけを並べた一覧ページ
-        function renderTitleList() {
+        // タイトルと日付だけを並べた一覧ページ+ハッシュタグ一覧
+        async function renderTitleList() {
             hideAllViews();
             const listView = document.getElementById('title-list-view');
             listView.classList.remove('hidden');
-            listView.innerHTML = articles.map(a => `
+
+            const titleRows = articles.map(a => `
                 <a href="/article/${a.id}" class="flex items-baseline justify-between gap-4 py-4 border-b opacity-70 hover:opacity-100 transition-opacity" style="border-color: currentColor;">
                     <span class="text-sm">${a.title}</span>
                     <span class="text-xs opacity-60 whitespace-nowrap">${a.date}</span>
                 </a>
             `).join('');
+
+            const { data: allTags, error } = await sb.from('tags').select('*').order('name', { ascending: true });
+            const tagsHtml = (!error && allTags && allTags.length > 0)
+                ? `<div class="flex flex-wrap gap-2">${allTags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" class="px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: var(--tag-font-size);">#${t.name}</a>`).join('')}</div>`
+                : '';
+
+            listView.innerHTML = `
+                <h2 class="text-sm font-medium opacity-70 mb-4">タイトル一覧</h2>
+                <div class="mb-16">${titleRows}</div>
+                ${tagsHtml ? `<h2 class="text-sm font-medium opacity-70 mb-4">ハッシュタグ</h2>${tagsHtml}` : ''}
+            `;
         }
 
         // サイト運営者についてのアバウトページ
@@ -532,7 +544,7 @@
                 return;
             }
             if (isListRoute()) {
-                renderTitleList();
+                await renderTitleList();
                 return;
             }
             if (isSearchRoute()) {
