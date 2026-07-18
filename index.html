@@ -14,7 +14,7 @@
             color: rgba(255, 255, 255, 0.9);
             line-height: 2.2;
             letter-spacing: 0.08em;
-            transition: background-color 0.5s ease;
+            transition: background-color 0.5s ease, color 0.5s ease;
         }
 
         .fade-in { animation: fadeIn 1.5s ease-out forwards; opacity: 0; transform: translateY(10px); }
@@ -44,9 +44,60 @@
 </head>
 <body class="min-h-screen flex flex-col items-center py-24 px-6 md:px-0">
 
-    <div class="fixed top-6 right-6 z-40 text-xs text-white opacity-0 hover:opacity-30 transition-opacity duration-1000 cursor-default p-4" onclick="toggleEditMode(true)" title="Archive of Silence">◎</div>
+    <!-- 左上の表示設定ボタン -->
+    <button onclick="toggleDisplaySettings()" class="fixed top-6 left-6 z-40 text-white opacity-40 hover:opacity-100 transition-opacity duration-300 px-3 py-2 text-xs rounded hover:bg-white/10" title="表示設定">⚙ 表示設定</button>
 
-    <div id="editor-toolbar" class="fixed top-0 left-0 w-full bg-[#3a3f44]/90 backdrop-blur-md border-b border-white/10 z-50 transform -translate-y-full transition-transform duration-500 ease-out flex flex-col">
+    <!-- 表示設定モーダル -->
+    <div id="display-settings-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-[#3a3f44]/95 backdrop-blur-md border border-white/20 rounded-lg p-8 max-w-md w-full max-h-96 overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-sm font-medium text-white">表示設定</h2>
+                <button onclick="toggleDisplaySettings()" class="text-white/50 hover:text-white text-lg">×</button>
+            </div>
+            
+            <!-- 背景色 -->
+            <div class="mb-6">
+                <label class="text-xs text-white/70 block mb-2">背景色</label>
+                <div class="flex gap-2 mb-3">
+                    <input type="color" id="bg-color-picker" class="w-12 h-12 rounded cursor-pointer" onchange="applyBackgroundColor(this.value); saveDisplaySettings()">
+                    <div class="flex-1 flex flex-col justify-center">
+                        <span id="bg-color-value" class="text-xs text-white/60 font-mono"></span>
+                    </div>
+                </div>
+                <!-- 背景色プリセット -->
+                <div class="text-xs text-white/50 mb-2">プリセット:</div>
+                <div class="grid grid-cols-4 gap-2">
+                    <button onclick="applyBackgroundColor('#6b7278'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #6b7278;" title="石板色"></button>
+                    <button onclick="applyBackgroundColor('#2c3e50'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #2c3e50;" title="深紺"></button>
+                    <button onclick="applyBackgroundColor('#34495e'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #34495e;" title="深灰"></button>
+                    <button onclick="applyBackgroundColor('#1a1f24'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #1a1f24;" title="漆黒"></button>
+                    <button onclick="applyBackgroundColor('#4a5568'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #4a5568;" title="暗灰"></button>
+                    <button onclick="applyBackgroundColor('#1e3a5f'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #1e3a5f;" title="紺青"></button>
+                    <button onclick="applyBackgroundColor('#3d5a5d'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #3d5a5d;" title="緑青"></button>
+                    <button onclick="applyBackgroundColor('#5a4a3a'); saveDisplaySettings();" class="h-8 rounded border border-white/20 hover:border-white/50 transition-colors" style="background-color: #5a4a3a;" title="茶色"></button>
+                </div>
+            </div>
+            
+            <!-- 文字色 -->
+            <div class="mb-6">
+                <label class="text-xs text-white/70 block mb-2">文字色</label>
+                <div class="flex gap-2">
+                    <input type="color" id="text-color-picker" class="w-12 h-12 rounded cursor-pointer" onchange="applyTextColor(this.value); saveDisplaySettings()">
+                    <div class="flex-1 flex flex-col justify-center">
+                        <span id="text-color-value" class="text-xs text-white/60 font-mono"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ボタン -->
+            <div class="flex gap-3 pt-4 border-t border-white/10">
+                <button onclick="resetDisplaySettings()" class="flex-1 px-3 py-2 text-xs bg-white/10 hover:bg-white/20 text-white rounded transition-colors">標準に戻す</button>
+                <button onclick="toggleDisplaySettings()" class="flex-1 px-3 py-2 text-xs bg-white/20 hover:bg-white/30 text-white rounded transition-colors">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editor-toolbar" class="fixed top-0 left-0 w-full bg-[#3a3f44]/90 backdrop-blur-md border-b border-white/10 z-40 transform -translate-y-full transition-transform duration-500 ease-out flex flex-col">
         <div class="max-w-4xl w-full mx-auto px-6 h-16 flex justify-between items-center text-xs">
             <div class="flex items-center gap-6 opacity-60">
                 <span class="opacity-50">執筆・編集モード</span>
@@ -74,6 +125,9 @@
         </div>
     </div>
 
+    <!-- 編集モードトリガー -->
+    <div class="fixed top-6 right-6 z-30 text-xs text-white opacity-0 hover:opacity-30 transition-opacity duration-1000 cursor-default p-4" onclick="toggleEditMode(true)" title="Archive of Silence">◎</div>
+
     <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
 
     <header class="w-full max-w-2xl mb-24 opacity-0 fade-in" style="animation-delay: 0.2s;">
@@ -88,6 +142,10 @@
     </div>
 
     <script>
+        // デフォルト値
+        const DEFAULT_BG_COLOR = '#6b7278';
+        const DEFAULT_TEXT_COLOR = '#ffffff';
+        
         let articles = [
             { id: 3, date: "2023.11.14", title: "朝の境界", content: `<p>目が覚めると、部屋はまだ青かった。</p><img src="https://placehold.co/600x300/333/666?text=Morning+Fog" alt="Morning Fog"><p>コーヒーを淹れる音だけが、静寂の中で輪郭を持っている。</p>` },
             { id: 2, date: "2023.11.02", title: "沈黙の質量", content: `<p>言葉を発しない時間は、決して「無」ではない。</p><blockquote>沈黙は、最も雄弁な対話である。</blockquote>` },
@@ -97,6 +155,61 @@
         const listContainer = document.getElementById('article-list');
         let displayedCount = 0;
         let isEditMode = false;
+        
+        // 表示設定関連関数
+        function toggleDisplaySettings() {
+            document.getElementById('display-settings-modal').classList.toggle('hidden');
+            if (!document.getElementById('display-settings-modal').classList.contains('hidden')) {
+                loadDisplaySettings();
+            }
+        }
+        
+        function loadDisplaySettings() {
+            const settings = JSON.parse(localStorage.getItem('displaySettings') || '{}');
+            const bgColor = settings.bgColor || DEFAULT_BG_COLOR;
+            const textColor = settings.textColor || DEFAULT_TEXT_COLOR;
+            
+            document.getElementById('bg-color-picker').value = bgColor;
+            document.getElementById('text-color-picker').value = textColor;
+            document.getElementById('bg-color-value').textContent = bgColor;
+            document.getElementById('text-color-value').textContent = textColor;
+        }
+        
+        function applyBackgroundColor(color) {
+            document.body.style.backgroundColor = color;
+            document.getElementById('bg-color-picker').value = color;
+            document.getElementById('bg-color-value').textContent = color;
+        }
+        
+        function applyTextColor(color) {
+            document.body.style.color = color;
+            document.getElementById('text-color-picker').value = color;
+            document.getElementById('text-color-value').textContent = color;
+        }
+        
+        function saveDisplaySettings() {
+            const settings = {
+                bgColor: document.getElementById('bg-color-picker').value,
+                textColor: document.getElementById('text-color-picker').value
+            };
+            localStorage.setItem('displaySettings', JSON.stringify(settings));
+        }
+        
+        function resetDisplaySettings() {
+            applyBackgroundColor(DEFAULT_BG_COLOR);
+            applyTextColor(DEFAULT_TEXT_COLOR);
+            saveDisplaySettings();
+        }
+        
+        function restoreDisplaySettings() {
+            const settings = JSON.parse(localStorage.getItem('displaySettings') || '{}');
+            if (settings.bgColor) {
+                applyBackgroundColor(settings.bgColor);
+            }
+            if (settings.textColor) {
+                applyTextColor(settings.textColor);
+            }
+        }
 
         function renderArticles(count) {
             const items = articles.slice(displayedCount, displayedCount + count);
@@ -156,6 +269,9 @@
 
         renderArticles(3);
         window.addEventListener('scroll', () => { if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) renderArticles(1); });
+        
+        // ページ読み込み時に表示設定を復元
+        restoreDisplaySettings();
     </script>
 </body>
 </html>
