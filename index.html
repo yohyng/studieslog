@@ -244,7 +244,7 @@
                         ${tagsHtml}
                         <div class="article-snippet text-sm opacity-70 content-body">${article.content}</div>
                         <div class="mt-4 text-center open-btn">
-                            <span class="text-xs opacity-30 hover:opacity-100 cursor-pointer transition-opacity">↓ 続きを読む</span>
+                            <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;">↓ 続きを読む</span>
                         </div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
@@ -254,7 +254,7 @@
                             <button onclick="shareToInstagram(${article.id})" class="hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)" aria-label="リンクをコピー(Instagram用)">${SHARE_ICONS.instagram}</button>
                             <button onclick="shareArticle(${article.id})" class="hover:opacity-100 transition-opacity" title="共有" aria-label="共有">${SHARE_ICONS.share}</button>
                         </div>
-                        <span class="text-xs opacity-30 hover:opacity-100 cursor-pointer transition-opacity" onclick="closeArticle(this.parentElement.previousElementSibling)">↑ 閉じる</span>
+                        <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;" onclick="closeArticle(this.parentElement.previousElementSibling)">↑ 閉じる</span>
                     </div>
                 </article>`;
         }
