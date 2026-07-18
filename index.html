@@ -174,7 +174,10 @@
         // Supabase接続設定(anon keyは公開前提のクライアント用キー・読み取り専用で使用)
         const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpeXpsYXdtY3l5YmNoeHp5b3pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDI2MjQsImV4cCI6MjA5NTU3ODYyNH0.SZVwqWKkk31npqdiiG5m3HdkF4JnQ7SgEzThaFfZ4q4';
-        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // 匿名アクセスは毎回同じ形のリクエストになりがちで、ブラウザ/経路上のキャッシュに古い結果を返されることがあるため、明示的にキャッシュを無効化する
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            global: { fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }) }
+        });
 
         let articles = [];
         let previewLines = 3;
