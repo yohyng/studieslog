@@ -157,6 +157,10 @@
         <span class="opacity-30">深層を探索中...</span>
     </div>
 
+    <footer class="w-full content-width mt-24 pt-8 text-center opacity-30" style="border-top: 1px solid currentColor; font-size: 0.7rem;">
+        <p id="footer-text">© 空間試論</p>
+    </footer>
+
     <script>
         // Supabase接続設定(anon keyは公開前提のクライアント用キー・読み取り専用で使用)
         const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
@@ -212,6 +216,8 @@
             subtitleEl.style.fontSize = (data.site_subtitle_size || 12) + 'px';
             subtitleEl.style.color = data.site_subtitle_color || data.text_color;
             siteAboutContent = data.about_content || '';
+            const footerTitle = data.site_title || document.getElementById('site-title').textContent;
+            document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} ${footerTitle}`;
         }
 
         function escapeHtml(str) {
