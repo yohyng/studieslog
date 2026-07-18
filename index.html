@@ -117,6 +117,13 @@
             if (data.site_subtitle) document.getElementById('site-subtitle').textContent = data.site_subtitle;
         }
 
+        const SHARE_ICONS = {
+            x: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M18.9 2h3.1l-7.6 8.7L23 22h-7l-5.4-6.6L4 22H1l8.1-9.3L1 2h7.2l4.9 6.1L18.9 2zm-1.2 18h1.9L7.4 3.9H5.4L17.7 20z"/></svg>',
+            facebook: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/></svg>',
+            instagram: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="0.6" fill="currentColor" stroke="none"/></svg>',
+            share: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><line x1="8.3" y1="10.7" x2="15.7" y2="6.3"/><line x1="8.3" y1="13.3" x2="15.7" y2="17.7"/></svg>'
+        };
+
         function buildArticleHtml(article) {
             // この記事だけの文字組みが設定されていれば、サイト全体の設定を上書きする
             let overrideStyle = '';
@@ -134,11 +141,11 @@
                         <div class="article-snippet text-sm opacity-70 content-body" ${snippetStyle}>${article.content}</div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
-                        <div class="flex items-center justify-center gap-5 text-xs opacity-50 mb-4">
-                            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Xでシェア">X</a>
-                            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Facebookでシェア">Facebook</a>
-                            <button onclick="shareToInstagram(${article.id})" class="hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)">Instagram</button>
-                            <button onclick="shareArticle(${article.id})" class="hover:opacity-100 transition-opacity" title="共有">共有</button>
+                        <div class="flex items-center justify-center gap-5 opacity-50 mb-4">
+                            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Xでシェア" aria-label="Xでシェア">${SHARE_ICONS.x}</a>
+                            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>
+                            <button onclick="shareToInstagram(${article.id})" class="hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)" aria-label="リンクをコピー(Instagram用)">${SHARE_ICONS.instagram}</button>
+                            <button onclick="shareArticle(${article.id})" class="hover:opacity-100 transition-opacity" title="共有" aria-label="共有">${SHARE_ICONS.share}</button>
                         </div>
                         <span class="text-xs opacity-30 hover:opacity-100 cursor-pointer transition-opacity" onclick="closeArticle(this.parentElement.previousElementSibling)">↑ 閉じる</span>
                     </div>
