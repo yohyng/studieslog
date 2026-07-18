@@ -90,6 +90,7 @@
 
         let articles = [];
         let previewLines = 3;
+        let siteLineHeight = 2.2;
 
         const listContainer = document.getElementById('article-list');
         let displayedCount = 0;
@@ -106,6 +107,7 @@
             document.documentElement.style.setProperty('--text-color-solid', data.text_color);
             document.documentElement.style.fontSize = data.font_size + 'px';
             document.body.style.fontFamily = data.font;
+            siteLineHeight = data.line_height;
             document.documentElement.style.setProperty('--base-line-height', data.line_height);
             document.body.style.letterSpacing = data.letter_spacing + 'em';
             document.body.style.textAlign = data.text_align || 'left';
@@ -179,9 +181,41 @@
             const items = articles.slice(displayedCount, displayedCount + count);
             items.forEach(article => {
                 listContainer.insertAdjacentHTML('beforeend', buildArticleHtml(article));
+                forceLineHeight(article, document.getElementById(`article-${article.id}`));
             });
             displayedCount += items.length;
         }
+
+        // 画面幅に応じた行間の倍率(CSSのmedia queryと同じ閾値をJS側でも再現する)
+        function currentLineHeightScale() {
+            if (window.matchMedia('(max-width: 640px)').matches) return 0.85;
+            if (window.matchMedia('(min-width: 1600px)').matches) return 0.9;
+            if (window.matchMedia('(min-width: 1280px)').matches) return 0.95;
+            return 1;
+        }
+
+        // CSSのカスケード(Tailwindのtext-*クラスや、コピペ由来のインラインスタイル)に邪魔されないよう、
+        // 本文内の全要素にJSから直接「!important付きの行間」を書き込んで確実に反映する
+        function forceLineHeight(article, articleEl) {
+            if (!articleEl) return;
+            const base = article.font != null ? article.line_height : siteLineHeight;
+            const value = String(base * currentLineHeightScale());
+            articleEl.querySelectorAll('.content-body, .content-body *').forEach(el => {
+                el.style.setProperty('line-height', value, 'important');
+            });
+        }
+
+        function reapplyLineHeightToAllArticles() {
+            articles.slice(0, displayedCount).forEach(article => {
+                forceLineHeight(article, document.getElementById(`article-${article.id}`));
+            });
+        }
+
+        let lineHeightResizeTimer = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(lineHeightResizeTimer);
+            lineHeightResizeTimer = setTimeout(reapplyLineHeightToAllArticles, 150);
+        });
 
         function getHashArticleId() {
             const m = location.hash.match(/^#article-(\d+)$/);
