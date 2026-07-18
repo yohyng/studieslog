@@ -107,6 +107,7 @@
             <nav class="flex flex-col gap-6 text-sm">
                 <a href="/" class="opacity-80 hover:opacity-100 transition-opacity">ホーム</a>
                 <a href="/list" class="opacity-80 hover:opacity-100 transition-opacity">一覧</a>
+                <a href="/about" class="opacity-80 hover:opacity-100 transition-opacity">アバウト</a>
             </nav>
         </div>
     </div>
@@ -119,6 +120,10 @@
     <main id="article-list" class="w-full content-width flex flex-col gap-16 relative"></main>
 
     <main id="title-list-view" class="hidden w-full content-width flex flex-col relative"></main>
+
+    <main id="about-view" class="hidden w-full content-width relative"></main>
+
+    <main id="tag-view" class="hidden w-full content-width relative"></main>
 
     <div id="loading-indicator" class="w-full content-width mt-16 text-center text-xs opacity-0 transition-opacity duration-1000">
         <span class="opacity-30">深層を探索中...</span>
@@ -134,6 +139,7 @@
         let previewLines = 3;
         let siteLineHeight = 2.2;
         let siteFontSize = 16;
+        let siteAboutContent = '';
 
         const listContainer = document.getElementById('article-list');
         let displayedCount = 0;
@@ -160,6 +166,13 @@
             if (data.page_title) document.title = data.page_title;
             if (data.site_title) document.getElementById('site-title').textContent = data.site_title;
             if (data.site_subtitle) document.getElementById('site-subtitle').textContent = data.site_subtitle;
+            siteAboutContent = data.about_content || '';
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
         }
 
         const SHARE_ICONS = {
@@ -175,11 +188,15 @@
             if (article.font != null) {
                 overrideStyle = `style="font-family:${article.font}; font-size:${article.font_size}px; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};"`;
             }
+            const tagsHtml = (article.tags && article.tags.length > 0)
+                ? `<div class="flex flex-wrap gap-3 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="text-xs opacity-50 hover:opacity-100 transition-opacity">#${t.name}</a>`).join('')}</div>`
+                : '';
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" ${overrideStyle}>
                     <div class="cursor-pointer group" onclick="toggleArticle(this)">
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
                         <h2 class="text-lg font-normal mb-4 article-title">${article.title}</h2>
+                        ${tagsHtml}
                         <div class="article-snippet text-sm opacity-70 content-body">${article.content}</div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
@@ -300,10 +317,27 @@
             return location.pathname.replace(/\/$/, '') === '/list';
         }
 
+        function isAboutRoute() {
+            return location.pathname.replace(/\/$/, '') === '/about';
+        }
+
+        function getTagSlug() {
+            const m = location.pathname.match(/^\/tag\/([^/]+)\/?$/);
+            return m ? decodeURIComponent(m[1]) : null;
+        }
+
+        // ルートに応じて表示するビューだけを残し、他は隠す
+        function hideAllViews() {
+            document.getElementById('article-list').classList.add('hidden');
+            document.getElementById('title-list-view').classList.add('hidden');
+            document.getElementById('about-view').classList.add('hidden');
+            document.getElementById('tag-view').classList.add('hidden');
+            document.getElementById('loading-indicator').classList.add('hidden');
+        }
+
         // タイトルと日付だけを並べた一覧ページ
         function renderTitleList() {
-            document.getElementById('article-list').classList.add('hidden');
-            document.getElementById('loading-indicator').classList.add('hidden');
+            hideAllViews();
             const listView = document.getElementById('title-list-view');
             listView.classList.remove('hidden');
             listView.innerHTML = articles.map(a => `
@@ -314,15 +348,66 @@
             `).join('');
         }
 
+        // サイト運営者についてのアバウトページ
+        function renderAboutPage() {
+            hideAllViews();
+            const view = document.getElementById('about-view');
+            view.classList.remove('hidden');
+            const body = siteAboutContent
+                ? escapeHtml(siteAboutContent).replace(/\n/g, '<br>')
+                : '<p class="opacity-40">まだ内容がありません。</p>';
+            view.innerHTML = `<div class="text-sm opacity-90 fade-in" style="line-height: inherit;">${body}</div>`;
+        }
+
+        // ハッシュタグ別の一覧ページ(タグ名・説明+該当記事)
+        async function renderTagPage(slug) {
+            hideAllViews();
+            const view = document.getElementById('tag-view');
+            view.classList.remove('hidden');
+
+            const { data: tag, error } = await sb.from('tags').select('*').eq('slug', slug).single();
+            if (error || !tag) {
+                view.innerHTML = `<p class="text-sm opacity-60">このタグは見つかりませんでした。</p>`;
+                return;
+            }
+
+            const matched = articles.filter(a => (a.tags || []).some(t => t.slug === slug));
+            view.innerHTML = `
+                <div class="mb-16 fade-in">
+                    <h2 class="text-lg font-normal mb-2 article-title">#${tag.name}</h2>
+                    ${tag.description ? `<p class="text-xs opacity-50">${escapeHtml(tag.description)}</p>` : ''}
+                </div>
+                <div id="tag-article-list" class="flex flex-col gap-16"></div>
+            `;
+            const tagListContainer = document.getElementById('tag-article-list');
+            if (matched.length === 0) {
+                tagListContainer.innerHTML = '<p class="text-xs opacity-40">このタグの記事はまだありません。</p>';
+                return;
+            }
+            matched.forEach(article => {
+                tagListContainer.insertAdjacentHTML('beforeend', buildArticleHtml(article));
+                forceLineHeight(article, document.getElementById(`article-${article.id}`));
+            });
+        }
+
         async function loadArticles() {
-            const { data, error } = await sb.from('articles').select('*').order('date', { ascending: false }).order('id', { ascending: false });
+            const { data, error } = await sb.from('articles').select('*, article_tags(tags(id,slug,name))').order('date', { ascending: false }).order('id', { ascending: false });
             if (error) {
                 console.error(error);
                 showToast('記事の読み込みに失敗しました');
                 return;
             }
-            articles = data || [];
+            articles = (data || []).map(a => ({ ...a, tags: (a.article_tags || []).map(row => row.tags).filter(Boolean) }));
 
+            if (isAboutRoute()) {
+                renderAboutPage();
+                return;
+            }
+            const tagSlug = getTagSlug();
+            if (tagSlug) {
+                await renderTagPage(tagSlug);
+                return;
+            }
             if (isListRoute()) {
                 renderTitleList();
                 return;

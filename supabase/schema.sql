@@ -84,3 +84,47 @@ create policy "site_settings_public_read" on public.site_settings
 -- 更新はログイン済みユーザーのみ
 create policy "site_settings_auth_update" on public.site_settings
   for update to authenticated using (id = 1) with check (id = 1);
+
+-- アバウトページの内容
+alter table public.site_settings add column if not exists about_content text not null default '';
+
+-- ハッシュタグ
+create table if not exists public.tags (
+  id bigint generated always as identity primary key,
+  slug text not null unique,
+  name text not null,
+  description text not null default '',
+  created_at timestamptz not null default now()
+);
+
+alter table public.tags enable row level security;
+
+create policy "tags_public_read" on public.tags
+  for select using (true);
+
+create policy "tags_auth_insert" on public.tags
+  for insert to authenticated with check (true);
+
+create policy "tags_auth_update" on public.tags
+  for update to authenticated using (true) with check (true);
+
+create policy "tags_auth_delete" on public.tags
+  for delete to authenticated using (true);
+
+-- 記事とタグの中間テーブル(多対多)
+create table if not exists public.article_tags (
+  article_id bigint not null references public.articles(id) on delete cascade,
+  tag_id bigint not null references public.tags(id) on delete cascade,
+  primary key (article_id, tag_id)
+);
+
+alter table public.article_tags enable row level security;
+
+create policy "article_tags_public_read" on public.article_tags
+  for select using (true);
+
+create policy "article_tags_auth_insert" on public.article_tags
+  for insert to authenticated with check (true);
+
+create policy "article_tags_auth_delete" on public.article_tags
+  for delete to authenticated using (true);

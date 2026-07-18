@@ -45,6 +45,7 @@
                 <h1 class="text-sm font-medium tracking-wide whitespace-nowrap">断片 - 管理画面</h1>
                 <nav class="flex items-center gap-1 text-xs">
                     <button id="nav-articles" onclick="showTab('articles')" class="px-3 py-1.5 rounded transition-colors bg-white/10">記事</button>
+                    <button id="nav-tags" onclick="showTab('tags')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">タグ</button>
                     <button id="nav-settings" onclick="showTab('settings')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">表示設定</button>
                 </nav>
             </div>
@@ -89,6 +90,12 @@
                     <button onclick="insertImage()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">📷 写真を挿入</button>
                 </div>
                 <div id="edit-content" class="content-editor bg-white/5 border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
+
+                <div class="mt-6">
+                    <label class="text-xs text-white/50 block mb-2">ハッシュタグ</label>
+                    <div id="edit-tags" class="flex flex-wrap gap-2 bg-white/5 border border-white/10 rounded p-3 text-xs"></div>
+                    <div id="edit-tags-empty" class="hidden text-xs text-white/30 mt-2">タグがまだありません。「タグ」タブから作成してください。</div>
+                </div>
                 <div id="image-resize-toolbar" class="hidden fixed z-50 bg-[#2f3438] border border-white/20 rounded shadow-lg px-2 py-1 flex items-center gap-1 text-xs">
                     <button onclick="resizeSelectedImage(25)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">25%</button>
                     <button onclick="resizeSelectedImage(50)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">50%</button>
@@ -161,6 +168,39 @@
                     <button onclick="saveArticle()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">保存する</button>
                     <button onclick="backToList()" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">キャンセル</button>
                     <button id="delete-btn" onclick="deleteCurrentArticle()" class="hidden sm:ml-auto px-5 py-2.5 text-xs text-red-400/70 hover:text-red-400 transition-colors">この断片を削除</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- タグ一覧ビュー -->
+        <div id="tags-view" class="hidden flex-1 overflow-y-auto">
+            <div class="max-w-2xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
+                <p class="text-xs text-white/40 mb-6">記事をハッシュタグでまとめられます。タグごとに専用の一覧ページ(/tag/スラッグ)ができ、簡単な説明文も添えられます。</p>
+                <button onclick="openNewTag()" class="mb-8 w-full sm:w-auto px-5 py-3 text-sm bg-white/10 hover:bg-white/20 rounded transition-colors">＋ 新しいタグを作る</button>
+                <div id="tag-cards" class="flex flex-col gap-3"></div>
+                <div id="tag-empty-state" class="hidden text-xs text-white/40 text-center py-16">まだタグがありません。</div>
+            </div>
+        </div>
+
+        <!-- タグ編集ビュー -->
+        <div id="tag-editor-view" class="hidden flex-1 overflow-y-auto">
+            <div class="max-w-2xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
+                <button onclick="backToTagList()" class="text-xs text-white/50 hover:text-white transition-colors mb-6">← タグ一覧に戻る</button>
+
+                <label class="text-xs text-white/50 block mb-1">タグ名</label>
+                <input id="tag-name" type="text" placeholder="例: 家具" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30" oninput="suggestTagSlug()">
+
+                <label class="text-xs text-white/50 block mb-1">スラッグ(URLに使われます。半角英数字とハイフン推奨)</label>
+                <input id="tag-slug" type="text" placeholder="furniture" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-1 focus:outline-none focus:border-white/30">
+                <p class="text-xs text-white/30 mb-4">公開URL: <span id="tag-slug-preview">/tag/...</span></p>
+
+                <label class="text-xs text-white/50 block mb-1">タグの説明(一覧ページの先頭に表示されます)</label>
+                <textarea id="tag-description" rows="3" placeholder="このタグについての簡単な説明" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-6 focus:outline-none focus:border-white/30"></textarea>
+
+                <div class="flex flex-wrap gap-3">
+                    <button onclick="saveTag()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">保存する</button>
+                    <button onclick="backToTagList()" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">キャンセル</button>
+                    <button id="tag-delete-btn" onclick="deleteCurrentTag()" class="hidden sm:ml-auto px-5 py-2.5 text-xs text-red-400/70 hover:text-red-400 transition-colors">このタグを削除</button>
                 </div>
             </div>
         </div>
@@ -289,6 +329,12 @@
                     <div id="set-contrast-warning" class="hidden text-xs mt-3 leading-relaxed" style="color:#f0b429;">⚠ 背景色とのコントラストが低く、文字が読みにくくなっています</div>
                 </div>
 
+                <!-- アバウトページ -->
+                <div class="mb-6 pb-6 border-b border-white/10">
+                    <label class="text-xs text-white/50 block mb-2">アバウトページの内容(/about に表示されます)</label>
+                    <textarea id="set-about-content" rows="6" placeholder="サイトや運営者についての紹介文" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30"></textarea>
+                </div>
+
                 <div class="flex gap-3 pt-4 border-t border-white/10">
                     <button onclick="saveSiteSettings()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">保存する</button>
                     <a href="index.html" target="_blank" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">閲覧ビューで確認 ↗</a>
@@ -307,6 +353,9 @@
 
         let articles = [];
         let editingId = null;
+        let tags = [];
+        let editingTagId = null;
+        let selectedTagIds = new Set();
 
         function showToast(msg) {
             const t = document.getElementById('toast'); t.textContent = msg; t.style.opacity = '1';
@@ -349,17 +398,26 @@
             showTab('articles');
         }
 
-        // --- タブ切り替え(記事 / 表示設定) ---
+        // --- タブ切り替え(記事 / タグ / 表示設定) ---
         function showTab(tab) {
             document.getElementById('nav-articles').classList.toggle('bg-white/10', tab === 'articles');
+            document.getElementById('nav-tags').classList.toggle('bg-white/10', tab === 'tags');
             document.getElementById('nav-settings').classList.toggle('bg-white/10', tab === 'settings');
-            document.getElementById('settings-view').classList.toggle('hidden', tab !== 'settings');
+
+            document.getElementById('list-view').classList.add('hidden');
+            document.getElementById('editor-view').classList.add('hidden');
+            document.getElementById('tags-view').classList.add('hidden');
+            document.getElementById('tag-editor-view').classList.add('hidden');
+            document.getElementById('settings-view').classList.add('hidden');
+
             if (tab === 'articles') {
                 showListView();
                 loadArticleList();
+            } else if (tab === 'tags') {
+                showTagListView();
+                loadTagsList();
             } else {
-                document.getElementById('list-view').classList.add('hidden');
-                document.getElementById('editor-view').classList.add('hidden');
+                document.getElementById('settings-view').classList.remove('hidden');
                 loadSiteSettings();
             }
         }
@@ -441,7 +499,7 @@
             document.getElementById('edit-text-align').value = values.text_align || 'left';
         }
 
-        function openNewEditor() {
+        async function openNewEditor() {
             editingId = null;
             document.getElementById('edit-date').value = todayString();
             document.getElementById('edit-title').value = '';
@@ -450,11 +508,14 @@
             document.getElementById('edit-override-typography').checked = false;
             setTypographyFields(TYPOGRAPHY_DEFAULTS);
             toggleTypographyOverride();
+            await ensureTagsLoaded();
+            selectedTagIds = new Set();
+            renderTagCheckboxes();
             showEditorView();
             document.getElementById('edit-title').focus();
         }
 
-        function openEditEditor(id) {
+        async function openEditEditor(id) {
             const article = articles.find(a => a.id === id);
             if (!article) return;
             editingId = article.id;
@@ -467,6 +528,9 @@
             document.getElementById('edit-override-typography').checked = hasOverride;
             setTypographyFields(hasOverride ? article : TYPOGRAPHY_DEFAULTS);
             toggleTypographyOverride();
+
+            await ensureTagsLoaded();
+            await loadArticleTagSelection(article.id);
 
             showEditorView();
         }
@@ -490,15 +554,16 @@
                 letter_spacing: useOverride ? Number(document.getElementById('edit-letter-spacing').value) : null,
                 text_align: useOverride ? document.getElementById('edit-text-align').value : null
             };
-            const { error } = editingId
-                ? await sb.from('articles').update(payload).eq('id', editingId)
-                : await sb.from('articles').insert(payload);
+            const { data, error } = editingId
+                ? await sb.from('articles').update(payload).eq('id', editingId).select().single()
+                : await sb.from('articles').insert(payload).select().single();
 
             if (error) {
                 console.error(error);
                 showToast('保存に失敗しました');
                 return;
             }
+            await syncArticleTags(data.id);
             showToast('保存しました');
             backToList();
         }
@@ -514,6 +579,171 @@
             }
             showToast('削除しました');
             backToList();
+        }
+
+        // --- タグ ---
+        function slugify(text) {
+            return text
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9぀-ヿ一-龯-]+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+        }
+
+        function suggestTagSlug() {
+            const slugField = document.getElementById('tag-slug');
+            if (slugField.dataset.touched === 'true') return;
+            slugField.value = slugify(document.getElementById('tag-name').value);
+            document.getElementById('tag-slug-preview').textContent = '/tag/' + (slugField.value || '...');
+        }
+
+        function showTagListView() {
+            document.getElementById('tags-view').classList.remove('hidden');
+            document.getElementById('tag-editor-view').classList.add('hidden');
+        }
+
+        function showTagEditorView() {
+            document.getElementById('tags-view').classList.add('hidden');
+            document.getElementById('tag-editor-view').classList.remove('hidden');
+        }
+
+        function backToTagList() {
+            showTagListView();
+            loadTagsList();
+        }
+
+        async function loadTagsList() {
+            const { data, error } = await sb.from('tags').select('*').order('name', { ascending: true });
+            if (error) {
+                console.error(error);
+                showToast('タグの読み込みに失敗しました');
+                return;
+            }
+            tags = data || [];
+            renderTagCards();
+        }
+
+        function renderTagCards() {
+            const container = document.getElementById('tag-cards');
+            container.innerHTML = '';
+            document.getElementById('tag-empty-state').classList.toggle('hidden', tags.length > 0);
+            tags.forEach(tag => {
+                const card = document.createElement('div');
+                card.className = 'flex items-center gap-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded px-4 py-3 cursor-pointer transition-colors';
+                card.onclick = () => openEditTag(tag.id);
+                card.innerHTML = `
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm mb-1">#${tag.name}</div>
+                        <div class="text-xs text-white/40 truncate">/tag/${tag.slug}${tag.description ? ' — ' + tag.description : ''}</div>
+                    </div>
+                    <span class="text-xs text-white/30">編集 →</span>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function openNewTag() {
+            editingTagId = null;
+            document.getElementById('tag-name').value = '';
+            document.getElementById('tag-slug').value = '';
+            document.getElementById('tag-slug').dataset.touched = 'false';
+            document.getElementById('tag-slug-preview').textContent = '/tag/...';
+            document.getElementById('tag-description').value = '';
+            document.getElementById('tag-delete-btn').classList.add('hidden');
+            showTagEditorView();
+            document.getElementById('tag-name').focus();
+        }
+
+        function openEditTag(id) {
+            const tag = tags.find(t => t.id === id);
+            if (!tag) return;
+            editingTagId = tag.id;
+            document.getElementById('tag-name').value = tag.name;
+            document.getElementById('tag-slug').value = tag.slug;
+            document.getElementById('tag-slug').dataset.touched = 'true';
+            document.getElementById('tag-slug-preview').textContent = '/tag/' + tag.slug;
+            document.getElementById('tag-description').value = tag.description || '';
+            document.getElementById('tag-delete-btn').classList.remove('hidden');
+            showTagEditorView();
+        }
+
+        async function saveTag() {
+            const name = document.getElementById('tag-name').value.trim();
+            const slug = slugify(document.getElementById('tag-slug').value.trim());
+            const description = document.getElementById('tag-description').value.trim();
+
+            if (!name || !slug) {
+                showToast('タグ名とスラッグを入力してください');
+                return;
+            }
+
+            const payload = { name, slug, description };
+            const { error } = editingTagId
+                ? await sb.from('tags').update(payload).eq('id', editingTagId)
+                : await sb.from('tags').insert(payload);
+
+            if (error) {
+                console.error(error);
+                showToast(error.code === '23505' ? 'このスラッグは既に使われています' : '保存に失敗しました');
+                return;
+            }
+            showToast('保存しました');
+            backToTagList();
+        }
+
+        async function deleteCurrentTag() {
+            if (!editingTagId) return;
+            if (!confirm('このタグを削除しますか？記事からも外れます。')) return;
+            const { error } = await sb.from('tags').delete().eq('id', editingTagId);
+            if (error) {
+                console.error(error);
+                showToast('削除に失敗しました');
+                return;
+            }
+            showToast('削除しました');
+            backToTagList();
+        }
+
+        // --- 記事へのタグ付け ---
+        async function ensureTagsLoaded() {
+            if (tags.length === 0) {
+                const { data, error } = await sb.from('tags').select('*').order('name', { ascending: true });
+                if (!error) tags = data || [];
+            }
+        }
+
+        function renderTagCheckboxes() {
+            const container = document.getElementById('edit-tags');
+            document.getElementById('edit-tags-empty').classList.toggle('hidden', tags.length > 0);
+            container.innerHTML = tags.map(tag => `
+                <label class="flex items-center gap-1.5 px-2.5 py-1.5 rounded border cursor-pointer transition-colors ${selectedTagIds.has(tag.id) ? 'bg-white/20 border-white/30' : 'bg-white/5 border-white/10 hover:bg-white/10'}">
+                    <input type="checkbox" class="hidden" ${selectedTagIds.has(tag.id) ? 'checked' : ''} onchange="toggleTagSelection(${tag.id})">
+                    #${tag.name}
+                </label>
+            `).join('');
+        }
+
+        function toggleTagSelection(tagId) {
+            if (selectedTagIds.has(tagId)) {
+                selectedTagIds.delete(tagId);
+            } else {
+                selectedTagIds.add(tagId);
+            }
+            renderTagCheckboxes();
+        }
+
+        async function loadArticleTagSelection(articleId) {
+            const { data, error } = await sb.from('article_tags').select('tag_id').eq('article_id', articleId);
+            selectedTagIds = new Set(error ? [] : (data || []).map(row => row.tag_id));
+            renderTagCheckboxes();
+        }
+
+        async function syncArticleTags(articleId) {
+            await sb.from('article_tags').delete().eq('article_id', articleId);
+            if (selectedTagIds.size === 0) return;
+            const rows = Array.from(selectedTagIds).map(tagId => ({ article_id: articleId, tag_id: tagId }));
+            await sb.from('article_tags').insert(rows);
         }
 
         // --- 本文フォーマット・画像挿入 ---
@@ -704,6 +934,7 @@
             document.getElementById('set-bg-color-value').textContent = data.bg_color;
             document.getElementById('set-text-color').value = data.text_color;
             document.getElementById('set-text-color-value').textContent = data.text_color;
+            document.getElementById('set-about-content').value = data.about_content || '';
             checkSetContrast();
         }
 
@@ -720,7 +951,8 @@
                 letter_spacing: Number(document.getElementById('set-letter-spacing').value),
                 text_align: document.getElementById('set-text-align').value,
                 preview_lines: Number(document.getElementById('set-preview-lines').value),
-                content_width: Number(document.getElementById('set-content-width').value)
+                content_width: Number(document.getElementById('set-content-width').value),
+                about_content: document.getElementById('set-about-content').value.trim()
             };
             const { error } = await sb.from('site_settings').update(payload).eq('id', 1);
             if (error) {
