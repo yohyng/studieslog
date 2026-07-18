@@ -134,9 +134,37 @@
                         <div class="article-snippet text-sm opacity-70 content-body" ${snippetStyle}>${article.content}</div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
+                        <div class="flex items-center justify-center gap-5 text-xs opacity-50 mb-4">
+                            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Xでシェア">X</a>
+                            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Facebookでシェア">Facebook</a>
+                            <button onclick="shareToInstagram(${article.id})" class="hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)">Instagram</button>
+                            <button onclick="shareArticle(${article.id})" class="hover:opacity-100 transition-opacity" title="共有">共有</button>
+                        </div>
                         <span class="text-xs opacity-30 hover:opacity-100 cursor-pointer transition-opacity" onclick="closeArticle(this.parentElement.previousElementSibling)">↑ 閉じる</span>
                     </div>
                 </article>`;
+        }
+
+        function articleShareUrl(id) {
+            return `${location.origin}${location.pathname}#article-${id}`;
+        }
+
+        function shareToInstagram(id) {
+            navigator.clipboard.writeText(articleShareUrl(id))
+                .then(() => showToast('リンクをコピーしました(Instagramに貼り付けてください)'))
+                .catch(() => showToast('コピーに失敗しました'));
+        }
+
+        function shareArticle(id) {
+            const article = articles.find(a => a.id === id);
+            const url = articleShareUrl(id);
+            if (navigator.share) {
+                navigator.share({ title: article ? article.title : undefined, url }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(url)
+                    .then(() => showToast('リンクをコピーしました'))
+                    .catch(() => showToast('コピーに失敗しました'));
+            }
         }
 
         function renderArticles(count) {
@@ -145,6 +173,11 @@
                 listContainer.insertAdjacentHTML('beforeend', buildArticleHtml(article));
             });
             displayedCount += items.length;
+        }
+
+        function getHashArticleId() {
+            const m = location.hash.match(/^#article-(\d+)$/);
+            return m ? Number(m[1]) : null;
         }
 
         async function loadArticles() {
@@ -157,6 +190,19 @@
             articles = data || [];
             displayedCount = 0;
             listContainer.innerHTML = '';
+
+            // 共有リンク(#article-数字)からアクセスした場合、その記事まで表示して開く
+            const hashId = getHashArticleId();
+            const targetIndex = hashId != null ? articles.findIndex(a => a.id === hashId) : -1;
+            if (targetIndex !== -1) {
+                renderArticles(targetIndex + 1);
+                const targetArticle = document.getElementById(`article-${hashId}`);
+                if (targetArticle) {
+                    openArticle(targetArticle.querySelector('.cursor-pointer.group'));
+                    targetArticle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                return;
+            }
             renderArticles(3);
         }
 
