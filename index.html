@@ -252,6 +252,24 @@
             share: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><line x1="8.3" y1="10.7" x2="15.7" y2="6.3"/><line x1="8.3" y1="13.3" x2="15.7" y2="17.7"/></svg>'
         };
 
+        // 注釈の色・注釈本文を、DOM挿入前のHTML文字列の時点で確定させる(挿入後にJSで探して書き換える方式は、
+        // 実行順序やレンダリング経路によって適用されないことがあったため、生成の起点を一本化した)
+        function applyFootnoteStyling(html) {
+            const container = document.createElement('div');
+            container.innerHTML = html;
+            container.querySelectorAll('.footnote-ref').forEach(el => {
+                el.style.setProperty('color', siteFootnoteColor, 'important');
+                const next = el.nextElementSibling;
+                if (!next || !next.classList.contains('footnote-note')) {
+                    const note = document.createElement('span');
+                    note.className = 'footnote-note';
+                    note.textContent = el.dataset.note || '';
+                    el.after(note);
+                }
+            });
+            return container.innerHTML;
+        }
+
         function buildArticleHtml(article) {
             // この記事だけの文字組みが設定されていれば、サイト全体の設定を上書きする(行間・頭出し高さはforceLineHeightがJSで適用する)
             let overrideStyle = '';
@@ -267,7 +285,7 @@
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
                         <h2 class="text-lg font-normal mb-4 article-title">${article.title}</h2>
                         ${tagsHtml}
-                        <div class="article-snippet text-sm opacity-70 content-body">${article.content}</div>
+                        <div class="article-snippet text-sm opacity-70 content-body">${applyFootnoteStyling(article.content)}</div>
                         <div class="mt-4 text-center open-btn">
                             <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;">↓ 続きを読む</span>
                         </div>
@@ -348,18 +366,6 @@
             if (snippet && !snippet.classList.contains('open-full')) {
                 snippet.style.maxHeight = collapsedSnippetHeightPx(article) + 'px';
             }
-            // CSS変数経由だと反映が不安定なことがあるため、注釈の色もJSから直接インラインで確実に適用する
-            articleEl.querySelectorAll('.footnote-ref').forEach(el => {
-                el.style.setProperty('color', siteFootnoteColor, 'important');
-                // 注釈内容は常に番号の直後に表示する(クリックしないと出ないUIだと気づかれにくいため)
-                const next = el.nextElementSibling;
-                if (!next || !next.classList.contains('footnote-note')) {
-                    const note = document.createElement('span');
-                    note.className = 'footnote-note';
-                    note.textContent = el.dataset.note || '';
-                    el.after(note);
-                }
-            });
         }
 
         function reapplyLineHeightToAllArticles() {
