@@ -14,6 +14,7 @@
             --text-color-solid: #ffffff;
             --tag-bg-color: #ffffff;
             --tag-text-color: #6b7278;
+            --tag-font-size: 12px;
             --content-width: 42rem;
             --base-line-height: 2.2;
             --base-font-size: 16px;
@@ -167,6 +168,7 @@
             document.documentElement.style.setProperty('--text-color-solid', data.text_color);
             document.documentElement.style.setProperty('--tag-bg-color', data.tag_bg_color || data.text_color);
             document.documentElement.style.setProperty('--tag-text-color', data.tag_text_color || data.bg_color);
+            document.documentElement.style.setProperty('--tag-font-size', (data.tag_font_size || 12) + 'px');
             siteFontSize = data.font_size;
             document.documentElement.style.setProperty('--base-font-size', data.font_size + 'px');
             document.body.style.fontFamily = data.font;
@@ -208,7 +210,7 @@
                 overrideStyle = `style="font-family:${article.font}; font-size:${article.font_size}px; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};"`;
             }
             const tagsHtml = (article.tags && article.tags.length > 0)
-                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="text-xs px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: var(--tag-bg-color); color: var(--tag-text-color);">#${t.name}</a>`).join('')}</div>`
+                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: var(--tag-font-size);">#${t.name}</a>`).join('')}</div>`
                 : '';
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" ${overrideStyle}>

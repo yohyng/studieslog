@@ -364,8 +364,8 @@
 
                 <!-- ハッシュタグ -->
                 <div class="mb-6 pb-6 border-b border-white/10">
-                    <label class="text-xs text-white/50 block mb-2">ハッシュタグの配色</label>
-                    <div class="flex items-center gap-6">
+                    <label class="text-xs text-white/50 block mb-2">ハッシュタグの配色・サイズ</label>
+                    <div class="flex items-center gap-6 mb-4">
                         <div class="flex items-center gap-2">
                             <input id="set-tag-bg-color" type="color" class="w-10 h-10 rounded cursor-pointer">
                             <span class="text-xs text-white/40">背景色</span>
@@ -374,6 +374,11 @@
                             <input id="set-tag-text-color" type="color" class="w-10 h-10 rounded cursor-pointer">
                             <span class="text-xs text-white/40">文字色</span>
                         </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-white/40">文字サイズ</span>
+                        <input id="set-tag-font-size" type="range" min="8" max="24" step="1" class="flex-1" oninput="document.getElementById('set-tag-font-size-value').textContent = this.value + 'px'">
+                        <span id="set-tag-font-size-value" class="text-xs text-white/40 w-10"></span>
                     </div>
                 </div>
 
@@ -1049,6 +1054,8 @@
             document.getElementById('set-text-color-value').textContent = data.text_color;
             document.getElementById('set-tag-bg-color').value = data.tag_bg_color;
             document.getElementById('set-tag-text-color').value = data.tag_text_color;
+            document.getElementById('set-tag-font-size').value = data.tag_font_size;
+            document.getElementById('set-tag-font-size-value').textContent = data.tag_font_size + 'px';
             document.getElementById('set-about-content').value = data.about_content || '';
             checkSetContrast();
         }
@@ -1073,6 +1080,7 @@
                 content_width: Number(document.getElementById('set-content-width').value),
                 tag_bg_color: document.getElementById('set-tag-bg-color').value,
                 tag_text_color: document.getElementById('set-tag-text-color').value,
+                tag_font_size: Number(document.getElementById('set-tag-font-size').value),
                 about_content: document.getElementById('set-about-content').value.trim()
             };
             const { error } = await sb.from('site_settings').update(payload).eq('id', 1);

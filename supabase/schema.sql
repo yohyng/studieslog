@@ -62,6 +62,7 @@ create table if not exists public.site_settings (
   text_align text not null default 'left',
   tag_bg_color text not null default '#ffffff',
   tag_text_color text not null default '#6b7278',
+  tag_font_size int not null default 12,
   site_title_size int not null default 14,
   site_title_color text not null default '#ffffff',
   site_subtitle_size int not null default 12,
@@ -79,6 +80,11 @@ alter table public.site_settings add column if not exists content_width int not 
 alter table public.site_settings add column if not exists text_align text not null default 'left';
 alter table public.site_settings add column if not exists tag_bg_color text not null default '#ffffff';
 alter table public.site_settings add column if not exists tag_text_color text not null default '#6b7278';
+alter table public.site_settings add column if not exists tag_font_size int not null default 12;
+alter table public.site_settings add column if not exists site_title_size int not null default 14;
+alter table public.site_settings add column if not exists site_title_color text not null default '#ffffff';
+alter table public.site_settings add column if not exists site_subtitle_size int not null default 12;
+alter table public.site_settings add column if not exists site_subtitle_color text not null default '#ffffff';
 
 insert into public.site_settings (id) values (1)
 on conflict (id) do nothing;
