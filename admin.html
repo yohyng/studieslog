@@ -855,11 +855,23 @@
             showToast('プレーンテキストに変換しました');
         }
 
-        // 他のサイトからのコピペで埋め込まれた書式(フォント・行間など)を持ち込まないよう、常にプレーンテキストとして貼り付ける
+        // 他のサイトからのコピペで埋め込まれた書式(フォント・行間など)を持ち込まないよう、常にプレーンテキストとして貼り付ける。
+        // ただしクリップボードに画像が含まれている場合(スクリーンショットのコピペなど)は、そのままアップロードして挿入する
         function setupPastePlainText() {
-            document.getElementById('edit-content').addEventListener('paste', (e) => {
+            document.getElementById('edit-content').addEventListener('paste', async (e) => {
+                const clipboard = e.clipboardData || window.clipboardData;
+                const imageFile = Array.from(clipboard.files || []).find(f => f.type.startsWith('image/'));
                 e.preventDefault();
-                const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+                if (imageFile) {
+                    showToast('アップロード中...');
+                    const url = await uploadImageFile(imageFile);
+                    if (url) {
+                        document.execCommand('insertImage', false, url);
+                        showToast('画像を挿入しました');
+                    }
+                    return;
+                }
+                const text = clipboard.getData('text/plain');
                 document.execCommand('insertText', false, text);
             });
         }
