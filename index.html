@@ -13,7 +13,10 @@
             --bg-color: #6b7278;
             --text-color: rgba(255, 255, 255, 0.9);
             --text-color-solid: #ffffff;
+            --content-width: 42rem;
         }
+
+        .content-width { max-width: var(--content-width); }
 
         body {
             font-family: 'Shippori Mincho', serif;
@@ -52,14 +55,14 @@
 
     <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
 
-    <header class="w-full max-w-2xl mb-24 opacity-0 fade-in" style="animation-delay: 0.2s;">
+    <header class="w-full content-width mb-24 opacity-0 fade-in" style="animation-delay: 0.2s;">
         <h1 id="site-title" class="text-sm font-medium tracking-widest opacity-80 cursor-pointer inline-block" onclick="window.scrollTo({top:0, behavior:'smooth'})">断片</h1>
         <p id="site-subtitle" class="text-xs opacity-40 mt-4">記憶の集積。言葉は静かに積もっていく。</p>
     </header>
 
-    <main id="article-list" class="w-full max-w-2xl flex flex-col gap-16 relative"></main>
+    <main id="article-list" class="w-full content-width flex flex-col gap-16 relative"></main>
 
-    <div id="loading-indicator" class="w-full max-w-2xl mt-16 text-center text-xs opacity-0 transition-opacity duration-1000">
+    <div id="loading-indicator" class="w-full content-width mt-16 text-center text-xs opacity-0 transition-opacity duration-1000">
         <span class="opacity-30">深層を探索中...</span>
     </div>
 
@@ -70,6 +73,7 @@
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let articles = [];
+        let previewLines = 3;
 
         const listContainer = document.getElementById('article-list');
         let displayedCount = 0;
@@ -88,20 +92,30 @@
             document.body.style.fontFamily = data.font;
             document.body.style.lineHeight = data.line_height;
             document.body.style.letterSpacing = data.letter_spacing + 'em';
+            previewLines = data.preview_lines || 3;
             const lineBoxPx = data.font_size * data.line_height;
-            document.documentElement.style.setProperty('--snippet-max-height', (lineBoxPx * (data.preview_lines || 3)) + 'px');
+            document.documentElement.style.setProperty('--snippet-max-height', (lineBoxPx * previewLines) + 'px');
+            if (data.content_width) document.documentElement.style.setProperty('--content-width', data.content_width + 'px');
             if (data.page_title) document.title = data.page_title;
             if (data.site_title) document.getElementById('site-title').textContent = data.site_title;
             if (data.site_subtitle) document.getElementById('site-subtitle').textContent = data.site_subtitle;
         }
 
         function buildArticleHtml(article) {
+            // この記事だけの文字組みが設定されていれば、サイト全体の設定を上書きする
+            let overrideStyle = '';
+            let snippetStyle = '';
+            if (article.font != null) {
+                overrideStyle = `style="font-family:${article.font}; font-size:${article.font_size}px; line-height:${article.line_height}; letter-spacing:${article.letter_spacing}em;"`;
+                const lineBoxPx = article.font_size * article.line_height;
+                snippetStyle = `style="max-height:${lineBoxPx * previewLines}px;"`;
+            }
             return `
-                <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}">
+                <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" ${overrideStyle}>
                     <div class="cursor-pointer group" onclick="openArticle(this)">
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
                         <h2 class="text-lg font-normal mb-4 article-title">${article.title}</h2>
-                        <div class="article-snippet text-sm opacity-70 content-body">${article.content}</div>
+                        <div class="article-snippet text-sm opacity-70 content-body" ${snippetStyle}>${article.content}</div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
                         <span class="text-xs opacity-30 hover:opacity-100 cursor-pointer transition-opacity" onclick="closeArticle(this.parentElement.previousElementSibling)">↑ 閉じる</span>
@@ -149,8 +163,10 @@
 
         window.addEventListener('scroll', () => { if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) renderArticles(1); });
 
-        applySiteSettings();
-        loadArticles();
+        (async () => {
+            await applySiteSettings();
+            await loadArticles();
+        })();
     </script>
 </body>
 </html>

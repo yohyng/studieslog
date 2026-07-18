@@ -88,6 +88,57 @@
                 </div>
                 <div id="edit-content" class="content-editor bg-white/5 border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
 
+                <!-- この記事だけの文字組み -->
+                <div class="mt-6 pt-6 border-t border-white/10">
+                    <label class="flex items-center gap-2 text-xs text-white/70 mb-4">
+                        <input type="checkbox" id="edit-override-typography" onchange="toggleTypographyOverride()">
+                        この記事だけ文字組みを変える(オフの場合はサイト全体の表示設定に従います)
+                    </label>
+                    <div id="typography-override-fields" class="hidden flex flex-col gap-4 bg-white/5 border border-white/10 rounded p-4">
+                        <div>
+                            <label class="text-xs text-white/50 block mb-1">本文フォント</label>
+                            <select id="edit-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                                <optgroup label="明朝体">
+                                    <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                    <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                                    <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                                    <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                </optgroup>
+                                <optgroup label="ゴシック体">
+                                    <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                                    <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                    <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                                </optgroup>
+                                <optgroup label="丸ゴシック体">
+                                    <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                                    <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                                </optgroup>
+                                <optgroup label="手書き風">
+                                    <option value="'Klee One', cursive">Klee One</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-white/50 mb-1">
+                                <span>文字サイズ</span><span id="edit-font-size-value"></span>
+                            </div>
+                            <input type="range" id="edit-font-size" min="13" max="22" step="1" class="w-full" oninput="document.getElementById('edit-font-size-value').textContent = this.value + 'px'">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-white/50 mb-1">
+                                <span>行間</span><span id="edit-line-height-value"></span>
+                            </div>
+                            <input type="range" id="edit-line-height" min="1.4" max="2.8" step="0.1" class="w-full" oninput="document.getElementById('edit-line-height-value').textContent = this.value">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-white/50 mb-1">
+                                <span>文字間隔</span><span id="edit-letter-spacing-value"></span>
+                            </div>
+                            <input type="range" id="edit-letter-spacing" min="0" max="0.3" step="0.01" class="w-full" oninput="document.getElementById('edit-letter-spacing-value').textContent = this.value + 'em'">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex flex-wrap gap-3 mt-6">
                     <button onclick="saveArticle()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">保存する</button>
                     <button onclick="backToList()" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">キャンセル</button>
@@ -164,6 +215,12 @@
                                 <span>頭出し行数(閉じているときに見える行数)</span><span id="set-preview-lines-value"></span>
                             </div>
                             <input type="range" id="set-preview-lines" min="1" max="8" step="1" class="w-full" oninput="document.getElementById('set-preview-lines-value').textContent = this.value + '行'">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-white/50 mb-1">
+                                <span>本文の表示幅</span><span id="set-content-width-value"></span>
+                            </div>
+                            <input type="range" id="set-content-width" min="480" max="960" step="20" class="w-full" oninput="document.getElementById('set-content-width-value').textContent = this.value + 'px'">
                         </div>
                     </div>
                 </div>
@@ -340,12 +397,31 @@
             return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
         }
 
+        const TYPOGRAPHY_DEFAULTS = { font: "'Shippori Mincho', serif", font_size: 16, line_height: 2.2, letter_spacing: 0.08 };
+
+        function toggleTypographyOverride() {
+            document.getElementById('typography-override-fields').classList.toggle('hidden', !document.getElementById('edit-override-typography').checked);
+        }
+
+        function setTypographyFields(values) {
+            document.getElementById('edit-font').value = values.font;
+            document.getElementById('edit-font-size').value = values.font_size;
+            document.getElementById('edit-font-size-value').textContent = values.font_size + 'px';
+            document.getElementById('edit-line-height').value = values.line_height;
+            document.getElementById('edit-line-height-value').textContent = values.line_height;
+            document.getElementById('edit-letter-spacing').value = values.letter_spacing;
+            document.getElementById('edit-letter-spacing-value').textContent = values.letter_spacing + 'em';
+        }
+
         function openNewEditor() {
             editingId = null;
             document.getElementById('edit-date').value = todayString();
             document.getElementById('edit-title').value = '';
             document.getElementById('edit-content').innerHTML = '<p></p>';
             document.getElementById('delete-btn').classList.add('hidden');
+            document.getElementById('edit-override-typography').checked = false;
+            setTypographyFields(TYPOGRAPHY_DEFAULTS);
+            toggleTypographyOverride();
             showEditorView();
             document.getElementById('edit-title').focus();
         }
@@ -358,6 +434,12 @@
             document.getElementById('edit-title').value = article.title;
             document.getElementById('edit-content').innerHTML = article.content;
             document.getElementById('delete-btn').classList.remove('hidden');
+
+            const hasOverride = article.font != null;
+            document.getElementById('edit-override-typography').checked = hasOverride;
+            setTypographyFields(hasOverride ? article : TYPOGRAPHY_DEFAULTS);
+            toggleTypographyOverride();
+
             showEditorView();
         }
 
@@ -371,7 +453,14 @@
                 return;
             }
 
-            const payload = { date, title, content };
+            const useOverride = document.getElementById('edit-override-typography').checked;
+            const payload = {
+                date, title, content,
+                font: useOverride ? document.getElementById('edit-font').value : null,
+                font_size: useOverride ? Number(document.getElementById('edit-font-size').value) : null,
+                line_height: useOverride ? Number(document.getElementById('edit-line-height').value) : null,
+                letter_spacing: useOverride ? Number(document.getElementById('edit-letter-spacing').value) : null
+            };
             const { error } = editingId
                 ? await sb.from('articles').update(payload).eq('id', editingId)
                 : await sb.from('articles').insert(payload);
@@ -480,6 +569,8 @@
             document.getElementById('set-letter-spacing-value').textContent = data.letter_spacing + 'em';
             document.getElementById('set-preview-lines').value = data.preview_lines;
             document.getElementById('set-preview-lines-value').textContent = data.preview_lines + '行';
+            document.getElementById('set-content-width').value = data.content_width;
+            document.getElementById('set-content-width-value').textContent = data.content_width + 'px';
             document.getElementById('set-bg-color').value = data.bg_color;
             document.getElementById('set-bg-color-value').textContent = data.bg_color;
             document.getElementById('set-text-color').value = data.text_color;
@@ -498,7 +589,8 @@
                 font_size: Number(document.getElementById('set-font-size').value),
                 line_height: Number(document.getElementById('set-line-height').value),
                 letter_spacing: Number(document.getElementById('set-letter-spacing').value),
-                preview_lines: Number(document.getElementById('set-preview-lines').value)
+                preview_lines: Number(document.getElementById('set-preview-lines').value),
+                content_width: Number(document.getElementById('set-content-width').value)
             };
             const { error } = await sb.from('site_settings').update(payload).eq('id', 1);
             if (error) {
