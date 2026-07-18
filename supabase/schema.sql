@@ -56,6 +56,7 @@ create table if not exists public.site_settings (
   letter_spacing numeric not null default 0.08,
   page_title text not null default '静謐な執筆アーカイブ',
   site_title text not null default '断片',
+  site_title_font text not null default '',
   site_subtitle text not null default '記憶の集積。言葉は静かに積もっていく。',
   preview_lines int not null default 3,
   content_width int not null default 672,
@@ -80,6 +81,7 @@ create table if not exists public.site_settings (
 -- 既存のテーブルに後から追加した列(テーブルが既にある環境向け)
 alter table public.site_settings add column if not exists page_title text not null default '静謐な執筆アーカイブ';
 alter table public.site_settings add column if not exists site_title text not null default '断片';
+alter table public.site_settings add column if not exists site_title_font text not null default '';
 alter table public.site_settings add column if not exists site_subtitle text not null default '記憶の集積。言葉は静かに積もっていく。';
 alter table public.site_settings add column if not exists preview_lines int not null default 3;
 alter table public.site_settings add column if not exists content_width int not null default 672;
