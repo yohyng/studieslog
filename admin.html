@@ -38,9 +38,9 @@
 
     <!-- アプリ本体(ログイン後) -->
     <div id="app-screen" class="hidden min-h-screen flex flex-col">
-        <header class="border-b border-white/10 px-6 h-16 flex items-center justify-between shrink-0">
-            <div class="flex items-center gap-6">
-                <h1 class="text-sm font-medium tracking-wide">断片 - 管理画面</h1>
+        <header class="border-b border-white/10 px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
+            <div class="flex items-center gap-4 sm:gap-6 flex-wrap">
+                <h1 class="text-sm font-medium tracking-wide whitespace-nowrap">断片 - 管理画面</h1>
                 <nav class="flex items-center gap-1 text-xs">
                     <button id="nav-articles" onclick="showTab('articles')" class="px-3 py-1.5 rounded transition-colors bg-white/10">記事</button>
                     <button id="nav-settings" onclick="showTab('settings')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">表示設定</button>
@@ -54,7 +54,7 @@
 
         <!-- 記事一覧ビュー -->
         <div id="list-view" class="flex-1 overflow-y-auto">
-            <div class="max-w-3xl mx-auto px-6 py-10">
+            <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
                 <button onclick="openNewEditor()" class="mb-8 w-full sm:w-auto px-5 py-3 text-sm bg-white/10 hover:bg-white/20 rounded transition-colors">＋ 新しい断片を書く</button>
                 <div id="article-cards" class="flex flex-col gap-3"></div>
                 <div id="empty-state" class="hidden text-xs text-white/40 text-center py-16">まだ断片がありません。「＋ 新しい断片を書く」から始めてください。</div>
@@ -63,7 +63,7 @@
 
         <!-- 編集ビュー -->
         <div id="editor-view" class="hidden flex-1 overflow-y-auto">
-            <div class="max-w-3xl mx-auto px-6 py-10">
+            <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
                 <button onclick="backToList()" class="text-xs text-white/50 hover:text-white transition-colors mb-6">← 一覧に戻る</button>
 
                 <div class="flex flex-col sm:flex-row gap-4 mb-6">
@@ -78,7 +78,7 @@
                 </div>
 
                 <label class="text-xs text-white/50 block mb-1">本文</label>
-                <div class="flex items-center gap-1 mb-2 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs">
+                <div class="flex items-center flex-wrap gap-1 mb-2 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs">
                     <button onclick="formatText('bold')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">太字</button>
                     <button onclick="formatText('italic')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">斜体</button>
                     <button onclick="formatText('formatBlock', 'H2')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">見出</button>
@@ -88,19 +88,29 @@
                 </div>
                 <div id="edit-content" class="content-editor bg-white/5 border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
 
-                <div class="flex gap-3 mt-6">
+                <div class="flex flex-wrap gap-3 mt-6">
                     <button onclick="saveArticle()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">保存する</button>
                     <button onclick="backToList()" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">キャンセル</button>
-                    <button id="delete-btn" onclick="deleteCurrentArticle()" class="hidden ml-auto px-5 py-2.5 text-xs text-red-400/70 hover:text-red-400 transition-colors">この断片を削除</button>
+                    <button id="delete-btn" onclick="deleteCurrentArticle()" class="hidden sm:ml-auto px-5 py-2.5 text-xs text-red-400/70 hover:text-red-400 transition-colors">この断片を削除</button>
                 </div>
             </div>
         </div>
 
         <!-- 表示設定ビュー(サイト全体のデフォルト。読者は変更できない) -->
         <div id="settings-view" class="hidden flex-1 overflow-y-auto">
-            <div class="max-w-lg mx-auto px-6 py-10">
+            <div class="max-w-lg mx-auto px-4 sm:px-6 py-8 sm:py-10">
                 <h2 class="text-sm font-medium mb-1">表示設定</h2>
                 <p class="text-xs text-white/40 mb-8">公開ページ全体の見た目のデフォルトです。保存すると全ての訪問者に反映されます。</p>
+
+                <!-- タイトル -->
+                <div class="mb-6 pb-6 border-b border-white/10">
+                    <label class="text-xs text-white/50 block mb-2">ページタイトル(ブラウザのタブに表示される名前)</label>
+                    <input id="set-page-title" type="text" placeholder="静謐な執筆アーカイブ" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30">
+                    <label class="text-xs text-white/50 block mb-2">サイトタイトル(ページ上部の見出し)</label>
+                    <input id="set-site-title" type="text" placeholder="断片" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30">
+                    <label class="text-xs text-white/50 block mb-2">サブタイトル</label>
+                    <input id="set-site-subtitle" type="text" placeholder="記憶の集積。言葉は静かに積もっていく。" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                </div>
 
                 <!-- フォント -->
                 <div class="mb-6">
@@ -149,6 +159,12 @@
                             </div>
                             <input type="range" id="set-letter-spacing" min="0" max="0.3" step="0.01" class="w-full" oninput="document.getElementById('set-letter-spacing-value').textContent = this.value + 'em'">
                         </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-white/50 mb-1">
+                                <span>頭出し行数(閉じているときに見える行数)</span><span id="set-preview-lines-value"></span>
+                            </div>
+                            <input type="range" id="set-preview-lines" min="1" max="8" step="1" class="w-full" oninput="document.getElementById('set-preview-lines-value').textContent = this.value + '行'">
+                        </div>
                     </div>
                 </div>
 
@@ -159,7 +175,7 @@
                         <input type="color" id="set-bg-color" class="w-12 h-12 rounded cursor-pointer" onchange="document.getElementById('set-bg-color-value').textContent = this.value; checkSetContrast()">
                         <span id="set-bg-color-value" class="text-xs text-white/50 font-mono"></span>
                     </div>
-                    <div class="grid grid-cols-6 gap-2">
+                    <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
                         <button onclick="pickColor('set-bg-color', '#6b7278')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#6b7278;" title="石板色"></button>
                         <button onclick="pickColor('set-bg-color', '#2c3e50')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#2c3e50;" title="深紺"></button>
                         <button onclick="pickColor('set-bg-color', '#1a1f24')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#1a1f24;" title="漆黒"></button>
@@ -179,7 +195,7 @@
                         <input type="color" id="set-text-color" class="w-12 h-12 rounded cursor-pointer" onchange="document.getElementById('set-text-color-value').textContent = this.value; checkSetContrast()">
                         <span id="set-text-color-value" class="text-xs text-white/50 font-mono"></span>
                     </div>
-                    <div class="grid grid-cols-6 gap-2">
+                    <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
                         <button onclick="pickColor('set-text-color', '#ffffff')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#ffffff;" title="白"></button>
                         <button onclick="pickColor('set-text-color', '#e8e4d8')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#e8e4d8;" title="生成り"></button>
                         <button onclick="pickColor('set-text-color', '#d4c9a8')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#d4c9a8;" title="砂色"></button>
@@ -452,6 +468,9 @@
                 showToast('表示設定の読み込みに失敗しました');
                 return;
             }
+            document.getElementById('set-page-title').value = data.page_title || '';
+            document.getElementById('set-site-title').value = data.site_title || '';
+            document.getElementById('set-site-subtitle').value = data.site_subtitle || '';
             document.getElementById('set-font').value = data.font;
             document.getElementById('set-font-size').value = data.font_size;
             document.getElementById('set-font-size-value').textContent = data.font_size + 'px';
@@ -459,6 +478,8 @@
             document.getElementById('set-line-height-value').textContent = data.line_height;
             document.getElementById('set-letter-spacing').value = data.letter_spacing;
             document.getElementById('set-letter-spacing-value').textContent = data.letter_spacing + 'em';
+            document.getElementById('set-preview-lines').value = data.preview_lines;
+            document.getElementById('set-preview-lines-value').textContent = data.preview_lines + '行';
             document.getElementById('set-bg-color').value = data.bg_color;
             document.getElementById('set-bg-color-value').textContent = data.bg_color;
             document.getElementById('set-text-color').value = data.text_color;
@@ -468,12 +489,16 @@
 
         async function saveSiteSettings() {
             const payload = {
+                page_title: document.getElementById('set-page-title').value.trim(),
+                site_title: document.getElementById('set-site-title').value.trim(),
+                site_subtitle: document.getElementById('set-site-subtitle').value.trim(),
                 bg_color: document.getElementById('set-bg-color').value,
                 text_color: document.getElementById('set-text-color').value,
                 font: document.getElementById('set-font').value,
                 font_size: Number(document.getElementById('set-font-size').value),
                 line_height: Number(document.getElementById('set-line-height').value),
-                letter_spacing: Number(document.getElementById('set-letter-spacing').value)
+                letter_spacing: Number(document.getElementById('set-letter-spacing').value),
+                preview_lines: Number(document.getElementById('set-preview-lines').value)
             };
             const { error } = await sb.from('site_settings').update(payload).eq('id', 1);
             if (error) {

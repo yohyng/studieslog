@@ -47,9 +47,19 @@ create table if not exists public.site_settings (
   font_size int not null default 16,
   line_height numeric not null default 2.2,
   letter_spacing numeric not null default 0.08,
+  page_title text not null default '静謐な執筆アーカイブ',
+  site_title text not null default '断片',
+  site_subtitle text not null default '記憶の集積。言葉は静かに積もっていく。',
+  preview_lines int not null default 3,
   updated_at timestamptz not null default now(),
   constraint site_settings_singleton check (id = 1)
 );
+
+-- 既存のテーブルに後から追加した列(テーブルが既にある環境向け)
+alter table public.site_settings add column if not exists page_title text not null default '静謐な執筆アーカイブ';
+alter table public.site_settings add column if not exists site_title text not null default '断片';
+alter table public.site_settings add column if not exists site_subtitle text not null default '記憶の集積。言葉は静かに積もっていく。';
+alter table public.site_settings add column if not exists preview_lines int not null default 3;
 
 insert into public.site_settings (id) values (1)
 on conflict (id) do nothing;
