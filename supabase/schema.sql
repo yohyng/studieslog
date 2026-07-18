@@ -72,7 +72,7 @@ create table if not exists public.site_settings (
   tag_description_size int not null default 12,
   tag_description_color text not null default '#ffffff',
   footnote_color text not null default '#7dd3fc',
-  menu_font_size int not null default 14,
+  menu_font_size int not null default 12,
   updated_at timestamptz not null default now(),
   constraint site_settings_singleton check (id = 1)
 );
@@ -96,7 +96,7 @@ alter table public.site_settings add column if not exists selection_text_color t
 alter table public.site_settings add column if not exists tag_description_size int not null default 12;
 alter table public.site_settings add column if not exists tag_description_color text not null default '#ffffff';
 alter table public.site_settings add column if not exists footnote_color text not null default '#7dd3fc';
-alter table public.site_settings add column if not exists menu_font_size int not null default 14;
+alter table public.site_settings add column if not exists menu_font_size int not null default 12;
 
 insert into public.site_settings (id) values (1)
 on conflict (id) do nothing;

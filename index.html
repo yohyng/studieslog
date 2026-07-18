@@ -18,7 +18,7 @@
             --tag-description-color: #ffffff;
             --tag-description-size: 12px;
             --footnote-color: #7dd3fc;
-            --menu-font-size: 14px;
+            --menu-font-size: 12px;
             --selection-bg-color: #ffffff;
             --selection-text-color: #6b7278;
             --content-width: 42rem;
@@ -135,7 +135,7 @@
 
     <div id="menu-overlay" class="fixed inset-0 z-50 pointer-events-none">
         <div id="menu-catcher" class="absolute inset-0 pointer-events-none opacity-0" onclick="toggleMenu()"></div>
-        <div id="menu-panel" class="absolute top-0 right-0 h-full w-64 max-w-[80vw] p-8 pointer-events-auto transform translate-x-full transition-transform duration-300 ease-out" style="background: var(--bg-color); color: var(--text-color); border-left: 1px solid color-mix(in srgb, currentColor 35%, transparent);">
+        <div id="menu-panel" class="absolute top-0 right-0 h-full w-48 max-w-[70vw] p-6 pointer-events-auto transform translate-x-full transition-transform duration-300 ease-out" style="background: var(--bg-color); color: var(--text-color); border-left: 1px solid color-mix(in srgb, currentColor 35%, transparent);">
             <button onclick="toggleMenu()" class="opacity-50 hover:opacity-100 transition-opacity mb-10 text-lg leading-none" aria-label="閉じる">×</button>
             <nav class="flex flex-col gap-6" style="font-size: var(--menu-font-size);">
                 <a href="/" class="opacity-80 hover:opacity-100 transition-opacity">Top</a>
@@ -218,7 +218,7 @@
             document.documentElement.style.setProperty('--tag-description-color', data.tag_description_color || data.text_color);
             document.documentElement.style.setProperty('--footnote-color', data.footnote_color || data.text_color);
             siteFootnoteColor = data.footnote_color || data.text_color;
-            document.documentElement.style.setProperty('--menu-font-size', (data.menu_font_size || 14) + 'px');
+            document.documentElement.style.setProperty('--menu-font-size', (data.menu_font_size || 12) + 'px');
             document.documentElement.style.setProperty('--tag-description-size', (data.tag_description_size || 12) + 'px');
             document.documentElement.style.setProperty('--selection-bg-color', data.selection_bg_color || data.text_color);
             document.documentElement.style.setProperty('--selection-text-color', data.selection_text_color || data.bg_color);
