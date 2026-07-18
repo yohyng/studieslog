@@ -474,7 +474,7 @@
             view.innerHTML = `
                 <div class="mb-16 fade-in">
                     <h2 class="inline-block font-normal mb-3 px-3 py-1" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: calc(var(--tag-font-size) * 1.4);">#${tag.name}</h2>
-                    ${tag.description ? `<p style="color: var(--tag-description-color); font-size: var(--tag-description-size);">${escapeHtml(tag.description)}</p>` : ''}
+                    ${tag.description ? `<p style="color: var(--tag-description-color); font-size: var(--tag-description-size); line-height: inherit;">${escapeHtml(tag.description)}</p>` : ''}
                 </div>
                 <div id="tag-article-list" class="flex flex-col gap-16"></div>
             `;
