@@ -37,3 +37,29 @@ create policy "article_images_auth_insert" on storage.objects
 
 create policy "article_images_auth_delete" on storage.objects
   for delete to authenticated using (bucket_id = 'article-images');
+
+-- サイト全体の表示設定(1行だけ使うシングルトンテーブル)
+create table if not exists public.site_settings (
+  id int primary key default 1,
+  bg_color text not null default '#6b7278',
+  text_color text not null default '#ffffff',
+  font text not null default '''Shippori Mincho'', serif',
+  font_size int not null default 16,
+  line_height numeric not null default 2.2,
+  letter_spacing numeric not null default 0.08,
+  updated_at timestamptz not null default now(),
+  constraint site_settings_singleton check (id = 1)
+);
+
+insert into public.site_settings (id) values (1)
+on conflict (id) do nothing;
+
+alter table public.site_settings enable row level security;
+
+-- 閲覧は誰でも可能(公開ページが表示に使う)
+create policy "site_settings_public_read" on public.site_settings
+  for select using (true);
+
+-- 更新はログイン済みユーザーのみ
+create policy "site_settings_auth_update" on public.site_settings
+  for update to authenticated using (id = 1) with check (id = 1);

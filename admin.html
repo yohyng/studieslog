@@ -39,9 +39,15 @@
     <!-- アプリ本体(ログイン後) -->
     <div id="app-screen" class="hidden min-h-screen flex flex-col">
         <header class="border-b border-white/10 px-6 h-16 flex items-center justify-between shrink-0">
-            <h1 class="text-sm font-medium tracking-wide">断片 - 管理画面</h1>
+            <div class="flex items-center gap-6">
+                <h1 class="text-sm font-medium tracking-wide">断片 - 管理画面</h1>
+                <nav class="flex items-center gap-1 text-xs">
+                    <button id="nav-articles" onclick="showTab('articles')" class="px-3 py-1.5 rounded transition-colors bg-white/10">記事</button>
+                    <button id="nav-settings" onclick="showTab('settings')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">表示設定</button>
+                </nav>
+            </div>
             <div class="flex items-center gap-4 text-xs">
-                <a href="index.html" target="_blank" class="text-white/50 hover:text-white transition-colors">公開ページを見る ↗</a>
+                <a href="index.html" target="_blank" class="text-white/50 hover:text-white transition-colors">閲覧ビューを見る ↗</a>
                 <button onclick="logout()" class="text-white/50 hover:text-white transition-colors">ログアウト</button>
             </div>
         </header>
@@ -86,6 +92,106 @@
                     <button onclick="saveArticle()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">保存する</button>
                     <button onclick="backToList()" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">キャンセル</button>
                     <button id="delete-btn" onclick="deleteCurrentArticle()" class="hidden ml-auto px-5 py-2.5 text-xs text-red-400/70 hover:text-red-400 transition-colors">この断片を削除</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 表示設定ビュー(サイト全体のデフォルト。読者は変更できない) -->
+        <div id="settings-view" class="hidden flex-1 overflow-y-auto">
+            <div class="max-w-lg mx-auto px-6 py-10">
+                <h2 class="text-sm font-medium mb-1">表示設定</h2>
+                <p class="text-xs text-white/40 mb-8">公開ページ全体の見た目のデフォルトです。保存すると全ての訪問者に反映されます。</p>
+
+                <!-- フォント -->
+                <div class="mb-6">
+                    <label class="text-xs text-white/50 block mb-2">本文フォント</label>
+                    <select id="set-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                        <optgroup label="明朝体">
+                            <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                            <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                            <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                            <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                        </optgroup>
+                        <optgroup label="ゴシック体">
+                            <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                            <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                            <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                        </optgroup>
+                        <optgroup label="丸ゴシック体">
+                            <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                            <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                        </optgroup>
+                        <optgroup label="手書き風">
+                            <option value="'Klee One', cursive">Klee One</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- 文字組み -->
+                <div class="mb-6 pb-6 border-b border-white/10">
+                    <label class="text-xs text-white/50 block mb-3">文字組み</label>
+                    <div class="flex flex-col gap-4">
+                        <div>
+                            <div class="flex justify-between text-xs text-white/50 mb-1">
+                                <span>文字サイズ</span><span id="set-font-size-value"></span>
+                            </div>
+                            <input type="range" id="set-font-size" min="13" max="22" step="1" class="w-full" oninput="document.getElementById('set-font-size-value').textContent = this.value + 'px'">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-white/50 mb-1">
+                                <span>行間</span><span id="set-line-height-value"></span>
+                            </div>
+                            <input type="range" id="set-line-height" min="1.4" max="2.8" step="0.1" class="w-full" oninput="document.getElementById('set-line-height-value').textContent = this.value">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-white/50 mb-1">
+                                <span>文字間隔</span><span id="set-letter-spacing-value"></span>
+                            </div>
+                            <input type="range" id="set-letter-spacing" min="0" max="0.3" step="0.01" class="w-full" oninput="document.getElementById('set-letter-spacing-value').textContent = this.value + 'em'">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 背景色 -->
+                <div class="mb-6">
+                    <label class="text-xs text-white/50 block mb-2">背景色</label>
+                    <div class="flex gap-2 mb-3 items-center">
+                        <input type="color" id="set-bg-color" class="w-12 h-12 rounded cursor-pointer" onchange="document.getElementById('set-bg-color-value').textContent = this.value; checkSetContrast()">
+                        <span id="set-bg-color-value" class="text-xs text-white/50 font-mono"></span>
+                    </div>
+                    <div class="grid grid-cols-6 gap-2">
+                        <button onclick="pickColor('set-bg-color', '#6b7278')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#6b7278;" title="石板色"></button>
+                        <button onclick="pickColor('set-bg-color', '#2c3e50')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#2c3e50;" title="深紺"></button>
+                        <button onclick="pickColor('set-bg-color', '#1a1f24')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#1a1f24;" title="漆黒"></button>
+                        <button onclick="pickColor('set-bg-color', '#3d5a5d')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#3d5a5d;" title="緑青"></button>
+                        <button onclick="pickColor('set-bg-color', '#5a4a3a')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#5a4a3a;" title="茶色"></button>
+                        <button onclick="pickColor('set-bg-color', '#f5f2ea')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#f5f2ea;" title="生成り(明)"></button>
+                        <button onclick="pickColor('set-bg-color', '#ffffff')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#ffffff;" title="白"></button>
+                        <button onclick="pickColor('set-bg-color', '#e8e2d0')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#e8e2d0;" title="砂紙"></button>
+                        <button onclick="pickColor('set-bg-color', '#dfe6e0')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#dfe6e0;" title="薄青磁"></button>
+                    </div>
+                </div>
+
+                <!-- 文字色 -->
+                <div class="mb-6">
+                    <label class="text-xs text-white/50 block mb-2">文字色</label>
+                    <div class="flex gap-2 mb-3 items-center">
+                        <input type="color" id="set-text-color" class="w-12 h-12 rounded cursor-pointer" onchange="document.getElementById('set-text-color-value').textContent = this.value; checkSetContrast()">
+                        <span id="set-text-color-value" class="text-xs text-white/50 font-mono"></span>
+                    </div>
+                    <div class="grid grid-cols-6 gap-2">
+                        <button onclick="pickColor('set-text-color', '#ffffff')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#ffffff;" title="白"></button>
+                        <button onclick="pickColor('set-text-color', '#e8e4d8')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#e8e4d8;" title="生成り"></button>
+                        <button onclick="pickColor('set-text-color', '#d4c9a8')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#d4c9a8;" title="砂色"></button>
+                        <button onclick="pickColor('set-text-color', '#111111')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#111111;" title="漆黒"></button>
+                        <button onclick="pickColor('set-text-color', '#3a2f28')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#3a2f28;" title="焦茶"></button>
+                    </div>
+                    <div id="set-contrast-warning" class="hidden text-xs mt-3 leading-relaxed" style="color:#f0b429;">⚠ 背景色とのコントラストが低く、文字が読みにくくなっています</div>
+                </div>
+
+                <div class="flex gap-3 pt-4 border-t border-white/10">
+                    <button onclick="saveSiteSettings()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">保存する</button>
+                    <a href="index.html" target="_blank" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">閲覧ビューで確認 ↗</a>
                 </div>
             </div>
         </div>
@@ -140,8 +246,22 @@
         function showApp() {
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('app-screen').classList.remove('hidden');
-            showListView();
-            loadArticleList();
+            showTab('articles');
+        }
+
+        // --- タブ切り替え(記事 / 表示設定) ---
+        function showTab(tab) {
+            document.getElementById('nav-articles').classList.toggle('bg-white/10', tab === 'articles');
+            document.getElementById('nav-settings').classList.toggle('bg-white/10', tab === 'settings');
+            document.getElementById('settings-view').classList.toggle('hidden', tab !== 'settings');
+            if (tab === 'articles') {
+                showListView();
+                loadArticleList();
+            } else {
+                document.getElementById('list-view').classList.add('hidden');
+                document.getElementById('editor-view').classList.add('hidden');
+                loadSiteSettings();
+            }
         }
 
         // --- 一覧 ---
@@ -288,6 +408,80 @@
                 showToast('画像を挿入しました');
             };
             input.click();
+        }
+
+        // --- 表示設定(サイト全体のデフォルト) ---
+        function pickColor(inputId, value) {
+            const input = document.getElementById(inputId);
+            input.value = value;
+            input.dispatchEvent(new Event('change'));
+        }
+
+        function hexToRgb(hex) {
+            const h = hex.replace('#', '');
+            const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+            const n = parseInt(full, 16);
+            return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+        }
+
+        function relativeLuminance({ r, g, b }) {
+            const [R, G, B] = [r, g, b].map(v => {
+                v /= 255;
+                return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+            });
+            return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+        }
+
+        function contrastRatio(hex1, hex2) {
+            const L1 = relativeLuminance(hexToRgb(hex1));
+            const L2 = relativeLuminance(hexToRgb(hex2));
+            const [light, dark] = L1 > L2 ? [L1, L2] : [L2, L1];
+            return (light + 0.05) / (dark + 0.05);
+        }
+
+        function checkSetContrast() {
+            const bg = document.getElementById('set-bg-color').value;
+            const fg = document.getElementById('set-text-color').value;
+            document.getElementById('set-contrast-warning').classList.toggle('hidden', contrastRatio(bg, fg) >= 3);
+        }
+
+        async function loadSiteSettings() {
+            const { data, error } = await sb.from('site_settings').select('*').eq('id', 1).single();
+            if (error || !data) {
+                console.error(error);
+                showToast('表示設定の読み込みに失敗しました');
+                return;
+            }
+            document.getElementById('set-font').value = data.font;
+            document.getElementById('set-font-size').value = data.font_size;
+            document.getElementById('set-font-size-value').textContent = data.font_size + 'px';
+            document.getElementById('set-line-height').value = data.line_height;
+            document.getElementById('set-line-height-value').textContent = data.line_height;
+            document.getElementById('set-letter-spacing').value = data.letter_spacing;
+            document.getElementById('set-letter-spacing-value').textContent = data.letter_spacing + 'em';
+            document.getElementById('set-bg-color').value = data.bg_color;
+            document.getElementById('set-bg-color-value').textContent = data.bg_color;
+            document.getElementById('set-text-color').value = data.text_color;
+            document.getElementById('set-text-color-value').textContent = data.text_color;
+            checkSetContrast();
+        }
+
+        async function saveSiteSettings() {
+            const payload = {
+                bg_color: document.getElementById('set-bg-color').value,
+                text_color: document.getElementById('set-text-color').value,
+                font: document.getElementById('set-font').value,
+                font_size: Number(document.getElementById('set-font-size').value),
+                line_height: Number(document.getElementById('set-line-height').value),
+                letter_spacing: Number(document.getElementById('set-letter-spacing').value)
+            };
+            const { error } = await sb.from('site_settings').update(payload).eq('id', 1);
+            if (error) {
+                console.error(error);
+                showToast('保存に失敗しました');
+                return;
+            }
+            showToast('表示設定を保存しました');
         }
 
         checkAuth();

@@ -13,13 +13,6 @@
             --bg-color: #6b7278;
             --text-color: rgba(255, 255, 255, 0.9);
             --text-color-solid: #ffffff;
-            /* UIクローム(設定パネルなど)の配色。背景の明暗に応じてJSから切り替わる */
-            --chrome-bg: rgba(58, 63, 68, 0.95);
-            --chrome-fg: rgba(255, 255, 255, 0.9);
-            --chrome-fg-strong: #ffffff;
-            --chrome-border: rgba(255, 255, 255, 0.2);
-            --chrome-hover-bg: rgba(255, 255, 255, 0.1);
-            --chrome-muted: rgba(255, 255, 255, 0.5);
         }
 
         body {
@@ -53,143 +46,11 @@
         .open-full .content-body img { filter: grayscale(0%) opacity(1); }
         .content-body blockquote { border-left: 1px solid var(--text-color-solid); padding-left: 1.5em; margin: 2em 0; font-style: italic; opacity: 0.7; }
         .content-body h2 { font-size: 1.2em; margin: 2em 0 1em 0; opacity: 0.9; }
-
-        /* 設定ボタン・サイドパネルなど、本文とは独立したUIクローム */
-        .ui-chrome-bg { background: var(--chrome-bg); }
-        .ui-chrome-border { border-color: var(--chrome-border); }
-        .ui-chrome-fg { color: var(--chrome-fg); }
-        .ui-chrome-fg-strong { color: var(--chrome-fg-strong); }
-        .ui-chrome-muted { color: var(--chrome-muted); }
-        .ui-chrome-hover:hover { background: var(--chrome-hover-bg); }
-        .ui-chrome-input { background: var(--chrome-hover-bg); color: var(--chrome-fg-strong); border-color: var(--chrome-border); }
-
-        #settings-sidebar { transition: transform 0.35s ease-out; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center py-24 px-6 md:px-0">
 
-    <!-- 左上の表示設定ボタン -->
-    <button onclick="toggleDisplaySettings()" class="fixed top-6 left-6 z-40 ui-chrome-fg-strong opacity-40 hover:opacity-100 transition-opacity duration-300 px-3 py-2 text-xs rounded ui-chrome-hover" title="表示設定">⚙ 表示設定</button>
-
-    <!-- 表示設定サイドパネル(本体を隠さずリアルタイムに調整できる) -->
-    <div id="display-settings-modal" class="fixed inset-0 z-50 pointer-events-none">
-        <div id="settings-catcher" class="absolute inset-0 pointer-events-none opacity-0" onclick="toggleDisplaySettings()"></div>
-        <div id="settings-sidebar" class="absolute top-0 right-0 h-full w-full max-w-xs sm:max-w-sm p-6 overflow-y-auto pointer-events-auto transform translate-x-full ui-chrome-bg ui-chrome-fg-strong backdrop-blur-md border-l" style="border-color: var(--chrome-border);">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-sm font-medium">表示設定</h2>
-                <button onclick="toggleDisplaySettings()" class="ui-chrome-muted hover:opacity-100 text-lg leading-none">×</button>
-            </div>
-
-            <!-- フォント -->
-            <div class="mb-6">
-                <label class="text-xs ui-chrome-muted block mb-2">本文フォント</label>
-                <select id="font-select" class="w-full ui-chrome-input text-xs rounded px-3 py-2 border focus:outline-none" onchange="applyFont(this.value); saveDisplaySettings()">
-                    <optgroup label="明朝体">
-                        <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
-                        <option value="'Noto Serif JP', serif">Noto Serif JP</option>
-                        <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
-                        <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
-                    </optgroup>
-                    <optgroup label="ゴシック体">
-                        <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
-                        <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
-                        <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
-                    </optgroup>
-                    <optgroup label="丸ゴシック体">
-                        <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
-                        <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
-                    </optgroup>
-                    <optgroup label="手書き風">
-                        <option value="'Klee One', cursive">Klee One</option>
-                    </optgroup>
-                </select>
-            </div>
-
-            <!-- 文字組み -->
-            <div class="mb-6 pb-6 border-b" style="border-color: var(--chrome-border);">
-                <label class="text-xs ui-chrome-muted block mb-3">文字組み</label>
-                <div class="flex flex-col gap-4">
-                    <div>
-                        <div class="flex justify-between text-xs ui-chrome-muted mb-1">
-                            <span>文字サイズ</span><span id="font-size-value"></span>
-                        </div>
-                        <input type="range" id="font-size-slider" min="13" max="22" step="1" class="w-full" oninput="applyFontSize(this.value); saveDisplaySettings()">
-                    </div>
-                    <div>
-                        <div class="flex justify-between text-xs ui-chrome-muted mb-1">
-                            <span>行間</span><span id="line-height-value"></span>
-                        </div>
-                        <input type="range" id="line-height-slider" min="1.4" max="2.8" step="0.1" class="w-full" oninput="applyLineHeight(this.value); saveDisplaySettings()">
-                    </div>
-                    <div>
-                        <div class="flex justify-between text-xs ui-chrome-muted mb-1">
-                            <span>文字間隔</span><span id="letter-spacing-value"></span>
-                        </div>
-                        <input type="range" id="letter-spacing-slider" min="0" max="0.3" step="0.01" class="w-full" oninput="applyLetterSpacing(this.value); saveDisplaySettings()">
-                    </div>
-                </div>
-            </div>
-
-            <!-- 背景色 -->
-            <div class="mb-6">
-                <label class="text-xs ui-chrome-muted block mb-2">背景色</label>
-                <div class="flex gap-2 mb-3">
-                    <input type="color" id="bg-color-picker" class="w-12 h-12 rounded cursor-pointer" onchange="applyBackgroundColor(this.value); saveDisplaySettings()">
-                    <div class="flex-1 flex flex-col justify-center">
-                        <span id="bg-color-value" class="text-xs ui-chrome-muted font-mono"></span>
-                    </div>
-                </div>
-                <!-- 背景色プリセット -->
-                <div class="text-xs ui-chrome-muted mb-2">プリセット:</div>
-                <div class="grid grid-cols-4 gap-2">
-                    <button onclick="applyBackgroundColor('#6b7278'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #6b7278;" title="石板色"></button>
-                    <button onclick="applyBackgroundColor('#2c3e50'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #2c3e50;" title="深紺"></button>
-                    <button onclick="applyBackgroundColor('#34495e'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #34495e;" title="深灰"></button>
-                    <button onclick="applyBackgroundColor('#1a1f24'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #1a1f24;" title="漆黒"></button>
-                    <button onclick="applyBackgroundColor('#4a5568'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #4a5568;" title="暗灰"></button>
-                    <button onclick="applyBackgroundColor('#1e3a5f'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #1e3a5f;" title="紺青"></button>
-                    <button onclick="applyBackgroundColor('#3d5a5d'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #3d5a5d;" title="緑青"></button>
-                    <button onclick="applyBackgroundColor('#5a4a3a'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #5a4a3a;" title="茶色"></button>
-                    <button onclick="applyBackgroundColor('#f5f2ea'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #f5f2ea;" title="生成り(明)"></button>
-                    <button onclick="applyBackgroundColor('#ffffff'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #ffffff;" title="白"></button>
-                    <button onclick="applyBackgroundColor('#e8e2d0'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #e8e2d0;" title="砂紙"></button>
-                    <button onclick="applyBackgroundColor('#dfe6e0'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #dfe6e0;" title="薄青磁"></button>
-                </div>
-            </div>
-
-            <!-- 文字色 -->
-            <div class="mb-6">
-                <label class="text-xs ui-chrome-muted block mb-2">文字色</label>
-                <div class="flex gap-2">
-                    <input type="color" id="text-color-picker" class="w-12 h-12 rounded cursor-pointer" onchange="applyTextColor(this.value); saveDisplaySettings()">
-                    <div class="flex-1 flex flex-col justify-center">
-                        <span id="text-color-value" class="text-xs ui-chrome-muted font-mono"></span>
-                    </div>
-                </div>
-                <!-- 文字色プリセット -->
-                <div class="text-xs ui-chrome-muted mb-2 mt-3">プリセット:</div>
-                <div class="grid grid-cols-4 gap-2">
-                    <button onclick="applyTextColor('#ffffff'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #ffffff;" title="白"></button>
-                    <button onclick="applyTextColor('#e8e4d8'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #e8e4d8;" title="生成り"></button>
-                    <button onclick="applyTextColor('#d4c9a8'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #d4c9a8;" title="砂色"></button>
-                    <button onclick="applyTextColor('#f0d9b5'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #f0d9b5;" title="淡黄"></button>
-                    <button onclick="applyTextColor('#c9d6df'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #c9d6df;" title="薄氷"></button>
-                    <button onclick="applyTextColor('#a8b5a0'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #a8b5a0;" title="若竹"></button>
-                    <button onclick="applyTextColor('#111111'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #111111;" title="漆黒"></button>
-                    <button onclick="applyTextColor('#3a2f28'); saveDisplaySettings();" class="h-8 rounded border ui-chrome-border hover:opacity-80 transition-opacity" style="background-color: #3a2f28;" title="焦茶"></button>
-                </div>
-                <div id="contrast-warning" class="hidden text-xs mt-3 leading-relaxed" style="color:#f0b429;">⚠ 背景色とのコントラストが低く、文字が読みにくくなっています</div>
-            </div>
-
-            <!-- ボタン -->
-            <div class="flex gap-3 pt-4 border-t" style="border-color: var(--chrome-border);">
-                <button onclick="resetDisplaySettings()" class="flex-1 px-3 py-2 text-xs ui-chrome-input rounded hover:opacity-80 transition-opacity">標準に戻す</button>
-                <button onclick="toggleDisplaySettings()" class="flex-1 px-3 py-2 text-xs rounded hover:opacity-80 transition-opacity" style="background: var(--chrome-hover-bg);">閉じる</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 ui-chrome-bg ui-chrome-fg-strong backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
+    <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
 
     <header class="w-full max-w-2xl mb-24 opacity-0 fade-in" style="animation-delay: 0.2s;">
         <h1 class="text-sm font-medium tracking-widest opacity-80 cursor-pointer inline-block" onclick="window.scrollTo({top:0, behavior:'smooth'})">断片</h1>
@@ -203,14 +64,6 @@
     </div>
 
     <script>
-        // デフォルト値
-        const DEFAULT_BG_COLOR = '#6b7278';
-        const DEFAULT_TEXT_COLOR = '#ffffff';
-        const DEFAULT_FONT = "'Shippori Mincho', serif";
-        const DEFAULT_FONT_SIZE = 16;
-        const DEFAULT_LINE_HEIGHT = 2.2;
-        const DEFAULT_LETTER_SPACING = 0.08;
-
         // Supabase接続設定(anon keyは公開前提のクライアント用キー・読み取り専用で使用)
         const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpeXpsYXdtY3l5YmNoeHp5b3pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDI2MjQsImV4cCI6MjA5NTU3ODYyNH0.SZVwqWKkk31npqdiiG5m3HdkF4JnQ7SgEzThaFfZ4q4';
@@ -221,163 +74,20 @@
         const listContainer = document.getElementById('article-list');
         let displayedCount = 0;
 
-        // 表示設定関連関数
-        function toggleDisplaySettings() {
-            const sidebar = document.getElementById('settings-sidebar');
-            const catcher = document.getElementById('settings-catcher');
-            const opening = sidebar.classList.contains('translate-x-full');
-            if (opening) {
-                catcher.classList.remove('pointer-events-none');
-                sidebar.classList.remove('translate-x-full');
-                loadDisplaySettings();
-            } else {
-                catcher.classList.add('pointer-events-none');
-                sidebar.classList.add('translate-x-full');
+        // サイト全体の表示設定(管理画面で設定され、DBの1行に保存されている)を反映する
+        async function applySiteSettings() {
+            const { data, error } = await sb.from('site_settings').select('*').eq('id', 1).single();
+            if (error || !data) {
+                console.error(error);
+                return;
             }
-        }
-
-        function loadDisplaySettings() {
-            const settings = JSON.parse(localStorage.getItem('displaySettings') || '{}');
-            const bgColor = settings.bgColor || DEFAULT_BG_COLOR;
-            const textColor = settings.textColor || DEFAULT_TEXT_COLOR;
-            const font = settings.font || DEFAULT_FONT;
-            const fontSize = settings.fontSize || DEFAULT_FONT_SIZE;
-            const lineHeight = settings.lineHeight || DEFAULT_LINE_HEIGHT;
-            const letterSpacing = settings.letterSpacing != null ? settings.letterSpacing : DEFAULT_LETTER_SPACING;
-
-            document.getElementById('bg-color-picker').value = bgColor;
-            document.getElementById('text-color-picker').value = textColor;
-            document.getElementById('bg-color-value').textContent = bgColor;
-            document.getElementById('text-color-value').textContent = textColor;
-            document.getElementById('font-select').value = font;
-            document.getElementById('font-size-slider').value = fontSize;
-            document.getElementById('font-size-value').textContent = fontSize + 'px';
-            document.getElementById('line-height-slider').value = lineHeight;
-            document.getElementById('line-height-value').textContent = lineHeight;
-            document.getElementById('letter-spacing-slider').value = letterSpacing;
-            document.getElementById('letter-spacing-value').textContent = letterSpacing + 'em';
-        }
-
-        // --- 色の計算(コントラストチェック・UIクロームの明暗切り替え用) ---
-        function hexToRgb(hex) {
-            const h = hex.replace('#', '');
-            const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
-            const n = parseInt(full, 16);
-            return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
-        }
-
-        function relativeLuminance({ r, g, b }) {
-            const [R, G, B] = [r, g, b].map(v => {
-                v /= 255;
-                return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-            });
-            return 0.2126 * R + 0.7152 * G + 0.0722 * B;
-        }
-
-        function contrastRatio(hex1, hex2) {
-            const L1 = relativeLuminance(hexToRgb(hex1));
-            const L2 = relativeLuminance(hexToRgb(hex2));
-            const [light, dark] = L1 > L2 ? [L1, L2] : [L2, L1];
-            return (light + 0.05) / (dark + 0.05);
-        }
-
-        function checkContrast() {
-            const bg = document.getElementById('bg-color-picker').value;
-            const fg = document.getElementById('text-color-picker').value;
-            const warning = document.getElementById('contrast-warning');
-            warning.classList.toggle('hidden', contrastRatio(bg, fg) >= 3);
-        }
-
-        // 背景の明暗に応じて設定パネルなどのUIクロームを切り替える(ダークモードで文字色が背景に埋もれる問題への対応)
-        function applyChromeTheme(bgColor) {
-            const isLight = relativeLuminance(hexToRgb(bgColor)) > 0.5;
-            const root = document.documentElement.style;
-            if (isLight) {
-                root.setProperty('--chrome-bg', 'rgba(255, 255, 255, 0.95)');
-                root.setProperty('--chrome-fg', 'rgba(0, 0, 0, 0.75)');
-                root.setProperty('--chrome-fg-strong', '#1a1a1a');
-                root.setProperty('--chrome-border', 'rgba(0, 0, 0, 0.15)');
-                root.setProperty('--chrome-hover-bg', 'rgba(0, 0, 0, 0.08)');
-                root.setProperty('--chrome-muted', 'rgba(0, 0, 0, 0.5)');
-            } else {
-                root.setProperty('--chrome-bg', 'rgba(58, 63, 68, 0.95)');
-                root.setProperty('--chrome-fg', 'rgba(255, 255, 255, 0.9)');
-                root.setProperty('--chrome-fg-strong', '#ffffff');
-                root.setProperty('--chrome-border', 'rgba(255, 255, 255, 0.2)');
-                root.setProperty('--chrome-hover-bg', 'rgba(255, 255, 255, 0.1)');
-                root.setProperty('--chrome-muted', 'rgba(255, 255, 255, 0.5)');
-            }
-        }
-
-        function applyBackgroundColor(color) {
-            document.documentElement.style.setProperty('--bg-color', color);
-            document.getElementById('bg-color-picker').value = color;
-            document.getElementById('bg-color-value').textContent = color;
-            applyChromeTheme(color);
-            checkContrast();
-        }
-
-        function applyTextColor(color) {
-            document.documentElement.style.setProperty('--text-color', color);
-            document.documentElement.style.setProperty('--text-color-solid', color);
-            document.getElementById('text-color-picker').value = color;
-            document.getElementById('text-color-value').textContent = color;
-            checkContrast();
-        }
-
-        function applyFont(font) {
-            document.body.style.fontFamily = font;
-            document.getElementById('font-select').value = font;
-        }
-
-        function applyFontSize(px) {
-            document.documentElement.style.fontSize = px + 'px';
-            document.getElementById('font-size-slider').value = px;
-            document.getElementById('font-size-value').textContent = px + 'px';
-        }
-
-        function applyLineHeight(v) {
-            document.body.style.lineHeight = v;
-            document.getElementById('line-height-slider').value = v;
-            document.getElementById('line-height-value').textContent = v;
-        }
-
-        function applyLetterSpacing(em) {
-            document.body.style.letterSpacing = em + 'em';
-            document.getElementById('letter-spacing-slider').value = em;
-            document.getElementById('letter-spacing-value').textContent = em + 'em';
-        }
-
-        function saveDisplaySettings() {
-            const settings = {
-                bgColor: document.getElementById('bg-color-picker').value,
-                textColor: document.getElementById('text-color-picker').value,
-                font: document.getElementById('font-select').value,
-                fontSize: document.getElementById('font-size-slider').value,
-                lineHeight: document.getElementById('line-height-slider').value,
-                letterSpacing: document.getElementById('letter-spacing-slider').value
-            };
-            localStorage.setItem('displaySettings', JSON.stringify(settings));
-        }
-
-        function resetDisplaySettings() {
-            applyBackgroundColor(DEFAULT_BG_COLOR);
-            applyTextColor(DEFAULT_TEXT_COLOR);
-            applyFont(DEFAULT_FONT);
-            applyFontSize(DEFAULT_FONT_SIZE);
-            applyLineHeight(DEFAULT_LINE_HEIGHT);
-            applyLetterSpacing(DEFAULT_LETTER_SPACING);
-            saveDisplaySettings();
-        }
-
-        function restoreDisplaySettings() {
-            const settings = JSON.parse(localStorage.getItem('displaySettings') || '{}');
-            applyBackgroundColor(settings.bgColor || DEFAULT_BG_COLOR);
-            applyTextColor(settings.textColor || DEFAULT_TEXT_COLOR);
-            applyFont(settings.font || DEFAULT_FONT);
-            applyFontSize(settings.fontSize || DEFAULT_FONT_SIZE);
-            applyLineHeight(settings.lineHeight || DEFAULT_LINE_HEIGHT);
-            applyLetterSpacing(settings.letterSpacing != null ? settings.letterSpacing : DEFAULT_LETTER_SPACING);
+            document.documentElement.style.setProperty('--bg-color', data.bg_color);
+            document.documentElement.style.setProperty('--text-color', data.text_color);
+            document.documentElement.style.setProperty('--text-color-solid', data.text_color);
+            document.documentElement.style.fontSize = data.font_size + 'px';
+            document.body.style.fontFamily = data.font;
+            document.body.style.lineHeight = data.line_height;
+            document.body.style.letterSpacing = data.letter_spacing + 'em';
         }
 
         function buildArticleHtml(article) {
@@ -434,8 +144,7 @@
 
         window.addEventListener('scroll', () => { if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) renderArticles(1); });
 
-        // ページ読み込み時に表示設定を復元し、記事をSupabaseから取得
-        restoreDisplaySettings();
+        applySiteSettings();
         loadArticles();
     </script>
 </body>
