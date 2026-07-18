@@ -21,6 +21,7 @@
         .content-editor img.img-selected { outline: 2px solid rgba(255,255,255,0.6); outline-offset: 2px; }
         .content-editor blockquote { border-left: 2px solid rgba(255,255,255,0.3); padding-left: 1em; margin: 1em 0; opacity: 0.8; font-style: italic; }
         .content-editor h2 { font-size: 1.2em; margin: 1em 0 0.5em; }
+        .content-editor .footnote-ref { color: #7dd3fc; cursor: default; }
         .article-preview { max-height: 3.2em; overflow: hidden; }
         /* ブラウザ既定のドロップダウン展開部は背景が白になることが多く、継承した白文字のままだと見えなくなるため明示的に指定する */
         select option, select optgroup { color: #1a1a1a; background-color: #ffffff; }
@@ -96,6 +97,7 @@
                     <button onclick="formatText('insertUnorderedList')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">箇条書き</button>
                     <button onclick="formatText('insertOrderedList')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">番号リスト</button>
                     <button onclick="insertLink()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">リンク</button>
+                    <button onclick="insertFootnote()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="本文中に注釈番号を挿入します">注釈</button>
                     <button onclick="insertImage()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">📷 写真</button>
                     <span class="w-px self-stretch bg-white/10 mx-1"></span>
                     <button onclick="formatText('removeFormat')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="選択範囲の書式(太字・斜体など)だけ解除">書式クリア</button>
@@ -854,6 +856,20 @@
             const url = prompt('リンク先URL', 'https://');
             if (!url) return;
             formatText('createLink', url);
+        }
+
+        function escapeAttr(str) {
+            return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // カーソル位置に注釈番号を挿入する。番号は現在エディタ内にある注釈の数から採番(削除・並べ替え後は保存し直すとズレるので、その時は挿入し直してください)
+        function insertFootnote() {
+            const note = prompt('注釈の内容');
+            if (!note) return;
+            const editor = document.getElementById('edit-content');
+            const num = editor.querySelectorAll('.footnote-ref').length + 1;
+            editor.focus();
+            document.execCommand('insertHTML', false, `<sup class="footnote-ref" data-note="${escapeAttr(note)}">[${num}]</sup>`);
         }
 
         // 本文全体を書式なしのプレーンテキストに変換する(画像・太字・見出しなどは全て失われます)
