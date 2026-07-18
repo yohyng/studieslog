@@ -58,8 +58,11 @@
             color: var(--text-color);
             line-height: calc(var(--base-line-height) * var(--line-height-scale));
             letter-spacing: 0.08em;
-            transition: background-color 0.5s ease, color 0.5s ease;
+            opacity: 0;
+            transition: opacity 0.4s ease, background-color 0.5s ease, color 0.5s ease;
         }
+
+        body.ready { opacity: 1; }
 
         @media (min-width: 768px) {
             body { padding-left: 0; padding-right: 0; }
@@ -171,6 +174,14 @@
 
         // サイト全体の表示設定(管理画面で設定され、DBの1行に保存されている)を反映する
         async function applySiteSettings() {
+            try {
+                await applySiteSettingsInner();
+            } finally {
+                document.body.classList.add('ready');
+            }
+        }
+
+        async function applySiteSettingsInner() {
             const { data, error } = await sb.from('site_settings').select('*').eq('id', 1).single();
             if (error || !data) {
                 console.error(error);
