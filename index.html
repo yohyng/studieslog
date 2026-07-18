@@ -46,7 +46,8 @@
         @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
 
         .article-title { color: var(--text-color-solid); opacity: 0.85; line-height: inherit !important; transition: opacity 0.8s ease, color 0.5s ease; }
-        .content-body { line-height: inherit !important; }
+        /* コピペした本文の段落タグなどに行間のインラインスタイルが残っていても、必ずサイト設定の行間が効くようにする */
+        .content-body, .content-body * { line-height: inherit !important; }
         .group:hover .article-title { opacity: 1; }
 
         .article-snippet {
