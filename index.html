@@ -117,6 +117,7 @@
         .content-body h2 { font-size: 1.2em; margin: 2em 0 1em 0; opacity: 0.9; }
         .footnote-ref { color: var(--footnote-color); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
         .footnote-note { font-size: 0.8em; opacity: 0.65; border-bottom: 1px dotted currentColor; padding: 0 0.3em; }
+        .search-highlight { background: color-mix(in srgb, currentColor 25%, transparent); border-radius: 2px; padding: 0 0.1em; }
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -139,7 +140,10 @@
             <nav class="flex flex-col gap-6" style="font-size: var(--menu-font-size);">
                 <a href="/" class="opacity-80 hover:opacity-100 transition-opacity">Top</a>
                 <a href="/list" class="opacity-80 hover:opacity-100 transition-opacity">List</a>
-                <a href="/search" class="opacity-80 hover:opacity-100 transition-opacity">Search</a>
+                <div class="relative">
+                    <input id="menu-search-input" type="text" placeholder="Search" class="w-full bg-transparent focus:outline-none pr-5" style="font-size: var(--menu-font-size); border-bottom: 1px solid color-mix(in srgb, currentColor 30%, transparent); padding-bottom: 0.2em;">
+                    <button id="menu-search-clear" onclick="clearMenuSearch()" class="hidden absolute right-0 top-0 opacity-50 hover:opacity-100 transition-opacity leading-none" aria-label="検索をクリア">×</button>
+                </div>
                 <a href="/about" class="opacity-80 hover:opacity-100 transition-opacity">About</a>
             </nav>
         </div>
@@ -159,7 +163,7 @@
     <main id="tag-view" class="hidden w-full content-width relative"></main>
 
     <main id="search-view" class="hidden w-full content-width relative">
-        <input id="search-input" type="text" placeholder="タイトル・本文・タグで検索" class="w-full bg-transparent border-b text-sm pb-3 mb-10 focus:outline-none" style="border-color: currentColor; opacity: 0.9;">
+        <div id="search-meta" class="text-xs opacity-50 mb-6"></div>
         <div id="search-results" class="flex flex-col"></div>
     </main>
 
@@ -524,44 +528,105 @@
             });
         }
 
+        // 一致箇所を<mark>で囲んで目立たせる(タイトルなど全文をそのまま表示する場合)
+        function highlightText(text, query) {
+            const idx = text.toLowerCase().indexOf(query.toLowerCase());
+            if (idx === -1) return escapeHtml(text);
+            return escapeHtml(text.slice(0, idx))
+                + `<mark class="search-highlight">${escapeHtml(text.slice(idx, idx + query.length))}</mark>`
+                + escapeHtml(text.slice(idx + query.length));
+        }
+
+        // 本文中の一致箇所の前後だけを抜粋し、一致部分をハイライトする
+        function highlightExcerpt(text, query, contextChars) {
+            const idx = text.toLowerCase().indexOf(query.toLowerCase());
+            if (idx === -1) return '';
+            const start = Math.max(0, idx - contextChars);
+            const end = Math.min(text.length, idx + query.length + contextChars);
+            const before = escapeHtml(text.slice(start, idx));
+            const match = escapeHtml(text.slice(idx, idx + query.length));
+            const after = escapeHtml(text.slice(idx + query.length, end));
+            return (start > 0 ? '…' : '') + before + `<mark class="search-highlight">${match}</mark>` + after + (end < text.length ? '…' : '');
+        }
+
         function renderSearchResults(query) {
-            const results = searchArticles(query);
+            const q = query.trim();
+            const meta = document.getElementById('search-meta');
             const container = document.getElementById('search-results');
-            if (!query.trim()) {
+            if (!q) {
+                meta.textContent = '';
                 container.innerHTML = '';
                 return;
             }
+            const results = searchArticles(q);
             if (results.length === 0) {
+                meta.textContent = '';
                 container.innerHTML = '<p class="text-xs opacity-40 py-4">見つかりませんでした。</p>';
                 return;
             }
-            container.innerHTML = results.map(a => `
-                <a href="/article/${a.id}" class="flex items-baseline justify-between gap-4 py-4 border-b opacity-70 hover:opacity-100 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">
-                    <span class="text-sm">${a.title}</span>
-                    <span class="text-xs opacity-60 whitespace-nowrap">${a.date}</span>
-                </a>
-            `).join('');
+            meta.textContent = `${results.length}件見つかりました`;
+            container.innerHTML = results.map(a => {
+                const plainContent = stripHtml(a.content);
+                const excerptHtml = plainContent.toLowerCase().includes(q.toLowerCase()) ? highlightExcerpt(plainContent, q, 40) : '';
+                return `
+                    <a href="/article/${a.id}" class="flex flex-col gap-1 py-4 border-b opacity-90 hover:opacity-100 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">
+                        <div class="flex items-baseline justify-between gap-4">
+                            <span class="text-sm">${highlightText(a.title, q)}</span>
+                            <span class="text-xs opacity-60 whitespace-nowrap">${a.date}</span>
+                        </div>
+                        ${excerptHtml ? `<p class="text-xs opacity-60">${excerptHtml}</p>` : ''}
+                    </a>
+                `;
+            }).join('');
+        }
+
+        // 検索結果ビューに切り替えて表示する。サイドバーの検索欄はページを問わず常時表示されているため、
+        // どのルートにいてもここから検索を開始できる
+        function activateSearch(query, { push = false } = {}) {
+            hideAllViews();
+            document.getElementById('search-view').classList.remove('hidden');
+            renderSearchResults(query);
+            const url = query.trim() ? `/search?q=${encodeURIComponent(query)}` : '/search';
+            if (location.pathname + location.search === url) return;
+            if (push) {
+                history.pushState({}, '', url);
+            } else {
+                history.replaceState({}, '', url);
+            }
+        }
+
+        // サイドバーの検索欄を初期化する(ページ内に常時存在するため、初回に一度だけ配線する)
+        function setupMenuSearch() {
+            const input = document.getElementById('menu-search-input');
+            const clearBtn = document.getElementById('menu-search-clear');
+            let debounceTimer = null;
+            let enteredSearch = isSearchRoute();
+            input.addEventListener('input', () => {
+                clearBtn.classList.toggle('hidden', input.value.trim() === '');
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    activateSearch(input.value, { push: !enteredSearch });
+                    enteredSearch = true;
+                }, 200);
+            });
+        }
+
+        function clearMenuSearch() {
+            const input = document.getElementById('menu-search-input');
+            input.value = '';
+            document.getElementById('menu-search-clear').classList.add('hidden');
+            activateSearch('');
+            input.focus();
         }
 
         function renderSearchPage() {
             hideAllViews();
             document.getElementById('search-view').classList.remove('hidden');
-            const input = document.getElementById('search-input');
             const initialQuery = new URLSearchParams(location.search).get('q') || '';
+            const input = document.getElementById('menu-search-input');
             input.value = initialQuery;
+            document.getElementById('menu-search-clear').classList.toggle('hidden', initialQuery.trim() === '');
             renderSearchResults(initialQuery);
-
-            let debounceTimer = null;
-            input.oninput = () => {
-                clearTimeout(debounceTimer);
-                const query = input.value;
-                debounceTimer = setTimeout(() => {
-                    renderSearchResults(query);
-                    const url = query.trim() ? `/search?q=${encodeURIComponent(query)}` : '/search';
-                    history.replaceState({}, '', url);
-                }, 200);
-            };
-            input.focus();
         }
 
         async function loadArticles() {
@@ -656,6 +721,8 @@
         }
 
         window.addEventListener('scroll', () => { if(isHomeRoute() && window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) renderArticles(1); });
+
+        setupMenuSearch();
 
         (async () => {
             await applySiteSettings();
