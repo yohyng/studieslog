@@ -7,13 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500&family=Noto+Serif+JP:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Maru+Gothic:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;500;700&family=Kaisei+Tokumin:wght@400;500;700&family=Klee+One:wght@400;600&family=Kosugi+Maru&display=swap" rel="stylesheet">
-    
+
     <style>
         :root {
             --bg-color: #6b7278;
             --text-color: rgba(255, 255, 255, 0.9);
             --text-color-solid: #ffffff;
-            /* UIクローム(設定パネルやツールバーなど)の配色。背景の明暗に応じてJSから切り替わる */
+            /* UIクローム(設定パネルなど)の配色。背景の明暗に応じてJSから切り替わる */
             --chrome-bg: rgba(58, 63, 68, 0.95);
             --chrome-fg: rgba(255, 255, 255, 0.9);
             --chrome-fg-strong: #ffffff;
@@ -53,9 +53,8 @@
         .open-full .content-body img { filter: grayscale(0%) opacity(1); }
         .content-body blockquote { border-left: 1px solid var(--text-color-solid); padding-left: 1.5em; margin: 2em 0; font-style: italic; opacity: 0.7; }
         .content-body h2 { font-size: 1.2em; margin: 2em 0 1em 0; opacity: 0.9; }
-        [contenteditable="true"] { outline: none; border-bottom: 1px dashed var(--text-color-solid); }
 
-        /* 設定ボタン・サイドパネル・ツールバーなど、本文とは独立したUIクローム */
+        /* 設定ボタン・サイドパネルなど、本文とは独立したUIクローム */
         .ui-chrome-bg { background: var(--chrome-bg); }
         .ui-chrome-border { border-color: var(--chrome-border); }
         .ui-chrome-fg { color: var(--chrome-fg); }
@@ -190,52 +189,6 @@
         </div>
     </div>
 
-    <div id="editor-toolbar" class="fixed top-0 left-0 w-full ui-chrome-bg ui-chrome-fg-strong backdrop-blur-md border-b z-40 transform -translate-y-full transition-transform duration-500 ease-out flex flex-col" style="border-color: var(--chrome-border);">
-        <div class="max-w-4xl w-full mx-auto px-6 h-16 flex justify-between items-center text-xs">
-            <div class="flex items-center gap-6 opacity-60">
-                <span class="opacity-50">執筆・編集モード</span>
-                <button onclick="createNewArticle()" class="hover:opacity-100 transition-opacity">＋ 新たな断片</button>
-            </div>
-            <div class="flex items-center gap-4 opacity-70 border-x px-4" style="border-color: var(--chrome-border);">
-                <button onclick="formatText('bold')" class="hover:opacity-100 transition-opacity px-2">太字</button>
-                <button onclick="formatText('italic')" class="hover:opacity-100 transition-opacity px-2">斜体</button>
-                <button onclick="formatText('formatBlock', 'H2')" class="hover:opacity-100 transition-opacity px-2">見出</button>
-                <button onclick="formatText('formatBlock', 'BLOCKQUOTE')" class="hover:opacity-100 transition-opacity px-2">引用</button>
-                <button onclick="insertImage()" class="hover:opacity-100 transition-opacity px-2">写真</button>
-            </div>
-            <div class="flex items-center gap-6 opacity-60">
-                <button onclick="toggleSettingsPanel()" class="hover:opacity-100 transition-opacity">空間調整 ⚙</button>
-                <button onclick="logout()" class="hover:opacity-100 transition-opacity">ログアウト</button>
-                <button onclick="toggleEditMode(false)" class="hover:opacity-100 transition-opacity">終了 ×</button>
-            </div>
-        </div>
-        <div id="settings-panel" class="hidden max-w-4xl w-full mx-auto px-6 py-6 border-t text-xs ui-chrome-fg" style="border-color: var(--chrome-border);">
-            <div class="flex gap-12">
-                <div class="flex flex-col gap-2 w-48">
-                    <label>背景の深度</label>
-                    <input type="range" min="30" max="90" value="65" class="w-full" oninput="document.documentElement.style.setProperty('--bg-color', `hsl(210, 6%, ${this.value}%)`)">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ログインモーダル -->
-    <div id="login-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div class="ui-chrome-bg ui-chrome-fg-strong backdrop-blur-md border rounded-lg p-8 max-w-xs w-full" style="border-color: var(--chrome-border);">
-            <h2 class="text-sm font-medium mb-4">ログイン</h2>
-            <input id="login-email" type="email" placeholder="メールアドレス" autocomplete="username" class="w-full ui-chrome-input text-xs rounded px-3 py-2 border mb-3 focus:outline-none" style="border-color: var(--chrome-border);">
-            <input id="login-password" type="password" placeholder="パスワード" autocomplete="current-password" class="w-full ui-chrome-input text-xs rounded px-3 py-2 border mb-4 focus:outline-none" style="border-color: var(--chrome-border);" onkeydown="if(event.key==='Enter') submitLogin()">
-            <div id="login-error" class="hidden text-xs mb-3" style="color:#e5697d;"></div>
-            <div class="flex gap-3">
-                <button onclick="submitLogin()" class="flex-1 px-3 py-2 text-xs rounded hover:opacity-80 transition-opacity" style="background: var(--chrome-hover-bg);">ログイン</button>
-                <button onclick="closeLoginModal()" class="flex-1 px-3 py-2 text-xs ui-chrome-input rounded hover:opacity-80 transition-opacity">キャンセル</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 編集モードトリガー -->
-    <div class="fixed top-6 right-6 z-30 text-xs ui-chrome-fg-strong opacity-0 hover:opacity-30 transition-opacity duration-1000 cursor-default p-4" onclick="toggleEditMode(true)" title="Archive of Silence">◎</div>
-
     <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 ui-chrome-bg ui-chrome-fg-strong backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
 
     <header class="w-full max-w-2xl mb-24 opacity-0 fade-in" style="animation-delay: 0.2s;">
@@ -257,19 +210,17 @@
         const DEFAULT_FONT_SIZE = 16;
         const DEFAULT_LINE_HEIGHT = 2.2;
         const DEFAULT_LETTER_SPACING = 0.08;
-        
-        // Supabase接続設定(anon keyは公開前提のクライアント用キー)
+
+        // Supabase接続設定(anon keyは公開前提のクライアント用キー・読み取り専用で使用)
         const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpeXpsYXdtY3l5YmNoeHp5b3pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDI2MjQsImV4cCI6MjA5NTU3ODYyNH0.SZVwqWKkk31npqdiiG5m3HdkF4JnQ7SgEzThaFfZ4q4';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const IMAGE_BUCKET = 'article-images';
 
         let articles = [];
 
         const listContainer = document.getElementById('article-list');
         let displayedCount = 0;
-        let isEditMode = false;
-        
+
         // 表示設定関連関数
         function toggleDisplaySettings() {
             const sidebar = document.getElementById('settings-sidebar');
@@ -337,7 +288,7 @@
             warning.classList.toggle('hidden', contrastRatio(bg, fg) >= 3);
         }
 
-        // 背景の明暗に応じて設定パネルやツールバーなどのUIクロームを切り替える(ダークモードで文字色が背景に埋もれる問題への対応)
+        // 背景の明暗に応じて設定パネルなどのUIクロームを切り替える(ダークモードで文字色が背景に埋もれる問題への対応)
         function applyChromeTheme(bgColor) {
             const isLight = relativeLuminance(hexToRgb(bgColor)) > 0.5;
             const root = document.documentElement.style;
@@ -432,10 +383,10 @@
         function buildArticleHtml(article) {
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}">
-                    <div class="cursor-pointer group" onclick="if(!isEditMode) openArticle(this)">
-                        <div class="text-xs opacity-40 mb-2 date-field">${article.date}</div>
-                        <h2 class="text-lg font-normal mb-4 article-title title-field">${article.title}</h2>
-                        <div class="article-snippet text-sm opacity-70 content-body content-field">${article.content}</div>
+                    <div class="cursor-pointer group" onclick="openArticle(this)">
+                        <div class="text-xs opacity-40 mb-2">${article.date}</div>
+                        <h2 class="text-lg font-normal mb-4 article-title">${article.title}</h2>
+                        <div class="article-snippet text-sm opacity-70 content-body">${article.content}</div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
                         <span class="text-xs opacity-30 hover:opacity-100 cursor-pointer transition-opacity" onclick="closeArticle(this.parentElement.previousElementSibling)">↑ 閉じる</span>
@@ -449,7 +400,6 @@
                 listContainer.insertAdjacentHTML('beforeend', buildArticleHtml(article));
             });
             displayedCount += items.length;
-            if (isEditMode) applyEditModeToElements();
         }
 
         async function loadArticles() {
@@ -471,124 +421,15 @@
             wrapperNode.nextElementSibling.classList.remove('hidden');
         }
 
-        async function closeArticle(wrapperNode) {
+        function closeArticle(wrapperNode) {
             const snippet = wrapperNode.querySelector('.article-snippet');
             snippet.classList.remove('open-full');
             wrapperNode.nextElementSibling.classList.add('hidden');
-            if (isEditMode) {
-                const articleEl = wrapperNode.closest('article');
-                const id = articleEl.dataset.id;
-                const date = articleEl.querySelector('.date-field').textContent.trim();
-                const title = articleEl.querySelector('.title-field').textContent.trim();
-                const content = articleEl.querySelector('.content-field').innerHTML;
-                const { error } = await sb.from('articles').update({ date, title, content }).eq('id', id);
-                showToast(error ? '保存に失敗しました' : '保存されました');
-                if (error) console.error(error);
-            }
-        }
-
-        // --- 認証(執筆・編集モードの解錠) ---
-        let loginResolver = null;
-
-        function promptLogin() {
-            return new Promise(resolve => {
-                loginResolver = resolve;
-                document.getElementById('login-error').classList.add('hidden');
-                document.getElementById('login-email').value = '';
-                document.getElementById('login-password').value = '';
-                document.getElementById('login-modal').classList.remove('hidden');
-                document.getElementById('login-email').focus();
-            });
-        }
-
-        function closeLoginModal() {
-            document.getElementById('login-modal').classList.add('hidden');
-            if (loginResolver) { loginResolver(false); loginResolver = null; }
-        }
-
-        async function submitLogin() {
-            const email = document.getElementById('login-email').value.trim();
-            const password = document.getElementById('login-password').value;
-            const { error } = await sb.auth.signInWithPassword({ email, password });
-            if (error) {
-                const el = document.getElementById('login-error');
-                el.textContent = 'ログインに失敗しました: ' + error.message;
-                el.classList.remove('hidden');
-                return;
-            }
-            document.getElementById('login-modal').classList.add('hidden');
-            if (loginResolver) { loginResolver(true); loginResolver = null; }
-        }
-
-        async function logout() {
-            await sb.auth.signOut();
-            toggleEditMode(false);
-        }
-
-        async function toggleEditMode(turnOn) {
-            if (turnOn) {
-                const { data: { session } } = await sb.auth.getSession();
-                if (!session) {
-                    const ok = await promptLogin();
-                    if (!ok) return;
-                }
-            }
-            isEditMode = turnOn;
-            document.getElementById('editor-toolbar').classList.toggle('-translate-y-full', !isEditMode);
-            isEditMode ? applyEditModeToElements() : removeEditModeFromElements();
-        }
-
-        function applyEditModeToElements() {
-            document.querySelectorAll('.title-field, .content-field, .date-field').forEach(el => el.setAttribute('contenteditable', 'true'));
-        }
-
-        function removeEditModeFromElements() {
-            document.querySelectorAll('[contenteditable="true"]').forEach(el => el.removeAttribute('contenteditable'));
-        }
-
-        function formatText(cmd, val = null) { document.execCommand(cmd, false, val); }
-
-        function insertImage() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.onchange = async () => {
-                const file = input.files[0];
-                if (!file) return;
-                showToast('アップロード中...');
-                const path = `${Date.now()}-${file.name}`;
-                const { error: uploadError } = await sb.storage.from(IMAGE_BUCKET).upload(path, file);
-                if (uploadError) {
-                    console.error(uploadError);
-                    showToast('アップロードに失敗しました');
-                    return;
-                }
-                const { data } = sb.storage.from(IMAGE_BUCKET).getPublicUrl(path);
-                formatText('insertImage', data.publicUrl);
-                showToast('画像を挿入しました');
-            };
-            input.click();
         }
 
         function showToast(msg) {
             const t = document.getElementById('toast'); t.textContent = msg; t.style.opacity = '1';
             setTimeout(() => t.style.opacity = '0', 2000);
-        }
-        function toggleSettingsPanel() { document.getElementById('settings-panel').classList.toggle('hidden'); }
-
-        async function createNewArticle() {
-            const today = new Date();
-            const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
-            const { data, error } = await sb.from('articles').insert({ date: dateStr, title: '新たな断片', content: '<p></p>' }).select().single();
-            if (error) {
-                console.error(error);
-                showToast('作成に失敗しました');
-                return;
-            }
-            articles.unshift(data);
-            displayedCount++;
-            listContainer.insertAdjacentHTML('afterbegin', buildArticleHtml(data));
-            if (isEditMode) applyEditModeToElements();
         }
 
         window.addEventListener('scroll', () => { if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) renderArticles(1); });
