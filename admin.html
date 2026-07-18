@@ -14,8 +14,9 @@
             background-color: #22262a;
             color: rgba(255, 255, 255, 0.9);
         }
-        .content-editor { min-height: 300px; line-height: 1.9; }
+        .content-editor { min-height: 300px; line-height: 1.9; transition: outline-color 0.15s ease; }
         .content-editor:focus { outline: none; }
+        .content-editor.drag-over { outline: 2px dashed rgba(255,255,255,0.5); outline-offset: -2px; }
         .content-editor img { max-width: 100%; height: auto; border-radius: 4px; margin: 1em 0; }
         .content-editor blockquote { border-left: 2px solid rgba(255,255,255,0.3); padding-left: 1em; margin: 1em 0; opacity: 0.8; font-style: italic; }
         .content-editor h2 { font-size: 1.2em; margin: 1em 0 0.5em; }
@@ -513,6 +514,18 @@
             document.execCommand(cmd, false, val);
         }
 
+        async function uploadImageFile(file) {
+            const path = `${Date.now()}-${file.name}`;
+            const { error: uploadError } = await sb.storage.from(IMAGE_BUCKET).upload(path, file);
+            if (uploadError) {
+                console.error(uploadError);
+                showToast('アップロードに失敗しました');
+                return null;
+            }
+            const { data } = sb.storage.from(IMAGE_BUCKET).getPublicUrl(path);
+            return data.publicUrl;
+        }
+
         function insertImage() {
             const input = document.createElement('input');
             input.type = 'file';
@@ -521,18 +534,58 @@
                 const file = input.files[0];
                 if (!file) return;
                 showToast('アップロード中...');
-                const path = `${Date.now()}-${file.name}`;
-                const { error: uploadError } = await sb.storage.from(IMAGE_BUCKET).upload(path, file);
-                if (uploadError) {
-                    console.error(uploadError);
-                    showToast('アップロードに失敗しました');
-                    return;
+                const url = await uploadImageFile(file);
+                if (url) {
+                    formatText('insertImage', url);
+                    showToast('画像を挿入しました');
                 }
-                const { data } = sb.storage.from(IMAGE_BUCKET).getPublicUrl(path);
-                formatText('insertImage', data.publicUrl);
-                showToast('画像を挿入しました');
             };
             input.click();
+        }
+
+        // ドロップされた位置にキャレットを合わせる(対応していないブラウザでは末尾に挿入される)
+        function placeCaretAtPoint(x, y) {
+            let range = null;
+            if (document.caretRangeFromPoint) {
+                range = document.caretRangeFromPoint(x, y);
+            } else if (document.caretPositionFromPoint) {
+                const pos = document.caretPositionFromPoint(x, y);
+                if (pos) {
+                    range = document.createRange();
+                    range.setStart(pos.offsetNode, pos.offset);
+                    range.collapse(true);
+                }
+            }
+            if (range) {
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+
+        function setupImageDropZone() {
+            const editor = document.getElementById('edit-content');
+            editor.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                editor.classList.add('drag-over');
+            });
+            editor.addEventListener('dragleave', () => {
+                editor.classList.remove('drag-over');
+            });
+            editor.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                editor.classList.remove('drag-over');
+                const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
+                if (!files.length) return;
+                editor.focus();
+                placeCaretAtPoint(e.clientX, e.clientY);
+                showToast('アップロード中...');
+                for (const file of files) {
+                    const url = await uploadImageFile(file);
+                    if (url) document.execCommand('insertImage', false, url);
+                }
+                showToast('画像を挿入しました');
+            });
         }
 
         // --- 表示設定(サイト全体のデフォルト) ---
@@ -623,6 +676,7 @@
             showToast('表示設定を保存しました');
         }
 
+        setupImageDropZone();
         checkAuth();
     </script>
 </body>
