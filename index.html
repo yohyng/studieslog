@@ -678,7 +678,7 @@
                 const targetArticle = document.getElementById(`article-${targetId}`);
                 if (targetArticle) {
                     openArticle(targetArticle.querySelector('.cursor-pointer.group'));
-                    targetArticle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    targetArticle.scrollIntoView({ behavior: 'instant', block: 'start' });
                 }
                 return;
             }
