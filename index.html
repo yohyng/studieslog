@@ -15,12 +15,14 @@
             --text-color-solid: #ffffff;
             --content-width: 42rem;
             --base-line-height: 2.2;
-            /* スマホは画面幅が狭く1行の文字数が少ないため、同じ行間の数値でも間延びして見える。狭い画面では少し詰める */
+            --base-font-size: 16px;
+            /* スマホは画面幅が狭く1行の文字数が少ないため、同じ行間・文字サイズの数値でも間延びして見える。狭い画面では少し詰める */
             --line-height-scale: 1;
+            --font-size-scale: 1;
         }
 
         @media (max-width: 640px) {
-            :root { --line-height-scale: 0.85; }
+            :root { --line-height-scale: 0.8; --font-size-scale: 0.9; }
         }
 
         /* 逆に画面が広くなるほど1行の文字数が増えて行間が相対的に間延びしやすいので、少しずつ詰める */
@@ -32,6 +34,10 @@
         }
 
         .content-width { max-width: var(--content-width); }
+
+        html {
+            font-size: calc(var(--base-font-size) * var(--font-size-scale));
+        }
 
         body {
             font-family: 'Shippori Mincho', serif;
@@ -91,6 +97,7 @@
         let articles = [];
         let previewLines = 3;
         let siteLineHeight = 2.2;
+        let siteFontSize = 16;
 
         const listContainer = document.getElementById('article-list');
         let displayedCount = 0;
@@ -105,15 +112,14 @@
             document.documentElement.style.setProperty('--bg-color', data.bg_color);
             document.documentElement.style.setProperty('--text-color', data.text_color);
             document.documentElement.style.setProperty('--text-color-solid', data.text_color);
-            document.documentElement.style.fontSize = data.font_size + 'px';
+            siteFontSize = data.font_size;
+            document.documentElement.style.setProperty('--base-font-size', data.font_size + 'px');
             document.body.style.fontFamily = data.font;
             siteLineHeight = data.line_height;
             document.documentElement.style.setProperty('--base-line-height', data.line_height);
             document.body.style.letterSpacing = data.letter_spacing + 'em';
             document.body.style.textAlign = data.text_align || 'left';
             previewLines = data.preview_lines || 3;
-            const lineBoxPx = data.font_size * data.line_height;
-            document.documentElement.style.setProperty('--snippet-max-height', (lineBoxPx * previewLines) + 'px');
             if (data.content_width) document.documentElement.style.setProperty('--content-width', data.content_width + 'px');
             if (data.page_title) document.title = data.page_title;
             if (data.site_title) document.getElementById('site-title').textContent = data.site_title;
@@ -128,20 +134,17 @@
         };
 
         function buildArticleHtml(article) {
-            // この記事だけの文字組みが設定されていれば、サイト全体の設定を上書きする
+            // この記事だけの文字組みが設定されていれば、サイト全体の設定を上書きする(行間・頭出し高さはforceLineHeightがJSで適用する)
             let overrideStyle = '';
-            let snippetStyle = '';
             if (article.font != null) {
-                overrideStyle = `style="font-family:${article.font}; font-size:${article.font_size}px; line-height:${article.line_height}; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};"`;
-                const lineBoxPx = article.font_size * article.line_height;
-                snippetStyle = `style="max-height:${lineBoxPx * previewLines}px;"`;
+                overrideStyle = `style="font-family:${article.font}; font-size:${article.font_size}px; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};"`;
             }
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" ${overrideStyle}>
                     <div class="cursor-pointer group" onclick="openArticle(this)">
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
                         <h2 class="text-lg font-normal mb-4 article-title">${article.title}</h2>
-                        <div class="article-snippet text-sm opacity-70 content-body" ${snippetStyle}>${article.content}</div>
+                        <div class="article-snippet text-sm opacity-70 content-body">${article.content}</div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
                         <div class="flex items-center justify-center gap-5 opacity-50 mb-4">
@@ -188,21 +191,30 @@
 
         // 画面幅に応じた行間の倍率(CSSのmedia queryと同じ閾値をJS側でも再現する)
         function currentLineHeightScale() {
-            if (window.matchMedia('(max-width: 640px)').matches) return 0.85;
+            if (window.matchMedia('(max-width: 640px)').matches) return 0.8;
             if (window.matchMedia('(min-width: 1600px)').matches) return 0.9;
             if (window.matchMedia('(min-width: 1280px)').matches) return 0.95;
             return 1;
         }
 
+        function currentFontSizeScale() {
+            return window.matchMedia('(max-width: 640px)').matches ? 0.9 : 1;
+        }
+
         // CSSのカスケード(Tailwindのtext-*クラスや、コピペ由来のインラインスタイル)に邪魔されないよう、
-        // 本文内の全要素にJSから直接「!important付きの行間」を書き込んで確実に反映する
+        // 本文内の全要素にJSから直接「!important付きの行間」を書き込んで確実に反映する。
+        // 頭出し(閉じているときのプレビュー)の高さも、実際に表示されるフォントサイズ・行間に合わせて計算する
         function forceLineHeight(article, articleEl) {
             if (!articleEl) return;
-            const base = article.font != null ? article.line_height : siteLineHeight;
-            const value = String(base * currentLineHeightScale());
+            const fontSizeScale = currentFontSizeScale();
+            const lineHeightScale = currentLineHeightScale();
+            const fontSize = (article.font != null ? article.font_size : siteFontSize) * fontSizeScale;
+            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * lineHeightScale;
             articleEl.querySelectorAll('.content-body, .content-body *').forEach(el => {
-                el.style.setProperty('line-height', value, 'important');
+                el.style.setProperty('line-height', String(lineHeight), 'important');
             });
+            const snippet = articleEl.querySelector('.article-snippet');
+            if (snippet) snippet.style.maxHeight = (fontSize * lineHeight * previewLines) + 'px';
         }
 
         function reapplyLineHeightToAllArticles() {
