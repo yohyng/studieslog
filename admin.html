@@ -22,6 +22,8 @@
         .content-editor blockquote { border-left: 2px solid rgba(255,255,255,0.3); padding-left: 1em; margin: 1em 0; opacity: 0.8; font-style: italic; }
         .content-editor h2 { font-size: 1.2em; margin: 1em 0 0.5em; }
         .article-preview { max-height: 3.2em; overflow: hidden; }
+        /* ブラウザ既定のドロップダウン展開部は背景が白になることが多く、継承した白文字のままだと見えなくなるため明示的に指定する */
+        select option, select optgroup { color: #1a1a1a; background-color: #ffffff; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -133,13 +135,19 @@
                             <select id="edit-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
                                 <optgroup label="明朝体">
                                     <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                    <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
                                     <option value="'Noto Serif JP', serif">Noto Serif JP</option>
                                     <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
                                     <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                    <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                                    <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
                                 </optgroup>
                                 <optgroup label="ゴシック体">
                                     <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
                                     <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                    <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                                    <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                                    <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
                                     <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
                                 </optgroup>
                                 <optgroup label="丸ゴシック体">
@@ -260,13 +268,19 @@
                     <select id="set-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
                         <optgroup label="明朝体">
                             <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                            <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
                             <option value="'Noto Serif JP', serif">Noto Serif JP</option>
                             <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
                             <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                            <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                            <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
                         </optgroup>
                         <optgroup label="ゴシック体">
                             <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
                             <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                            <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                            <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                            <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
                             <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
                         </optgroup>
                         <optgroup label="丸ゴシック体">
