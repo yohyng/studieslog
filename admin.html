@@ -92,9 +92,13 @@
                 <div id="edit-content" class="content-editor bg-white/5 border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
 
                 <div class="mt-6">
-                    <label class="text-xs text-white/50 block mb-2">ハッシュタグ</label>
+                    <label class="text-xs text-white/50 block mb-2">ハッシュタグ(クリックで選択・解除)</label>
                     <div id="edit-tags" class="flex flex-wrap gap-2 bg-white/5 border border-white/10 rounded p-3 text-xs"></div>
-                    <div id="edit-tags-empty" class="hidden text-xs text-white/30 mt-2">タグがまだありません。「タグ」タブから作成してください。</div>
+                    <div id="edit-tags-empty" class="hidden text-xs text-white/30 mt-2">タグがまだありません。下から新しく作成できます。</div>
+                    <div class="flex gap-2 mt-2">
+                        <input id="new-tag-name" type="text" placeholder="新しいタグ名" class="flex-1 bg-white/5 text-xs rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30" onkeydown="if(event.key==='Enter'){event.preventDefault(); createTagFromEditor();}">
+                        <button onclick="createTagFromEditor()" class="px-3 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap">＋ 追加</button>
+                    </div>
                 </div>
                 <div id="image-resize-toolbar" class="hidden fixed z-50 bg-[#2f3438] border border-white/20 rounded shadow-lg px-2 py-1 flex items-center gap-1 text-xs">
                     <button onclick="resizeSelectedImage(25)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">25%</button>
@@ -775,6 +779,32 @@
             if (selectedTagIds.size === 0) return;
             const rows = Array.from(selectedTagIds).map(tagId => ({ article_id: articleId, tag_id: tagId }));
             await sb.from('article_tags').insert(rows);
+        }
+
+        // 記事編集画面からその場で新しいタグを作り、すぐ選択状態にする
+        async function createTagFromEditor() {
+            const input = document.getElementById('new-tag-name');
+            const name = input.value.trim();
+            if (!name) return;
+
+            const slug = slugify(name);
+            if (!slug) {
+                showToast('タグ名を確認してください');
+                return;
+            }
+
+            const { data, error } = await sb.from('tags').insert({ name, slug }).select().single();
+            if (error) {
+                console.error(error);
+                showToast(error.code === '23505' ? 'このタグは既にあります' : 'タグの作成に失敗しました');
+                return;
+            }
+            tags.push(data);
+            tags.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+            selectedTagIds.add(data.id);
+            renderTagCheckboxes();
+            input.value = '';
+            input.focus();
         }
 
         // --- 本文フォーマット・画像挿入 ---
