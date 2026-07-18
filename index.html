@@ -114,7 +114,7 @@
         }
         .content-body blockquote { border-left: 1px solid var(--text-color-solid); padding-left: 1.5em; margin: 2em 0; font-style: italic; opacity: 0.7; }
         .content-body h2 { font-size: 1.2em; margin: 2em 0 1em 0; opacity: 0.9; }
-        .footnote-ref { cursor: pointer; color: var(--footnote-color); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
+        .footnote-ref { color: var(--footnote-color); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
         .footnote-note { font-size: 0.8em; opacity: 0.65; border-bottom: 1px dotted currentColor; padding: 0 0.3em; }
     </style>
 
@@ -351,6 +351,14 @@
             // CSS変数経由だと反映が不安定なことがあるため、注釈の色もJSから直接インラインで確実に適用する
             articleEl.querySelectorAll('.footnote-ref').forEach(el => {
                 el.style.setProperty('color', siteFootnoteColor, 'important');
+                // 注釈内容は常に番号の直後に表示する(クリックしないと出ないUIだと気づかれにくいため)
+                const next = el.nextElementSibling;
+                if (!next || !next.classList.contains('footnote-note')) {
+                    const note = document.createElement('span');
+                    note.className = 'footnote-note';
+                    note.textContent = el.dataset.note || '';
+                    el.after(note);
+                }
             });
         }
 
@@ -592,22 +600,6 @@
             }
             renderArticles(3);
         }
-
-        // 注釈番号クリックで、その場に注釈内容を展開/折りたたむ。キャプチャ段階で処理し、記事の開閉トグルより先に止める
-        document.addEventListener('click', (e) => {
-            const ref = e.target.closest('.footnote-ref');
-            if (!ref) return;
-            e.stopPropagation();
-            const next = ref.nextElementSibling;
-            if (next && next.classList.contains('footnote-note')) {
-                next.remove();
-                return;
-            }
-            const note = document.createElement('span');
-            note.className = 'footnote-note';
-            note.textContent = ref.dataset.note || '';
-            ref.after(note);
-        }, true);
 
         function toggleArticle(wrapperNode, evt) {
             const snippet = wrapperNode.querySelector('.article-snippet');

@@ -445,6 +445,18 @@
 
     <div id="toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
 
+    <!-- 注釈入力モーダル -->
+    <div id="footnote-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onmousedown="if(event.target === this) closeFootnoteModal()">
+        <div class="bg-[#2f3438] border border-white/10 rounded-lg p-6 max-w-md w-full">
+            <h2 class="text-xs text-white/50 mb-3">注釈の内容</h2>
+            <textarea id="footnote-input" rows="5" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30 resize-none" placeholder="注釈として表示する文章を入力" onkeydown="handleFootnoteInputKeydown(event)"></textarea>
+            <div class="flex items-center justify-end gap-3">
+                <button onclick="closeFootnoteModal()" class="px-4 py-2 text-xs text-white/50 hover:text-white transition-colors">キャンセル</button>
+                <button onclick="confirmFootnote()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">挿入 (Ctrl+Enter)</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpeXpsYXdtY3l5YmNoeHp5b3pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDI2MjQsImV4cCI6MjA5NTU3ODYyNH0.SZVwqWKkk31npqdiiG5m3HdkF4JnQ7SgEzThaFfZ4q4';
@@ -896,12 +908,45 @@
         }
 
         // カーソル位置に注釈番号を挿入する。番号は現在エディタ内にある注釈の数から採番(削除・並べ替え後は保存し直すとズレるので、その時は挿入し直してください)
+        // モーダルを開く前にカーソル位置(Range)を保存しておき、入力後にその位置へ挿入する
+        let savedFootnoteRange = null;
+
         function insertFootnote() {
-            const note = prompt('注釈の内容');
+            const editor = document.getElementById('edit-content');
+            editor.focus();
+            const sel = window.getSelection();
+            savedFootnoteRange = sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
+            const input = document.getElementById('footnote-input');
+            input.value = '';
+            document.getElementById('footnote-modal').classList.remove('hidden');
+            input.focus();
+        }
+
+        function closeFootnoteModal() {
+            document.getElementById('footnote-modal').classList.add('hidden');
+            savedFootnoteRange = null;
+        }
+
+        function handleFootnoteInputKeydown(event) {
+            if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                confirmFootnote();
+            } else if (event.key === 'Escape') {
+                closeFootnoteModal();
+            }
+        }
+
+        function confirmFootnote() {
+            const note = document.getElementById('footnote-input').value.trim();
+            const range = savedFootnoteRange;
+            closeFootnoteModal();
             if (!note) return;
             const editor = document.getElementById('edit-content');
-            const num = editor.querySelectorAll('.footnote-ref').length + 1;
             editor.focus();
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            if (range) sel.addRange(range);
+            const num = editor.querySelectorAll('.footnote-ref').length + 1;
             document.execCommand('insertHTML', false, `<sup class="footnote-ref" data-note="${escapeAttr(note)}">[${num}]</sup>`);
         }
 
