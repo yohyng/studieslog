@@ -27,7 +27,7 @@
             /* スマホは画面幅が狭く1行の文字数が少ないため、同じ行間・文字サイズの数値でも間延びして見える。狭い画面では少し詰める */
             --line-height-scale: 1;
             --font-size-scale: 1;
-            /* bodyの左右余白(px-5 / sm:px-8 / md:px-0)と同じ値。ハンバーガーメニューの右端をコンテンツの右端に揃えるための計算に使う */
+            /* bodyの左右余白(px-5 / sm:px-8 / md:px-12 / lg:px-0)と同じ値。ハンバーガーメニューの右端をコンテンツの右端に揃えるための計算に使う */
             --body-pad: 1.25rem;
         }
 
@@ -39,6 +39,9 @@
             :root { --body-pad: 2rem; }
         }
         @media (min-width: 768px) {
+            :root { --body-pad: 3rem; }
+        }
+        @media (min-width: 1024px) {
             :root { --body-pad: 0px; }
         }
 
@@ -135,7 +138,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500&family=Shippori+Mincho+B1:wght@400;500&family=Noto+Serif+JP:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&family=Kaisei+Tokumin:wght@400;500;700&family=Kaisei+Decol:wght@400;700&family=BIZ+UDPMincho:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=BIZ+UDPGothic:wght@400;700&family=Sawarabi+Gothic&family=M+PLUS+1p:wght@400;500;700&family=Kosugi+Maru&family=Zen+Maru+Gothic:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;500;700&family=Klee+One:wght@400;600&display=swap" rel="stylesheet">
 </head>
-<body class="min-h-screen flex flex-col items-center py-24 px-5 sm:px-8 md:px-0">
+<body class="min-h-screen flex flex-col items-center py-24 px-5 sm:px-8 md:px-12 lg:px-0">
 
     <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
 
