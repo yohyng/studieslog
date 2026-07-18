@@ -61,9 +61,9 @@
         <!-- 記事一覧ビュー -->
         <div id="list-view" class="flex-1 overflow-y-auto">
             <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
-                <button onclick="openNewEditor()" class="mb-8 w-full sm:w-auto px-5 py-3 text-sm bg-white/10 hover:bg-white/20 rounded transition-colors">＋ 新しい断片を書く</button>
+                <button onclick="openNewEditor()" class="mb-8 w-full sm:w-auto px-5 py-3 text-sm bg-white/10 hover:bg-white/20 rounded transition-colors">＋ 新しい記事を書く</button>
                 <div id="article-cards" class="flex flex-col gap-3"></div>
-                <div id="empty-state" class="hidden text-xs text-white/40 text-center py-16">まだ断片がありません。「＋ 新しい断片を書く」から始めてください。</div>
+                <div id="empty-state" class="hidden text-xs text-white/40 text-center py-16">まだ記事がありません。「＋ 新しい記事を書く」から始めてください。</div>
             </div>
         </div>
 
@@ -79,7 +79,7 @@
                     </div>
                     <div class="flex-[2]">
                         <label class="text-xs text-white/50 block mb-1">タイトル</label>
-                        <input id="edit-title" type="text" placeholder="断片のタイトル" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                        <input id="edit-title" type="text" placeholder="記事のタイトル" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
                     </div>
                 </div>
 
@@ -194,7 +194,7 @@
                 <div class="flex flex-wrap gap-3 mt-6">
                     <button onclick="saveArticle()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">保存する</button>
                     <button onclick="backToList()" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">キャンセル</button>
-                    <button id="delete-btn" onclick="deleteCurrentArticle()" class="hidden sm:ml-auto px-5 py-2.5 text-xs text-red-400/70 hover:text-red-400 transition-colors">この断片を削除</button>
+                    <button id="delete-btn" onclick="deleteCurrentArticle()" class="hidden sm:ml-auto px-5 py-2.5 text-xs text-red-400/70 hover:text-red-400 transition-colors">この記事を削除</button>
                 </div>
             </div>
         </div>
@@ -243,7 +243,7 @@
                     <label class="text-xs text-white/50 block mb-2">ページタイトル(ブラウザのタブに表示される名前)</label>
                     <input id="set-page-title" type="text" placeholder="静謐な執筆アーカイブ" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30">
                     <label class="text-xs text-white/50 block mb-2">サイトタイトル(ページ上部の見出し)</label>
-                    <input id="set-site-title" type="text" placeholder="断片" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
+                    <input id="set-site-title" type="text" placeholder="サイトタイトル" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
                     <div class="flex items-center gap-3 mb-4">
                         <div class="flex items-center gap-2">
                             <span class="text-xs text-white/40">サイズ</span>
@@ -670,7 +670,7 @@
 
         async function deleteCurrentArticle() {
             if (!editingId) return;
-            if (!confirm('この断片を削除しますか？元に戻せません。')) return;
+            if (!confirm('この記事を削除しますか？元に戻せません。')) return;
             const { error } = await sb.from('articles').delete().eq('id', editingId);
             if (error) {
                 console.error(error);
