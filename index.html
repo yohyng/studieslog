@@ -107,6 +107,7 @@
             <nav class="flex flex-col gap-6 text-sm">
                 <a href="/" class="opacity-80 hover:opacity-100 transition-opacity">ホーム</a>
                 <a href="/list" class="opacity-80 hover:opacity-100 transition-opacity">一覧</a>
+                <a href="/search" class="opacity-80 hover:opacity-100 transition-opacity">検索</a>
                 <a href="/about" class="opacity-80 hover:opacity-100 transition-opacity">アバウト</a>
             </nav>
         </div>
@@ -124,6 +125,11 @@
     <main id="about-view" class="hidden w-full content-width relative"></main>
 
     <main id="tag-view" class="hidden w-full content-width relative"></main>
+
+    <main id="search-view" class="hidden w-full content-width relative">
+        <input id="search-input" type="text" placeholder="タイトル・本文・タグで検索" class="w-full bg-transparent border-b text-sm pb-3 mb-10 focus:outline-none" style="border-color: currentColor; opacity: 0.9;">
+        <div id="search-results" class="flex flex-col"></div>
+    </main>
 
     <div id="loading-indicator" class="w-full content-width mt-16 text-center text-xs opacity-0 transition-opacity duration-1000">
         <span class="opacity-30">深層を探索中...</span>
@@ -326,13 +332,24 @@
             return m ? decodeURIComponent(m[1]) : null;
         }
 
+        function isSearchRoute() {
+            return location.pathname.replace(/\/$/, '') === '/search';
+        }
+
         // ルートに応じて表示するビューだけを残し、他は隠す
         function hideAllViews() {
             document.getElementById('article-list').classList.add('hidden');
             document.getElementById('title-list-view').classList.add('hidden');
             document.getElementById('about-view').classList.add('hidden');
             document.getElementById('tag-view').classList.add('hidden');
+            document.getElementById('search-view').classList.add('hidden');
             document.getElementById('loading-indicator').classList.add('hidden');
+        }
+
+        function stripHtml(html) {
+            const div = document.createElement('div');
+            div.innerHTML = html;
+            return (div.textContent || '').trim();
         }
 
         // タイトルと日付だけを並べた一覧ページ
@@ -390,6 +407,56 @@
             });
         }
 
+        // タイトル・本文・タグ名を対象にした検索
+        function searchArticles(query) {
+            const q = query.trim().toLowerCase();
+            if (!q) return [];
+            return articles.filter(a => {
+                const haystack = [a.title, stripHtml(a.content), ...(a.tags || []).map(t => t.name)].join(' ').toLowerCase();
+                return haystack.includes(q);
+            });
+        }
+
+        function renderSearchResults(query) {
+            const results = searchArticles(query);
+            const container = document.getElementById('search-results');
+            if (!query.trim()) {
+                container.innerHTML = '';
+                return;
+            }
+            if (results.length === 0) {
+                container.innerHTML = '<p class="text-xs opacity-40 py-4">見つかりませんでした。</p>';
+                return;
+            }
+            container.innerHTML = results.map(a => `
+                <a href="/article/${a.id}" class="flex items-baseline justify-between gap-4 py-4 border-b opacity-70 hover:opacity-100 transition-opacity" style="border-color: currentColor;">
+                    <span class="text-sm">${a.title}</span>
+                    <span class="text-xs opacity-60 whitespace-nowrap">${a.date}</span>
+                </a>
+            `).join('');
+        }
+
+        function renderSearchPage() {
+            hideAllViews();
+            document.getElementById('search-view').classList.remove('hidden');
+            const input = document.getElementById('search-input');
+            const initialQuery = new URLSearchParams(location.search).get('q') || '';
+            input.value = initialQuery;
+            renderSearchResults(initialQuery);
+
+            let debounceTimer = null;
+            input.oninput = () => {
+                clearTimeout(debounceTimer);
+                const query = input.value;
+                debounceTimer = setTimeout(() => {
+                    renderSearchResults(query);
+                    const url = query.trim() ? `/search?q=${encodeURIComponent(query)}` : '/search';
+                    history.replaceState({}, '', url);
+                }, 200);
+            };
+            input.focus();
+        }
+
         async function loadArticles() {
             const { data, error } = await sb.from('articles').select('*, article_tags(tags(id,slug,name))').order('date', { ascending: false }).order('id', { ascending: false });
             if (error) {
@@ -410,6 +477,10 @@
             }
             if (isListRoute()) {
                 renderTitleList();
+                return;
+            }
+            if (isSearchRoute()) {
+                renderSearchPage();
                 return;
             }
 
@@ -468,7 +539,11 @@
             setTimeout(() => t.style.opacity = '0', 2000);
         }
 
-        window.addEventListener('scroll', () => { if(!isListRoute() && window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) renderArticles(1); });
+        function isHomeRoute() {
+            return !isListRoute() && !isAboutRoute() && !isSearchRoute() && !getTagSlug();
+        }
+
+        window.addEventListener('scroll', () => { if(isHomeRoute() && window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) renderArticles(1); });
 
         (async () => {
             await applySiteSettings();
