@@ -198,7 +198,7 @@
                 overrideStyle = `style="font-family:${article.font}; font-size:${article.font_size}px; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};"`;
             }
             const tagsHtml = (article.tags && article.tags.length > 0)
-                ? `<div class="flex flex-wrap gap-3 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="text-xs opacity-50 hover:opacity-100 transition-opacity">#${t.name}</a>`).join('')}</div>`
+                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="text-xs px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: var(--text-color-solid); color: var(--bg-color);">#${t.name}</a>`).join('')}</div>`
                 : '';
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" ${overrideStyle}>
