@@ -398,6 +398,21 @@
                     </div>
                 </div>
 
+                <!-- テキスト選択時のハイライト色 -->
+                <div class="mb-6 pb-6 border-b border-white/10">
+                    <label class="text-xs text-white/50 block mb-2">テキスト選択時のハイライト色</label>
+                    <div class="flex items-center gap-6">
+                        <div class="flex items-center gap-2">
+                            <input id="set-selection-bg-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                            <span class="text-xs text-white/40">背景色</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input id="set-selection-text-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                            <span class="text-xs text-white/40">文字色</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- アバウトページ -->
                 <div class="mb-6 pb-6 border-b border-white/10">
                     <label class="text-xs text-white/50 block mb-2">アバウトページの内容(/about に表示されます)</label>
@@ -1098,6 +1113,8 @@
             document.getElementById('set-tag-text-color').value = data.tag_text_color;
             document.getElementById('set-tag-font-size').value = data.tag_font_size;
             document.getElementById('set-tag-font-size-value').textContent = data.tag_font_size + 'px';
+            document.getElementById('set-selection-bg-color').value = data.selection_bg_color;
+            document.getElementById('set-selection-text-color').value = data.selection_text_color;
             document.getElementById('set-about-content').value = data.about_content || '';
             checkSetContrast();
         }
@@ -1123,6 +1140,8 @@
                 tag_bg_color: document.getElementById('set-tag-bg-color').value,
                 tag_text_color: document.getElementById('set-tag-text-color').value,
                 tag_font_size: Number(document.getElementById('set-tag-font-size').value),
+                selection_bg_color: document.getElementById('set-selection-bg-color').value,
+                selection_text_color: document.getElementById('set-selection-text-color').value,
                 about_content: document.getElementById('set-about-content').value.trim()
             };
             const { error } = await sb.from('site_settings').update(payload).eq('id', 1);

@@ -15,6 +15,8 @@
             --tag-bg-color: #ffffff;
             --tag-text-color: #6b7278;
             --tag-font-size: 12px;
+            --selection-bg-color: #ffffff;
+            --selection-text-color: #6b7278;
             --content-width: 42rem;
             --base-line-height: 2.2;
             --base-font-size: 16px;
@@ -41,6 +43,8 @@
         }
 
         .content-width { max-width: var(--content-width); }
+
+        ::selection { background: var(--selection-bg-color); color: var(--selection-text-color); }
 
         html {
             font-size: calc(var(--base-font-size) * var(--font-size-scale));
@@ -199,6 +203,8 @@
             document.documentElement.style.setProperty('--tag-bg-color', data.tag_bg_color || data.text_color);
             document.documentElement.style.setProperty('--tag-text-color', data.tag_text_color || data.bg_color);
             document.documentElement.style.setProperty('--tag-font-size', (data.tag_font_size || 12) + 'px');
+            document.documentElement.style.setProperty('--selection-bg-color', data.selection_bg_color || data.text_color);
+            document.documentElement.style.setProperty('--selection-text-color', data.selection_text_color || data.bg_color);
             siteFontSize = data.font_size;
             document.documentElement.style.setProperty('--base-font-size', data.font_size + 'px');
             document.body.style.fontFamily = data.font;
