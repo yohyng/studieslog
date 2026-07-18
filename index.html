@@ -95,12 +95,30 @@
 
     <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
 
+    <!-- ハンバーガーメニュー -->
+    <button onclick="toggleMenu()" class="fixed top-6 right-6 z-40 opacity-50 hover:opacity-100 transition-opacity duration-300 p-2" title="メニュー" aria-label="メニュー">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+    </button>
+
+    <div id="menu-overlay" class="fixed inset-0 z-50 pointer-events-none">
+        <div id="menu-catcher" class="absolute inset-0 pointer-events-none opacity-0" onclick="toggleMenu()"></div>
+        <div id="menu-panel" class="absolute top-0 right-0 h-full w-64 max-w-[80vw] p-8 pointer-events-auto transform translate-x-full transition-transform duration-300 ease-out" style="background: var(--bg-color); color: var(--text-color); border-left: 1px solid currentColor;">
+            <button onclick="toggleMenu()" class="opacity-50 hover:opacity-100 transition-opacity mb-10 text-lg leading-none" aria-label="閉じる">×</button>
+            <nav class="flex flex-col gap-6 text-sm">
+                <a href="/" class="opacity-80 hover:opacity-100 transition-opacity">ホーム</a>
+                <a href="/list" class="opacity-80 hover:opacity-100 transition-opacity">一覧</a>
+            </nav>
+        </div>
+    </div>
+
     <header class="w-full content-width mb-24 opacity-0 fade-in" style="animation-delay: 0.2s;">
         <h1 id="site-title" class="text-sm font-medium tracking-widest opacity-80 cursor-pointer inline-block" onclick="window.scrollTo({top:0, behavior:'smooth'})">空間試論</h1>
         <p id="site-subtitle" class="text-xs opacity-40 mt-4">空間にまつわる議論をプロトタイプする</p>
     </header>
 
     <main id="article-list" class="w-full content-width flex flex-col gap-16 relative"></main>
+
+    <main id="title-list-view" class="hidden w-full content-width flex flex-col relative"></main>
 
     <div id="loading-indicator" class="w-full content-width mt-16 text-center text-xs opacity-0 transition-opacity duration-1000">
         <span class="opacity-30">深層を探索中...</span>
@@ -265,6 +283,37 @@
             return m ? Number(m[1]) : null;
         }
 
+        function toggleMenu() {
+            const panel = document.getElementById('menu-panel');
+            const catcher = document.getElementById('menu-catcher');
+            const opening = panel.classList.contains('translate-x-full');
+            if (opening) {
+                catcher.classList.remove('pointer-events-none');
+                panel.classList.remove('translate-x-full');
+            } else {
+                catcher.classList.add('pointer-events-none');
+                panel.classList.add('translate-x-full');
+            }
+        }
+
+        function isListRoute() {
+            return location.pathname.replace(/\/$/, '') === '/list';
+        }
+
+        // タイトルと日付だけを並べた一覧ページ
+        function renderTitleList() {
+            document.getElementById('article-list').classList.add('hidden');
+            document.getElementById('loading-indicator').classList.add('hidden');
+            const listView = document.getElementById('title-list-view');
+            listView.classList.remove('hidden');
+            listView.innerHTML = articles.map(a => `
+                <a href="/article/${a.id}" class="flex items-baseline justify-between gap-4 py-4 border-b opacity-70 hover:opacity-100 transition-opacity" style="border-color: currentColor;">
+                    <span class="text-sm">${a.title}</span>
+                    <span class="text-xs opacity-60 whitespace-nowrap">${a.date}</span>
+                </a>
+            `).join('');
+        }
+
         async function loadArticles() {
             const { data, error } = await sb.from('articles').select('*').order('date', { ascending: false }).order('id', { ascending: false });
             if (error) {
@@ -273,6 +322,12 @@
                 return;
             }
             articles = data || [];
+
+            if (isListRoute()) {
+                renderTitleList();
+                return;
+            }
+
             displayedCount = 0;
             listContainer.innerHTML = '';
 
@@ -328,7 +383,7 @@
             setTimeout(() => t.style.opacity = '0', 2000);
         }
 
-        window.addEventListener('scroll', () => { if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) renderArticles(1); });
+        window.addEventListener('scroll', () => { if(!isListRoute() && window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) renderArticles(1); });
 
         (async () => {
             await applySiteSettings();
