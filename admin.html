@@ -82,12 +82,25 @@
 
                 <label class="text-xs text-white/50 block mb-1">本文</label>
                 <div class="flex items-center flex-wrap gap-1 mb-2 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs">
-                    <button onclick="formatText('bold')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">太字</button>
-                    <button onclick="formatText('italic')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">斜体</button>
+                    <button onclick="formatText('bold')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="太字 (Ctrl+B)">太字</button>
+                    <button onclick="formatText('italic')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="斜体 (Ctrl+I)">斜体</button>
+                    <button onclick="formatText('underline')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="下線 (Ctrl+U)">下線</button>
+                    <button onclick="formatText('strikeThrough')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">取消線</button>
+                    <span class="w-px self-stretch bg-white/10 mx-1"></span>
                     <button onclick="formatText('formatBlock', 'H2')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">見出</button>
                     <button onclick="formatText('formatBlock', 'BLOCKQUOTE')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">引用</button>
                     <button onclick="formatText('formatBlock', 'P')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">本文</button>
-                    <button onclick="insertImage()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">📷 写真を挿入</button>
+                    <span class="w-px self-stretch bg-white/10 mx-1"></span>
+                    <button onclick="formatText('insertUnorderedList')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">箇条書き</button>
+                    <button onclick="formatText('insertOrderedList')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">番号リスト</button>
+                    <button onclick="insertLink()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">リンク</button>
+                    <button onclick="insertImage()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">📷 写真</button>
+                    <span class="w-px self-stretch bg-white/10 mx-1"></span>
+                    <button onclick="formatText('removeFormat')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="選択範囲の書式(太字・斜体など)だけ解除">書式クリア</button>
+                    <button onclick="convertToPlainText()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="本文全体を書式なしのテキストに変換します">プレーンテキスト化</button>
+                    <span class="w-px self-stretch bg-white/10 mx-1"></span>
+                    <button onclick="formatText('undo')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="元に戻す (Ctrl+Z)">↶ 元に戻す</button>
+                    <button onclick="formatText('redo')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="やり直す (Ctrl+Y)">↷ やり直す</button>
                 </div>
                 <div id="edit-content" class="content-editor bg-white/5 border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
 
@@ -813,6 +826,39 @@
             document.execCommand(cmd, false, val);
         }
 
+        function insertLink() {
+            const selection = window.getSelection();
+            if (!selection || selection.toString().trim() === '') {
+                showToast('リンクにしたい文字を選択してください');
+                return;
+            }
+            const url = prompt('リンク先URL', 'https://');
+            if (!url) return;
+            formatText('createLink', url);
+        }
+
+        // 本文全体を書式なしのプレーンテキストに変換する(画像・太字・見出しなどは全て失われます)
+        function convertToPlainText() {
+            const editor = document.getElementById('edit-content');
+            if (!confirm('本文の書式(太字・見出し・画像など)を全て解除し、プレーンテキストに変換します。元に戻せません。よろしいですか？')) return;
+            const text = stripHtml(editor.innerHTML);
+            editor.innerHTML = text
+                .split('\n')
+                .filter(line => line.trim() !== '')
+                .map(line => `<p>${line}</p>`)
+                .join('') || '<p></p>';
+            showToast('プレーンテキストに変換しました');
+        }
+
+        // 他のサイトからのコピペで埋め込まれた書式(フォント・行間など)を持ち込まないよう、常にプレーンテキストとして貼り付ける
+        function setupPastePlainText() {
+            document.getElementById('edit-content').addEventListener('paste', (e) => {
+                e.preventDefault();
+                const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+                document.execCommand('insertText', false, text);
+            });
+        }
+
         async function uploadImageFile(file) {
             const path = `${Date.now()}-${file.name}`;
             const { error: uploadError } = await sb.storage.from(IMAGE_BUCKET).upload(path, file);
@@ -1040,6 +1086,7 @@
 
         setupImageDropZone();
         setupImageResize();
+        setupPastePlainText();
         checkAuth();
     </script>
 </body>
