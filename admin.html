@@ -265,6 +265,15 @@
                     </div>
                 </div>
 
+                <!-- メニュー -->
+                <div class="mb-6 pb-6 border-b border-white/10">
+                    <label class="text-xs text-white/50 block mb-2">サイドバーメニューの文字サイズ</label>
+                    <div class="flex items-center gap-2">
+                        <input id="set-menu-font-size" type="range" min="10" max="28" step="1" class="w-24" oninput="document.getElementById('set-menu-font-size-value').textContent = this.value + 'px'">
+                        <span id="set-menu-font-size-value" class="text-xs text-white/40 w-10"></span>
+                    </div>
+                </div>
+
                 <!-- フォント -->
                 <div class="mb-6">
                     <label class="text-xs text-white/50 block mb-2">本文フォント</label>
@@ -1157,6 +1166,8 @@
             document.getElementById('set-site-subtitle-size').value = data.site_subtitle_size;
             document.getElementById('set-site-subtitle-size-value').textContent = data.site_subtitle_size + 'px';
             document.getElementById('set-site-subtitle-color').value = data.site_subtitle_color;
+            document.getElementById('set-menu-font-size').value = data.menu_font_size || 14;
+            document.getElementById('set-menu-font-size-value').textContent = (data.menu_font_size || 14) + 'px';
             document.getElementById('set-font').value = data.font;
             document.getElementById('set-font-size').value = data.font_size;
             document.getElementById('set-font-size-value').textContent = data.font_size + 'px';
@@ -1196,6 +1207,7 @@
                 site_subtitle: document.getElementById('set-site-subtitle').value.trim(),
                 site_subtitle_size: Number(document.getElementById('set-site-subtitle-size').value),
                 site_subtitle_color: document.getElementById('set-site-subtitle-color').value,
+                menu_font_size: Number(document.getElementById('set-menu-font-size').value),
                 bg_color: document.getElementById('set-bg-color').value,
                 text_color: document.getElementById('set-text-color').value,
                 font: document.getElementById('set-font').value,
