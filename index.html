@@ -454,7 +454,7 @@
             listView.classList.remove('hidden');
 
             const titleRows = articles.map(a => `
-                <a href="/article/${a.id}" class="flex items-baseline justify-between gap-4 py-4 border-b opacity-70 hover:opacity-100 transition-opacity" style="border-color: currentColor;">
+                <a href="/article/${a.id}" class="flex items-baseline justify-between gap-4 py-4 border-b opacity-70 hover:opacity-100 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">
                     <span class="text-sm">${a.title}</span>
                     <span class="text-xs opacity-60 whitespace-nowrap">${a.date}</span>
                 </a>
@@ -536,7 +536,7 @@
                 return;
             }
             container.innerHTML = results.map(a => `
-                <a href="/article/${a.id}" class="flex items-baseline justify-between gap-4 py-4 border-b opacity-70 hover:opacity-100 transition-opacity" style="border-color: currentColor;">
+                <a href="/article/${a.id}" class="flex items-baseline justify-between gap-4 py-4 border-b opacity-70 hover:opacity-100 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">
                     <span class="text-sm">${a.title}</span>
                     <span class="text-xs opacity-60 whitespace-nowrap">${a.date}</span>
                 </a>
