@@ -117,7 +117,7 @@
     </div>
 
     <header class="w-full content-width mb-24 opacity-0 fade-in" style="animation-delay: 0.2s;">
-        <h1 id="site-title" class="text-sm font-medium tracking-widest opacity-80 cursor-pointer inline-block" onclick="window.scrollTo({top:0, behavior:'smooth'})">空間試論</h1>
+        <h1 id="site-title" class="text-sm font-medium tracking-widest opacity-80 cursor-pointer inline-block" onclick="goHome()">空間試論</h1>
         <p id="site-subtitle" class="text-xs opacity-40 mt-4">空間にまつわる議論をプロトタイプする</p>
     </header>
 
@@ -307,6 +307,14 @@
         function getHashArticleId() {
             const m = location.hash.match(/^#article-(\d+)$/);
             return m ? Number(m[1]) : null;
+        }
+
+        function goHome() {
+            if (location.pathname.replace(/\/$/, '') === '') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                location.href = '/';
+            }
         }
 
         function toggleMenu() {
