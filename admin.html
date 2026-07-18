@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理画面 - 静謐な執筆アーカイブ</title>
+    <title>管理画面</title>
     <meta name="robots" content="noindex, nofollow">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -32,7 +32,7 @@
     <!-- ログイン画面 -->
     <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
         <div class="bg-[#2f3438] border border-white/10 rounded-lg p-8 max-w-sm w-full">
-            <h1 class="text-sm font-medium mb-1">断片 - 管理画面</h1>
+            <h1 class="text-sm font-medium mb-1">管理画面</h1>
             <p class="text-xs text-white/40 mb-6">執筆・編集にはログインが必要です</p>
             <input id="login-email" type="email" placeholder="メールアドレス" autocomplete="username" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
             <input id="login-password" type="password" placeholder="パスワード" autocomplete="current-password" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30" onkeydown="if(event.key==='Enter') submitLogin()">
@@ -45,7 +45,7 @@
     <div id="app-screen" class="hidden min-h-screen flex flex-col">
         <header class="border-b border-white/10 px-5 sm:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
             <div class="flex items-center gap-4 sm:gap-6 flex-wrap">
-                <h1 class="text-sm font-medium tracking-wide whitespace-nowrap">断片 - 管理画面</h1>
+                <h1 class="text-sm font-medium tracking-wide whitespace-nowrap">管理画面</h1>
                 <nav class="flex items-center gap-1 text-xs">
                     <button id="nav-articles" onclick="showTab('articles')" class="px-3 py-1.5 rounded transition-colors bg-white/10">記事</button>
                     <button id="nav-tags" onclick="showTab('tags')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">タグ</button>
@@ -395,6 +395,16 @@
                         <span class="text-xs text-white/40">文字サイズ</span>
                         <input id="set-tag-font-size" type="range" min="8" max="24" step="1" class="flex-1" oninput="document.getElementById('set-tag-font-size-value').textContent = this.value + 'px'">
                         <span id="set-tag-font-size-value" class="text-xs text-white/40 w-10"></span>
+                    </div>
+                </div>
+
+                <!-- タグページの説明文 -->
+                <div class="mb-6 pb-6 border-b border-white/10">
+                    <label class="text-xs text-white/50 block mb-2">タグページの説明文の色・サイズ(/tag/スラッグ で表示されるタグの説明)</label>
+                    <div class="flex items-center gap-4">
+                        <input id="set-tag-description-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                        <input id="set-tag-description-size" type="range" min="8" max="24" step="1" class="flex-1" oninput="document.getElementById('set-tag-description-size-value').textContent = this.value + 'px'">
+                        <span id="set-tag-description-size-value" class="text-xs text-white/40 w-10"></span>
                     </div>
                 </div>
 
@@ -1113,6 +1123,9 @@
             document.getElementById('set-tag-text-color').value = data.tag_text_color;
             document.getElementById('set-tag-font-size').value = data.tag_font_size;
             document.getElementById('set-tag-font-size-value').textContent = data.tag_font_size + 'px';
+            document.getElementById('set-tag-description-color').value = data.tag_description_color;
+            document.getElementById('set-tag-description-size').value = data.tag_description_size;
+            document.getElementById('set-tag-description-size-value').textContent = data.tag_description_size + 'px';
             document.getElementById('set-selection-bg-color').value = data.selection_bg_color;
             document.getElementById('set-selection-text-color').value = data.selection_text_color;
             document.getElementById('set-about-content').value = data.about_content || '';
@@ -1140,6 +1153,8 @@
                 tag_bg_color: document.getElementById('set-tag-bg-color').value,
                 tag_text_color: document.getElementById('set-tag-text-color').value,
                 tag_font_size: Number(document.getElementById('set-tag-font-size').value),
+                tag_description_color: document.getElementById('set-tag-description-color').value,
+                tag_description_size: Number(document.getElementById('set-tag-description-size').value),
                 selection_bg_color: document.getElementById('set-selection-bg-color').value,
                 selection_text_color: document.getElementById('set-selection-text-color').value,
                 about_content: document.getElementById('set-about-content').value.trim()

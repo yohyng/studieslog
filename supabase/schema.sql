@@ -69,6 +69,8 @@ create table if not exists public.site_settings (
   site_subtitle_color text not null default '#ffffff',
   selection_bg_color text not null default '#ffffff',
   selection_text_color text not null default '#6b7278',
+  tag_description_size int not null default 12,
+  tag_description_color text not null default '#ffffff',
   updated_at timestamptz not null default now(),
   constraint site_settings_singleton check (id = 1)
 );
@@ -89,6 +91,8 @@ alter table public.site_settings add column if not exists site_subtitle_size int
 alter table public.site_settings add column if not exists site_subtitle_color text not null default '#ffffff';
 alter table public.site_settings add column if not exists selection_bg_color text not null default '#ffffff';
 alter table public.site_settings add column if not exists selection_text_color text not null default '#6b7278';
+alter table public.site_settings add column if not exists tag_description_size int not null default 12;
+alter table public.site_settings add column if not exists tag_description_color text not null default '#ffffff';
 
 insert into public.site_settings (id) values (1)
 on conflict (id) do nothing;

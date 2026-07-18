@@ -15,6 +15,8 @@
             --tag-bg-color: #ffffff;
             --tag-text-color: #6b7278;
             --tag-font-size: 12px;
+            --tag-description-color: #ffffff;
+            --tag-description-size: 12px;
             --selection-bg-color: #ffffff;
             --selection-text-color: #6b7278;
             --content-width: 42rem;
@@ -203,6 +205,8 @@
             document.documentElement.style.setProperty('--tag-bg-color', data.tag_bg_color || data.text_color);
             document.documentElement.style.setProperty('--tag-text-color', data.tag_text_color || data.bg_color);
             document.documentElement.style.setProperty('--tag-font-size', (data.tag_font_size || 12) + 'px');
+            document.documentElement.style.setProperty('--tag-description-color', data.tag_description_color || data.text_color);
+            document.documentElement.style.setProperty('--tag-description-size', (data.tag_description_size || 12) + 'px');
             document.documentElement.style.setProperty('--selection-bg-color', data.selection_bg_color || data.text_color);
             document.documentElement.style.setProperty('--selection-text-color', data.selection_text_color || data.bg_color);
             siteFontSize = data.font_size;
@@ -468,7 +472,7 @@
             view.innerHTML = `
                 <div class="mb-16 fade-in">
                     <h2 class="inline-block font-normal mb-3 px-3 py-1" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: calc(var(--tag-font-size) * 1.4);">#${tag.name}</h2>
-                    ${tag.description ? `<p class="text-xs opacity-50">${escapeHtml(tag.description)}</p>` : ''}
+                    ${tag.description ? `<p style="color: var(--tag-description-color); font-size: var(--tag-description-size);">${escapeHtml(tag.description)}</p>` : ''}
                 </div>
                 <div id="tag-article-list" class="flex flex-col gap-16"></div>
             `;
