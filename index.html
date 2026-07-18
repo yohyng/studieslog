@@ -179,6 +179,7 @@
         let articles = [];
         let previewLines = 3;
         let siteLineHeight = 2.2;
+        let siteFootnoteColor = '#7dd3fc';
         let siteFontSize = 16;
         let siteAboutContent = '';
 
@@ -208,6 +209,7 @@
             document.documentElement.style.setProperty('--tag-font-size', (data.tag_font_size || 12) + 'px');
             document.documentElement.style.setProperty('--tag-description-color', data.tag_description_color || data.text_color);
             document.documentElement.style.setProperty('--footnote-color', data.footnote_color || data.text_color);
+            siteFootnoteColor = data.footnote_color || data.text_color;
             document.documentElement.style.setProperty('--tag-description-size', (data.tag_description_size || 12) + 'px');
             document.documentElement.style.setProperty('--selection-bg-color', data.selection_bg_color || data.text_color);
             document.documentElement.style.setProperty('--selection-text-color', data.selection_text_color || data.bg_color);
@@ -343,6 +345,10 @@
             if (snippet && !snippet.classList.contains('open-full')) {
                 snippet.style.maxHeight = collapsedSnippetHeightPx(article) + 'px';
             }
+            // CSS変数経由だと反映が不安定なことがあるため、注釈の色もJSから直接インラインで確実に適用する
+            articleEl.querySelectorAll('.footnote-ref').forEach(el => {
+                el.style.setProperty('color', siteFootnoteColor, 'important');
+            });
         }
 
         function reapplyLineHeightToAllArticles() {
