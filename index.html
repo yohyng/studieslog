@@ -276,11 +276,6 @@
             return div.innerHTML;
         }
 
-        // escapeHtmlはテキストノード中の"はエスケープしないため、href属性へ差し込む用に別途処理する
-        function escapeUrlAttr(url) {
-            return String(url).replace(/"/g, '%22');
-        }
-
         const SHARE_ICONS = {
             x: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M18.9 2h3.1l-7.6 8.7L23 22h-7l-5.4-6.6L4 22H1l8.1-9.3L1 2h7.2l4.9 6.1L18.9 2zm-1.2 18h1.9L7.4 3.9H5.4L17.7 20z"/></svg>',
             facebook: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/></svg>',
@@ -315,17 +310,6 @@
             const tagsHtml = (article.tags && article.tags.length > 0)
                 ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: var(--tag-font-size);">#${t.name}</a>`).join('')}</div>`
                 : '';
-            const bookLinksHtml = (article.book_links && article.book_links.length > 0)
-                ? `<div class="flex flex-col gap-3 mb-5 text-left">${article.book_links.map(l => `
-                    <a href="${escapeUrlAttr(l.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="flex items-stretch gap-3 border rounded-lg overflow-hidden opacity-80 hover:opacity-100 transition-opacity" style="border-color: color-mix(in srgb, currentColor 20%, transparent);">
-                        <div class="flex-1 min-w-0 px-4 py-3 flex flex-col justify-center gap-1">
-                            <div class="text-sm font-medium line-clamp-2" style="line-height: 1.4;">${escapeHtml(l.label || l.url)}</div>
-                            ${l.domain ? `<div class="text-xs opacity-50">${escapeHtml(l.domain)}</div>` : ''}
-                        </div>
-                        ${l.image ? `<img src="${escapeUrlAttr(l.image)}" class="w-24 shrink-0 object-cover" style="aspect-ratio: 1;" loading="lazy">` : ''}
-                    </a>
-                `).join('')}</div>`
-                : '';
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" ${overrideStyle}>
                     <div class="cursor-pointer group" onclick="toggleArticle(this, event)">
@@ -338,7 +322,6 @@
                         </div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
-                        ${bookLinksHtml}
                         <div class="flex items-center justify-center gap-5 opacity-50 mb-4">
                             <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Xでシェア" aria-label="Xでシェア">${SHARE_ICONS.x}</a>
                             <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>

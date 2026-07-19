@@ -100,6 +100,7 @@
                     <button onclick="insertLink()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">リンク</button>
                     <button onclick="insertFootnote()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="本文中に注釈番号を挿入します">注釈</button>
                     <button onclick="insertImage()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">📷 写真</button>
+                    <button onclick="insertBookLinkCard()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="Amazonなどのリンク先のタイトル・画像を取得してカードを挿入します">🔗 リンクカード</button>
                     <span class="w-px self-stretch bg-white/10 mx-1"></span>
                     <button onclick="formatText('removeFormat')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="選択範囲の書式(太字・斜体など)だけ解除">書式クリア</button>
                     <button onclick="convertToPlainText()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="本文全体を書式なしのテキストに変換します">プレーンテキスト化</button>
@@ -119,11 +120,6 @@
                     </div>
                 </div>
 
-                <div class="mt-6">
-                    <label class="text-xs text-white/50 block mb-2">紹介リンク(書籍など。読者ページに簡単なリンクボタンとして表示されます)</label>
-                    <div id="edit-book-links" class="flex flex-col gap-2 mb-2"></div>
-                    <button onclick="addBookLinkRow()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">＋ リンクを追加</button>
-                </div>
                 <div id="image-resize-toolbar" class="hidden fixed z-50 bg-[#2f3438] border border-white/20 rounded shadow-lg px-2 py-1 flex items-center gap-1 text-xs">
                     <button onclick="resizeSelectedImage(25)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">25%</button>
                     <button onclick="resizeSelectedImage(50)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">50%</button>
@@ -549,7 +545,6 @@
         let tags = [];
         let editingTagId = null;
         let selectedTagIds = new Set();
-        let bookLinks = [];
 
         function showToast(msg) {
             const t = document.getElementById('toast'); t.textContent = msg; t.style.opacity = '1';
@@ -693,56 +688,41 @@
             document.getElementById('edit-text-align').value = values.text_align || 'left';
         }
 
-        // --- 紹介リンク(書籍など) ---
-        function renderBookLinksEditor() {
-            const container = document.getElementById('edit-book-links');
-            container.innerHTML = bookLinks.map((link, i) => `
-                <div class="flex gap-2 items-start bg-white/5 border border-white/10 rounded p-2">
-                    ${link.image ? `<img src="${escapeAttr(link.image)}" class="w-16 h-16 object-cover rounded shrink-0">` : ''}
-                    <div class="flex-1 flex flex-col gap-1.5 min-w-0">
-                        <div class="flex gap-2">
-                            <input type="text" placeholder="https://amzn.to/..." value="${escapeAttr(link.url || '')}" oninput="updateBookLink(${i}, 'url', this.value)" class="flex-1 bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
-                            <button onclick="fetchBookLinkPreview(${i})" class="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap" title="リンク先のタイトル・画像を取得します">🔍 取得</button>
-                        </div>
-                        <input type="text" placeholder="表示名(プレビュー取得で自動入力されます)" value="${escapeAttr(link.label || '')}" oninput="updateBookLink(${i}, 'label', this.value)" class="w-full bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
-                        ${link.domain ? `<span class="text-xs text-white/30">${escapeAttr(link.domain)}</span>` : ''}
-                    </div>
-                    <button onclick="removeBookLink(${i})" class="text-white/40 hover:text-red-400 transition-colors px-1" aria-label="削除">×</button>
-                </div>
-            `).join('');
-        }
+        // --- 紹介リンク(書籍など) : カーソル位置に直接挿入し、本文と一緒に自由に移動・削除できるようにする ---
+        async function insertBookLinkCard() {
+            const editor = document.getElementById('edit-content');
+            editor.focus();
+            const sel = window.getSelection();
+            const range = sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
 
-        function addBookLinkRow() {
-            bookLinks.push({ label: '', url: '', image: '', domain: '' });
-            renderBookLinksEditor();
-        }
+            const url = prompt('AmazonなどのリンクURL');
+            if (!url || !url.trim()) return;
 
-        function updateBookLink(i, field, value) {
-            bookLinks[i][field] = value;
-        }
-
-        function removeBookLink(i) {
-            bookLinks.splice(i, 1);
-            renderBookLinksEditor();
-        }
-
-        async function fetchBookLinkPreview(i) {
-            const url = (bookLinks[i].url || '').trim();
-            if (!url) {
-                showToast('URLを入力してください');
-                return;
-            }
+            showToast('リンク先を取得中…');
+            let preview = { title: null, image: null, domain: null };
             try {
-                const res = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`);
-                const data = await res.json();
-                bookLinks[i].image = data.image || '';
-                bookLinks[i].domain = data.domain || '';
-                if (!bookLinks[i].label && data.title) bookLinks[i].label = data.title;
-                renderBookLinksEditor();
+                const res = await fetch(`/api/link-preview?url=${encodeURIComponent(url.trim())}`);
+                preview = await res.json();
             } catch (e) {
                 console.error(e);
-                showToast('プレビューの取得に失敗しました');
             }
+
+            editor.focus();
+            sel.removeAllRanges();
+            if (range) sel.addRange(range);
+
+            const label = preview.title || url.trim();
+            const domain = preview.domain || '';
+            const image = preview.image || '';
+            const cardHtml = `<a href="${escapeAttr(url.trim())}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="book-link-card" style="display:flex; align-items:stretch; gap:0.5rem; border:1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius:0.5rem; overflow:hidden; text-decoration:none; color:inherit; margin:1em 0;">
+                <span style="flex:1; min-width:0; padding:0.6rem 0.8rem; display:flex; flex-direction:column; justify-content:center; gap:0.15rem;">
+                    <span style="font-size:0.8rem; font-weight:500; line-height:1.4;">${escapeAttr(label)}</span>
+                    ${domain ? `<span style="font-size:0.7rem; opacity:0.5;">${escapeAttr(domain)}</span>` : ''}
+                </span>
+                ${image ? `<img src="${escapeAttr(image)}" style="width:3.5rem; flex-shrink:0; object-fit:cover; aspect-ratio:1;">` : ''}
+            </a><p></p>`;
+            document.execCommand('insertHTML', false, cardHtml);
+            showToast('挿入しました');
         }
 
         async function openNewEditor() {
@@ -754,8 +734,6 @@
             document.getElementById('edit-override-typography').checked = false;
             setTypographyFields(TYPOGRAPHY_DEFAULTS);
             toggleTypographyOverride();
-            bookLinks = [];
-            renderBookLinksEditor();
             await ensureTagsLoaded();
             selectedTagIds = new Set();
             renderTagCheckboxes();
@@ -776,9 +754,6 @@
             document.getElementById('edit-override-typography').checked = hasOverride;
             setTypographyFields(hasOverride ? article : TYPOGRAPHY_DEFAULTS);
             toggleTypographyOverride();
-
-            bookLinks = Array.isArray(article.book_links) ? article.book_links.map(l => ({ ...l })) : [];
-            renderBookLinksEditor();
 
             await ensureTagsLoaded();
             await loadArticleTagSelection(article.id);
@@ -803,8 +778,7 @@
                 font_size: useOverride ? Number(document.getElementById('edit-font-size').value) : null,
                 line_height: useOverride ? Number(document.getElementById('edit-line-height').value) : null,
                 letter_spacing: useOverride ? Number(document.getElementById('edit-letter-spacing').value) : null,
-                text_align: useOverride ? document.getElementById('edit-text-align').value : null,
-                book_links: bookLinks.filter(l => l.url && l.url.trim())
+                text_align: useOverride ? document.getElementById('edit-text-align').value : null
             };
             const { data, error } = editingId
                 ? await sb.from('articles').update(payload).eq('id', editingId).select().single()
