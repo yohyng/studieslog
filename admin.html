@@ -463,6 +463,21 @@
                     </div>
                 </div>
 
+                <!-- 一覧ページ(/list)の見出し(Article List / Tag)の配色 -->
+                <div class="mb-6 pb-6 border-b border-white/10">
+                    <label class="text-xs text-white/50 block mb-2">一覧ページの見出し(Article List / Tag)の配色</label>
+                    <div class="flex items-center gap-6">
+                        <div class="flex items-center gap-2">
+                            <input id="set-list-heading-bg-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                            <span class="text-xs text-white/40">背景色</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input id="set-list-heading-text-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                            <span class="text-xs text-white/40">文字色</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 注釈 -->
                 <div class="mb-6 pb-6 border-b border-white/10">
                     <label class="text-xs text-white/50 block mb-2">注釈番号の色</label>
@@ -1285,6 +1300,8 @@
             document.getElementById('set-bg-color-value').textContent = data.bg_color;
             document.getElementById('set-text-color').value = data.text_color;
             document.getElementById('set-text-color-value').textContent = data.text_color;
+            document.getElementById('set-list-heading-bg-color').value = data.list_heading_bg_color || '#ffffff';
+            document.getElementById('set-list-heading-text-color').value = data.list_heading_text_color || '#6b7278';
             document.getElementById('set-tag-bg-color').value = data.tag_bg_color;
             document.getElementById('set-tag-text-color').value = data.tag_text_color;
             document.getElementById('set-tag-font-size').value = data.tag_font_size;
@@ -1320,6 +1337,8 @@
                 text_align: document.getElementById('set-text-align').value,
                 preview_lines: Number(document.getElementById('set-preview-lines').value),
                 content_width: Number(document.getElementById('set-content-width').value),
+                list_heading_bg_color: document.getElementById('set-list-heading-bg-color').value,
+                list_heading_text_color: document.getElementById('set-list-heading-text-color').value,
                 tag_bg_color: document.getElementById('set-tag-bg-color').value,
                 tag_text_color: document.getElementById('set-tag-text-color').value,
                 tag_font_size: Number(document.getElementById('set-tag-font-size').value),

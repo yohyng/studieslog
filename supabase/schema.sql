@@ -78,6 +78,8 @@ create table if not exists public.site_settings (
   footnote_color text not null default '#7dd3fc',
   menu_font_size int not null default 12,
   og_image text not null default '',
+  list_heading_bg_color text not null default '#ffffff',
+  list_heading_text_color text not null default '#6b7278',
   updated_at timestamptz not null default now(),
   constraint site_settings_singleton check (id = 1)
 );
@@ -104,6 +106,8 @@ alter table public.site_settings add column if not exists tag_description_color 
 alter table public.site_settings add column if not exists footnote_color text not null default '#7dd3fc';
 alter table public.site_settings add column if not exists menu_font_size int not null default 12;
 alter table public.site_settings add column if not exists og_image text not null default '';
+alter table public.site_settings add column if not exists list_heading_bg_color text not null default '#ffffff';
+alter table public.site_settings add column if not exists list_heading_text_color text not null default '#6b7278';
 
 insert into public.site_settings (id) values (1)
 on conflict (id) do nothing;

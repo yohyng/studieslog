@@ -24,6 +24,8 @@
             --tag-description-size: 12px;
             --footnote-color: #7dd3fc;
             --menu-font-size: 12px;
+            --list-heading-bg-color: #ffffff;
+            --list-heading-text-color: #6b7278;
             --selection-bg-color: #ffffff;
             --selection-text-color: #6b7278;
             --content-width: 42rem;
@@ -239,6 +241,8 @@
             document.documentElement.style.setProperty('--footnote-color', data.footnote_color || data.text_color);
             siteFootnoteColor = data.footnote_color || data.text_color;
             document.documentElement.style.setProperty('--menu-font-size', (data.menu_font_size || 12) + 'px');
+            document.documentElement.style.setProperty('--list-heading-bg-color', data.list_heading_bg_color || data.text_color);
+            document.documentElement.style.setProperty('--list-heading-text-color', data.list_heading_text_color || data.bg_color);
             document.documentElement.style.setProperty('--tag-description-size', (data.tag_description_size || 12) + 'px');
             document.documentElement.style.setProperty('--selection-bg-color', data.selection_bg_color || data.text_color);
             document.documentElement.style.setProperty('--selection-text-color', data.selection_text_color || data.bg_color);
@@ -505,9 +509,9 @@
                 : '';
 
             listView.innerHTML = `
-                <h2 class="text-sm font-medium opacity-70 mb-4">タイトル一覧</h2>
+                <h2 class="inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: var(--list-heading-bg-color); color: var(--list-heading-text-color);">Article List</h2>
                 <div class="mb-16">${titleRows}</div>
-                ${tagsHtml ? `<h2 class="text-sm font-medium opacity-70 mb-4">ハッシュタグ</h2>${tagsHtml}` : ''}
+                ${tagsHtml ? `<h2 class="inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: var(--list-heading-bg-color); color: var(--list-heading-text-color);">Tag</h2>${tagsHtml}` : ''}
             `;
         }
 
