@@ -499,8 +499,13 @@
             listView.innerHTML = `
                 <h2 class="self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: var(--list-heading-bg-color); color: var(--list-heading-text-color);">article list</h2>
                 <div id="title-rows-container" class="mb-4"></div>
-                <div id="title-rows-more" class="hidden text-center mb-16">
-                    <span onclick="showMoreTitleRows()" class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;">↓ さらに読み込む</span>
+                <div class="text-center mb-16 flex flex-col gap-2">
+                    <div id="title-rows-more" class="hidden">
+                        <span onclick="showMoreTitleRows()" class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;">↓ さらに読み込む</span>
+                    </div>
+                    <div id="title-rows-close" class="hidden">
+                        <span onclick="collapseTitleRows()" class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;">↑ 閉じる</span>
+                    </div>
                 </div>
                 ${tagsHtml ? `<h2 class="self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: var(--list-heading-bg-color); color: var(--list-heading-text-color);">tag</h2>${tagsHtml}` : ''}
             `;
@@ -516,10 +521,16 @@
                 </a>
             `).join('');
             document.getElementById('title-rows-more').classList.toggle('hidden', titleListCount >= articles.length);
+            document.getElementById('title-rows-close').classList.toggle('hidden', titleListCount <= TITLE_LIST_PAGE_SIZE);
         }
 
         function showMoreTitleRows() {
             titleListCount += TITLE_LIST_PAGE_SIZE;
+            renderTitleRows();
+        }
+
+        function collapseTitleRows() {
+            titleListCount = TITLE_LIST_PAGE_SIZE;
             renderTitleRows();
         }
 
