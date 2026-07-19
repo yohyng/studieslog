@@ -410,10 +410,13 @@
                         <button onclick="pickColor('set-bg-color', '#e8e2d0')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#e8e2d0;" title="砂紙"></button>
                         <button onclick="pickColor('set-bg-color', '#dfe6e0')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#dfe6e0;" title="薄青磁"></button>
                     </div>
-                    <label class="flex items-center gap-2 text-xs text-white/70 mt-4">
-                        <input type="checkbox" id="set-use-gradient-bg">
-                        グラデーション背景を使う(テスト機能。粒状のノイズが入った灰色ベースの画像で、上の背景色の代わりに使われます)
-                    </label>
+                    <label class="text-xs text-white/50 block mb-2 mt-4">グラデーション背景(テスト機能。上の背景色の代わりに使われます)</label>
+                    <select id="set-gradient-bg-style" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                        <option value="">使わない(通常の背景色)</option>
+                        <option value="gray">グレー(画像・粒状ノイズ、タイル状)</option>
+                        <option value="dark">ダーク(画像・上から下へ黒くフェード)</option>
+                        <option value="svg">プログラム生成(SVGノイズ、軽量)</option>
+                    </select>
                 </div>
 
                 <!-- 文字色 -->
@@ -1302,7 +1305,7 @@
             document.getElementById('set-content-width-value').textContent = data.content_width + 'px';
             document.getElementById('set-bg-color').value = data.bg_color;
             document.getElementById('set-bg-color-value').textContent = data.bg_color;
-            document.getElementById('set-use-gradient-bg').checked = !!data.use_gradient_bg;
+            document.getElementById('set-gradient-bg-style').value = data.gradient_bg_style || '';
             document.getElementById('set-text-color').value = data.text_color;
             document.getElementById('set-text-color-value').textContent = data.text_color;
             document.getElementById('set-list-heading-bg-color').value = data.list_heading_bg_color || '#ffffff';
@@ -1334,7 +1337,7 @@
                 site_subtitle_color: document.getElementById('set-site-subtitle-color').value,
                 menu_font_size: Number(document.getElementById('set-menu-font-size').value),
                 bg_color: document.getElementById('set-bg-color').value,
-                use_gradient_bg: document.getElementById('set-use-gradient-bg').checked,
+                gradient_bg_style: document.getElementById('set-gradient-bg-style').value,
                 text_color: document.getElementById('set-text-color').value,
                 font: document.getElementById('set-font').value,
                 font_size: Number(document.getElementById('set-font-size').value),
