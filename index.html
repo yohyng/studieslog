@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>空間試論</title>
+    <!-- 個別記事(/article/:id)はmiddleware.jsがクローラー向けにOGPを差し替えるため、ここはそれ以外のページ向けの既定値 -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="空間試論">
+    <meta property="og:description" content="空間にまつわる議論をプロトタイプする">
+    <meta name="twitter:card" content="summary">
 
     <!-- 自前のCSSをTailwind(CDN版、読み込み・生成が非同期で少し遅れる)より先に置き、
          最低限の見た目(背景色・中央寄せ・余白)がすぐ効くようにしておく -->

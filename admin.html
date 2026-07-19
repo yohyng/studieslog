@@ -490,6 +490,15 @@
                     <textarea id="set-about-content" rows="6" placeholder="サイトや運営者についての紹介文" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30"></textarea>
                 </div>
 
+                <div class="mb-6 pb-6 border-b border-white/10">
+                    <label class="text-xs text-white/50 block mb-2">SNSシェア時の既定画像(記事に画像がない場合に使われます)</label>
+                    <div class="flex gap-2 mb-2">
+                        <input id="set-og-image" type="text" placeholder="https://..." class="flex-1 bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                        <button onclick="uploadOgImage()" class="px-3 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap">📷 アップロード</button>
+                    </div>
+                    <p class="text-xs text-white/30">記事ごとに紹介リンクは設定できますが、シェアカードの画像は本文中の1枚目の画像、なければこれが使われます。</p>
+                </div>
+
                 <div class="flex gap-3 pt-4 border-t border-white/10">
                     <button onclick="saveSiteSettings()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">保存する</button>
                     <a href="index.html" target="_blank" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">閲覧ビューで確認 ↗</a>
@@ -1084,6 +1093,19 @@
             return data.publicUrl;
         }
 
+        function uploadOgImage() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = async () => {
+                const file = input.files[0];
+                if (!file) return;
+                const url = await uploadImageFile(file);
+                if (url) document.getElementById('set-og-image').value = url;
+            };
+            input.click();
+        }
+
         function insertImage() {
             const input = document.createElement('input');
             input.type = 'file';
@@ -1274,6 +1296,7 @@
             document.getElementById('set-selection-bg-color').value = data.selection_bg_color;
             document.getElementById('set-selection-text-color').value = data.selection_text_color;
             document.getElementById('set-about-content').value = data.about_content || '';
+            document.getElementById('set-og-image').value = data.og_image || '';
             checkSetContrast();
         }
 
@@ -1305,7 +1328,8 @@
                 footnote_color: document.getElementById('set-footnote-color').value,
                 selection_bg_color: document.getElementById('set-selection-bg-color').value,
                 selection_text_color: document.getElementById('set-selection-text-color').value,
-                about_content: document.getElementById('set-about-content').value.trim()
+                about_content: document.getElementById('set-about-content').value.trim(),
+                og_image: document.getElementById('set-og-image').value.trim()
             };
             const { error } = await sb.from('site_settings').update(payload).eq('id', 1);
             if (error) {
