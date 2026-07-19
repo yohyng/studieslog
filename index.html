@@ -199,7 +199,16 @@
         <span class="opacity-30">深層を探索中...</span>
     </div>
 
-    <footer class="w-full content-width mt-24 pt-8 text-center opacity-30" style="border-top: 1px solid currentColor; font-size: 0.7rem;">
+    <div class="w-full content-width mt-24 text-center">
+        <p class="text-xs opacity-60 mb-3">新着記事をメールで受け取る(週1回、更新があった週だけ届きます)</p>
+        <form onsubmit="return submitSubscribe(event)" class="flex items-center justify-center gap-2 flex-wrap">
+            <input id="subscribe-email" type="email" required placeholder="you@example.com" class="bg-transparent border-b text-sm px-2 py-1.5 focus:outline-none" style="border-color: color-mix(in srgb, currentColor 30%, transparent); width: 14rem;">
+            <button type="submit" class="px-3 py-1.5 text-xs border rounded hover:opacity-70 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">購読する</button>
+        </form>
+        <p id="subscribe-message" class="text-xs opacity-50 mt-2 hidden"></p>
+    </div>
+
+    <footer class="w-full content-width mt-8 pt-8 text-center opacity-30" style="border-top: 1px solid currentColor; font-size: 0.7rem;">
         <p id="footer-text">© 空間試論</p>
     </footer>
 
@@ -762,6 +771,24 @@
         function showToast(msg) {
             const t = document.getElementById('toast'); t.textContent = msg; t.style.opacity = '1';
             setTimeout(() => t.style.opacity = '0', 2000);
+        }
+
+        // ニュースレター購読(週次ダイジェストの送信対象に登録する)
+        async function submitSubscribe(event) {
+            event.preventDefault();
+            const input = document.getElementById('subscribe-email');
+            const msg = document.getElementById('subscribe-message');
+            const email = input.value.trim();
+            if (!email) return false;
+            const { error } = await sb.from('subscribers').insert({ email });
+            msg.classList.remove('hidden');
+            if (error) {
+                msg.textContent = error.code === '23505' ? 'このメールアドレスはすでに登録されています' : '登録に失敗しました';
+            } else {
+                msg.textContent = '登録しました。ありがとうございます。';
+                input.value = '';
+            }
+            return false;
         }
 
         function isHomeRoute() {

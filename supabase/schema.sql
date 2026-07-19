@@ -167,3 +167,38 @@ create policy "article_tags_auth_insert" on public.article_tags
 
 create policy "article_tags_auth_delete" on public.article_tags
   for delete to authenticated using (true);
+
+-- ニュースレター購読者。読み取り・削除はservice role(週次ダイジェスト送信・配信解除用のAPI関数)経由でのみ行うため、
+-- anonロールには登録(insert)以外のポリシーを与えない
+create table if not exists public.subscribers (
+  id bigint generated always as identity primary key,
+  email text not null unique,
+  unsubscribe_token uuid not null default gen_random_uuid(),
+  created_at timestamptz not null default now()
+);
+
+alter table public.subscribers enable row level security;
+
+create policy "subscribers_public_insert" on public.subscribers
+  for insert with check (true);
+
+create policy "subscribers_auth_select" on public.subscribers
+  for select to authenticated using (true);
+
+create policy "subscribers_auth_delete" on public.subscribers
+  for delete to authenticated using (true);
+
+-- 週次ダイジェストを最後に送った時刻を覚えておく1行だけのテーブル(この時刻より新しい記事があれば送信対象になる)
+create table if not exists public.newsletter_state (
+  id int primary key default 1,
+  last_sent_at timestamptz not null default now(),
+  constraint newsletter_state_singleton check (id = 1)
+);
+
+insert into public.newsletter_state (id) values (1)
+on conflict (id) do nothing;
+
+alter table public.newsletter_state enable row level security;
+
+create policy "newsletter_state_auth_all" on public.newsletter_state
+  for all to authenticated using (true) with check (true);
