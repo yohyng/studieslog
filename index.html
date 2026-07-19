@@ -485,18 +485,15 @@
             return (div.textContent || '').trim();
         }
 
+        const TITLE_LIST_PAGE_SIZE = 6;
+        let titleListCount = TITLE_LIST_PAGE_SIZE;
+
         // タイトルと日付だけを並べた一覧ページ+ハッシュタグ一覧
         async function renderTitleList() {
             hideAllViews();
             const listView = document.getElementById('title-list-view');
             listView.classList.remove('hidden');
-
-            const titleRows = articles.map(a => `
-                <a href="/article/${a.id}" class="flex items-baseline justify-between gap-4 py-4 border-b opacity-70 hover:opacity-100 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">
-                    <span class="text-sm">${a.title}</span>
-                    <span class="text-xs opacity-60 whitespace-nowrap">${a.date}</span>
-                </a>
-            `).join('');
+            titleListCount = TITLE_LIST_PAGE_SIZE;
 
             const { data: allTags, error } = await sb.from('tags').select('*').order('name', { ascending: true });
             const tagsHtml = (!error && allTags && allTags.length > 0)
@@ -509,10 +506,30 @@
                 : '';
 
             listView.innerHTML = `
-                <h2 class="inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: var(--list-heading-bg-color); color: var(--list-heading-text-color);">Article List</h2>
-                <div class="mb-16">${titleRows}</div>
-                ${tagsHtml ? `<h2 class="inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: var(--list-heading-bg-color); color: var(--list-heading-text-color);">Tag</h2>${tagsHtml}` : ''}
+                <h2 class="self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: var(--list-heading-bg-color); color: var(--list-heading-text-color);">article list</h2>
+                <div id="title-rows-container" class="mb-4"></div>
+                <div id="title-rows-more" class="hidden text-center mb-16">
+                    <span onclick="showMoreTitleRows()" class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;">↓ さらに読み込む</span>
+                </div>
+                ${tagsHtml ? `<h2 class="self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: var(--list-heading-bg-color); color: var(--list-heading-text-color);">tag</h2>${tagsHtml}` : ''}
             `;
+            renderTitleRows();
+        }
+
+        function renderTitleRows() {
+            const container = document.getElementById('title-rows-container');
+            container.innerHTML = articles.slice(0, titleListCount).map(a => `
+                <a href="/article/${a.id}" class="flex items-baseline justify-between gap-4 py-4 border-b opacity-70 hover:opacity-100 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">
+                    <span class="text-sm">${a.title}</span>
+                    <span class="text-xs opacity-60 whitespace-nowrap">${a.date}</span>
+                </a>
+            `).join('');
+            document.getElementById('title-rows-more').classList.toggle('hidden', titleListCount >= articles.length);
+        }
+
+        function showMoreTitleRows() {
+            titleListCount += TITLE_LIST_PAGE_SIZE;
+            renderTitleRows();
         }
 
         // サイト運営者についてのアバウトページ
