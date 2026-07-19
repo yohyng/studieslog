@@ -118,6 +118,12 @@
                         <button onclick="createTagFromEditor()" class="px-3 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap">＋ 追加</button>
                     </div>
                 </div>
+
+                <div class="mt-6">
+                    <label class="text-xs text-white/50 block mb-2">紹介リンク(書籍など。読者ページに簡単なリンクボタンとして表示されます)</label>
+                    <div id="edit-book-links" class="flex flex-col gap-2 mb-2"></div>
+                    <button onclick="addBookLinkRow()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">＋ リンクを追加</button>
+                </div>
                 <div id="image-resize-toolbar" class="hidden fixed z-50 bg-[#2f3438] border border-white/20 rounded shadow-lg px-2 py-1 flex items-center gap-1 text-xs">
                     <button onclick="resizeSelectedImage(25)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">25%</button>
                     <button onclick="resizeSelectedImage(50)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">50%</button>
@@ -519,6 +525,7 @@
         let tags = [];
         let editingTagId = null;
         let selectedTagIds = new Set();
+        let bookLinks = [];
 
         function showToast(msg) {
             const t = document.getElementById('toast'); t.textContent = msg; t.style.opacity = '1';
@@ -662,6 +669,32 @@
             document.getElementById('edit-text-align').value = values.text_align || 'left';
         }
 
+        // --- 紹介リンク(書籍など) ---
+        function renderBookLinksEditor() {
+            const container = document.getElementById('edit-book-links');
+            container.innerHTML = bookLinks.map((link, i) => `
+                <div class="flex gap-2 items-center">
+                    <input type="text" placeholder="表示名(例: 数覚とは何か？)" value="${escapeAttr(link.label || '')}" oninput="updateBookLink(${i}, 'label', this.value)" class="flex-1 bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
+                    <input type="text" placeholder="https://..." value="${escapeAttr(link.url || '')}" oninput="updateBookLink(${i}, 'url', this.value)" class="flex-1 bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
+                    <button onclick="removeBookLink(${i})" class="text-white/40 hover:text-red-400 transition-colors px-1" aria-label="削除">×</button>
+                </div>
+            `).join('');
+        }
+
+        function addBookLinkRow() {
+            bookLinks.push({ label: '', url: '' });
+            renderBookLinksEditor();
+        }
+
+        function updateBookLink(i, field, value) {
+            bookLinks[i][field] = value;
+        }
+
+        function removeBookLink(i) {
+            bookLinks.splice(i, 1);
+            renderBookLinksEditor();
+        }
+
         async function openNewEditor() {
             editingId = null;
             document.getElementById('edit-date').value = todayString();
@@ -671,6 +704,8 @@
             document.getElementById('edit-override-typography').checked = false;
             setTypographyFields(TYPOGRAPHY_DEFAULTS);
             toggleTypographyOverride();
+            bookLinks = [];
+            renderBookLinksEditor();
             await ensureTagsLoaded();
             selectedTagIds = new Set();
             renderTagCheckboxes();
@@ -691,6 +726,9 @@
             document.getElementById('edit-override-typography').checked = hasOverride;
             setTypographyFields(hasOverride ? article : TYPOGRAPHY_DEFAULTS);
             toggleTypographyOverride();
+
+            bookLinks = Array.isArray(article.book_links) ? article.book_links.map(l => ({ ...l })) : [];
+            renderBookLinksEditor();
 
             await ensureTagsLoaded();
             await loadArticleTagSelection(article.id);
@@ -715,7 +753,8 @@
                 font_size: useOverride ? Number(document.getElementById('edit-font-size').value) : null,
                 line_height: useOverride ? Number(document.getElementById('edit-line-height').value) : null,
                 letter_spacing: useOverride ? Number(document.getElementById('edit-letter-spacing').value) : null,
-                text_align: useOverride ? document.getElementById('edit-text-align').value : null
+                text_align: useOverride ? document.getElementById('edit-text-align').value : null,
+                book_links: bookLinks.filter(l => l.url && l.url.trim())
             };
             const { data, error } = editingId
                 ? await sb.from('articles').update(payload).eq('id', editingId).select().single()

@@ -15,6 +15,9 @@ alter table public.articles add column if not exists line_height numeric;
 alter table public.articles add column if not exists letter_spacing numeric;
 alter table public.articles add column if not exists text_align text;
 
+-- 紹介リンク(書籍など)。[{"label": "...", "url": "..."}, ...] の配列
+alter table public.articles add column if not exists book_links jsonb not null default '[]';
+
 alter table public.articles enable row level security;
 
 -- 閲覧は誰でも可能(公開ブログのため)
