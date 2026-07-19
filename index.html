@@ -344,6 +344,14 @@
                 .map(x => x.article);
         }
 
+        // 実験的機能: 記事同士の相互リンク(バックリンク)。本文中で他の記事の/article/IDへリンクしておくと、
+        // リンクされた側にも「この記事へのリンク」として自動的に表示される(デジタルガーデン的な双方向リンク)。
+        // 不要ならこの関数とbuildArticleHtml内のbacklinkHtml関連の3行を削除すれば元に戻ります
+        function backlinkArticles(article, limit) {
+            const pattern = new RegExp(`/article/${article.id}(?:[^0-9]|$)`);
+            return articles.filter(a => a.id !== article.id && pattern.test(a.content)).slice(0, limit);
+        }
+
         function buildArticleHtml(article) {
             // この記事だけの文字組みが設定されていれば、サイト全体の設定を上書きする(行間・頭出し高さはforceLineHeightがJSで適用する)
             let overrideStyle = '';
@@ -356,6 +364,10 @@
             const related = relatedArticles(article, 3);
             const relatedHtml = related.length > 0
                 ? `<div class="text-left mb-5"><div class="text-xs opacity-40 mb-2">関連記事</div><div class="flex flex-col gap-1.5">${related.map(a => `<a href="/article/${a.id}" onclick="event.stopPropagation()" class="text-xs opacity-70 hover:opacity-100 transition-opacity">${escapeHtml(a.title)}</a>`).join('')}</div></div>`
+                : '';
+            const backlinks = backlinkArticles(article, 5);
+            const backlinkHtml = backlinks.length > 0
+                ? `<div class="text-left mb-5"><div class="text-xs opacity-40 mb-2">この記事へのリンク</div><div class="flex flex-col gap-1.5">${backlinks.map(a => `<a href="/article/${a.id}" onclick="event.stopPropagation()" class="text-xs opacity-70 hover:opacity-100 transition-opacity">${escapeHtml(a.title)}</a>`).join('')}</div></div>`
                 : '';
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" ${overrideStyle}>
@@ -370,6 +382,7 @@
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
                         ${relatedHtml}
+                        ${backlinkHtml}
                         <div class="flex items-center justify-center gap-5 opacity-50 mb-4">
                             <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Xでシェア" aria-label="Xでシェア">${SHARE_ICONS.x}</a>
                             <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>
