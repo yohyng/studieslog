@@ -30,8 +30,10 @@ module.exports = async function handler(req, res) {
         const timeout = setTimeout(() => controller.abort(), 8000);
         const response = await fetch(parsed.toString(), {
             headers: {
-                'user-agent': 'Mozilla/5.0 (compatible; LinkPreviewBot/1.0; +https://vercel.com)',
-                accept: 'text/html',
+                // 自己申告のbot UAだと一部サイト(Amazon等)がOGPの入っていない簡易ページを返すため、通常のブラウザを装う
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'accept-language': 'ja,en-US;q=0.9,en;q=0.8',
+                accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             },
             redirect: 'follow',
             signal: controller.signal,
