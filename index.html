@@ -331,6 +331,19 @@
             return container.innerHTML;
         }
 
+        // 実験的機能: 関連記事(共有タグが多い順、なければ表示しない)。不要ならこの関数とbuildArticleHtml内の
+        // relatedHtml関連の3行を削除すれば元に戻ります
+        function relatedArticles(article, limit) {
+            if (!article.tags || article.tags.length === 0) return [];
+            const tagIds = new Set(article.tags.map(t => t.id));
+            return articles
+                .filter(a => a.id !== article.id && a.tags && a.tags.some(t => tagIds.has(t.id)))
+                .map(a => ({ article: a, shared: a.tags.filter(t => tagIds.has(t.id)).length }))
+                .sort((a, b) => b.shared - a.shared || new Date(b.article.date) - new Date(a.article.date))
+                .slice(0, limit)
+                .map(x => x.article);
+        }
+
         function buildArticleHtml(article) {
             // この記事だけの文字組みが設定されていれば、サイト全体の設定を上書きする(行間・頭出し高さはforceLineHeightがJSで適用する)
             let overrideStyle = '';
@@ -339,6 +352,10 @@
             }
             const tagsHtml = (article.tags && article.tags.length > 0)
                 ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: var(--tag-font-size);">#${t.name}</a>`).join('')}</div>`
+                : '';
+            const related = relatedArticles(article, 3);
+            const relatedHtml = related.length > 0
+                ? `<div class="text-left mb-5"><div class="text-xs opacity-40 mb-2">関連記事</div><div class="flex flex-col gap-1.5">${related.map(a => `<a href="/article/${a.id}" onclick="event.stopPropagation()" class="text-xs opacity-70 hover:opacity-100 transition-opacity">${escapeHtml(a.title)}</a>`).join('')}</div></div>`
                 : '';
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" ${overrideStyle}>
@@ -352,6 +369,7 @@
                         </div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
+                        ${relatedHtml}
                         <div class="flex items-center justify-center gap-5 opacity-50 mb-4">
                             <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Xでシェア" aria-label="Xでシェア">${SHARE_ICONS.x}</a>
                             <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>
