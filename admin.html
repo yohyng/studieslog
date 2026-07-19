@@ -697,16 +697,23 @@
         function renderBookLinksEditor() {
             const container = document.getElementById('edit-book-links');
             container.innerHTML = bookLinks.map((link, i) => `
-                <div class="flex gap-2 items-center">
-                    <input type="text" placeholder="表示名(例: 数覚とは何か？)" value="${escapeAttr(link.label || '')}" oninput="updateBookLink(${i}, 'label', this.value)" class="flex-1 bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
-                    <input type="text" placeholder="https://..." value="${escapeAttr(link.url || '')}" oninput="updateBookLink(${i}, 'url', this.value)" class="flex-1 bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
+                <div class="flex gap-2 items-start bg-white/5 border border-white/10 rounded p-2">
+                    ${link.image ? `<img src="${escapeAttr(link.image)}" class="w-16 h-16 object-cover rounded shrink-0">` : ''}
+                    <div class="flex-1 flex flex-col gap-1.5 min-w-0">
+                        <div class="flex gap-2">
+                            <input type="text" placeholder="https://amzn.to/..." value="${escapeAttr(link.url || '')}" oninput="updateBookLink(${i}, 'url', this.value)" class="flex-1 bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
+                            <button onclick="fetchBookLinkPreview(${i})" class="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap" title="リンク先のタイトル・画像を取得します">🔍 取得</button>
+                        </div>
+                        <input type="text" placeholder="表示名(プレビュー取得で自動入力されます)" value="${escapeAttr(link.label || '')}" oninput="updateBookLink(${i}, 'label', this.value)" class="w-full bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
+                        ${link.domain ? `<span class="text-xs text-white/30">${escapeAttr(link.domain)}</span>` : ''}
+                    </div>
                     <button onclick="removeBookLink(${i})" class="text-white/40 hover:text-red-400 transition-colors px-1" aria-label="削除">×</button>
                 </div>
             `).join('');
         }
 
         function addBookLinkRow() {
-            bookLinks.push({ label: '', url: '' });
+            bookLinks.push({ label: '', url: '', image: '', domain: '' });
             renderBookLinksEditor();
         }
 
@@ -717,6 +724,25 @@
         function removeBookLink(i) {
             bookLinks.splice(i, 1);
             renderBookLinksEditor();
+        }
+
+        async function fetchBookLinkPreview(i) {
+            const url = (bookLinks[i].url || '').trim();
+            if (!url) {
+                showToast('URLを入力してください');
+                return;
+            }
+            try {
+                const res = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`);
+                const data = await res.json();
+                bookLinks[i].image = data.image || '';
+                bookLinks[i].domain = data.domain || '';
+                if (!bookLinks[i].label && data.title) bookLinks[i].label = data.title;
+                renderBookLinksEditor();
+            } catch (e) {
+                console.error(e);
+                showToast('プレビューの取得に失敗しました');
+            }
         }
 
         async function openNewEditor() {

@@ -316,7 +316,15 @@
                 ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: var(--tag-font-size);">#${t.name}</a>`).join('')}</div>`
                 : '';
             const bookLinksHtml = (article.book_links && article.book_links.length > 0)
-                ? `<div class="flex flex-wrap justify-center gap-2 mb-5">${article.book_links.map(l => `<a href="${escapeUrlAttr(l.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="px-3 py-1.5 border opacity-70 hover:opacity-100 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent); font-size: 0.75rem;">${escapeHtml(l.label || l.url)} ↗</a>`).join('')}</div>`
+                ? `<div class="flex flex-col gap-3 mb-5 text-left">${article.book_links.map(l => `
+                    <a href="${escapeUrlAttr(l.url)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="flex items-stretch gap-3 border rounded-lg overflow-hidden opacity-80 hover:opacity-100 transition-opacity" style="border-color: color-mix(in srgb, currentColor 20%, transparent);">
+                        <div class="flex-1 min-w-0 px-4 py-3 flex flex-col justify-center gap-1">
+                            <div class="text-sm font-medium line-clamp-2" style="line-height: 1.4;">${escapeHtml(l.label || l.url)}</div>
+                            ${l.domain ? `<div class="text-xs opacity-50">${escapeHtml(l.domain)}</div>` : ''}
+                        </div>
+                        ${l.image ? `<img src="${escapeUrlAttr(l.image)}" class="w-24 shrink-0 object-cover" style="aspect-ratio: 1;" loading="lazy">` : ''}
+                    </a>
+                `).join('')}</div>`
                 : '';
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" ${overrideStyle}>
