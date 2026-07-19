@@ -167,13 +167,13 @@
     <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
 
     <!-- ハンバーガーメニュー -->
-    <button id="hamburger-btn" onclick="toggleMenu()" class="group fixed top-6 z-40 p-2 rounded-full backdrop-blur-sm" style="background: color-mix(in srgb, var(--bg-color) 90%, transparent);" title="メニュー" aria-label="メニュー">
+    <button id="hamburger-btn" onclick="toggleMenu()" class="group fixed top-6 z-40 p-2 rounded-full backdrop-blur-md" style="background: color-mix(in srgb, var(--bg-color) 80%, transparent); box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);" title="メニュー" aria-label="メニュー">
         <svg class="opacity-60 group-hover:opacity-100 transition-opacity duration-300" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
     </button>
 
     <div id="menu-overlay" class="fixed inset-0 z-50 pointer-events-none">
         <div id="menu-catcher" class="absolute inset-0 pointer-events-none opacity-0" onclick="toggleMenu()"></div>
-        <div id="menu-panel" class="absolute top-0 right-0 h-full w-36 max-w-[55vw] p-5 pointer-events-auto transform translate-x-full transition-transform duration-300 ease-out" style="background: var(--bg-color); color: var(--text-color); border-left: 1px solid color-mix(in srgb, currentColor 35%, transparent);">
+        <div id="menu-panel" class="absolute top-0 right-0 h-full w-36 max-w-[55vw] p-5 pointer-events-auto transform translate-x-full transition-transform duration-300 ease-out" style="background: color-mix(in srgb, var(--bg-color) 62%, transparent); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); color: var(--text-color); border-left: 1px solid color-mix(in srgb, currentColor 25%, transparent); box-shadow: -12px 0 40px rgba(0, 0, 0, 0.15);">
             <button onclick="toggleMenu()" class="opacity-50 hover:opacity-100 transition-opacity mb-10 text-lg leading-none" aria-label="閉じる">×</button>
             <nav class="flex flex-col gap-3" style="font-size: var(--menu-font-size);">
                 <a href="/" class="opacity-80 hover:opacity-100 transition-opacity">Top</a>
