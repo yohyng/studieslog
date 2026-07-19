@@ -715,11 +715,11 @@
             const domain = preview.domain || '';
             const image = preview.image || '';
             const cardHtml = `<a href="${escapeAttr(url.trim())}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="book-link-card" style="display:flex; align-items:stretch; gap:0.5rem; border:1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius:0.5rem; overflow:hidden; text-decoration:none; color:inherit; margin:1em 0;">
-                <span style="flex:1; min-width:0; padding:0.6rem 0.8rem; display:flex; flex-direction:column; justify-content:center; gap:0.15rem;">
-                    <span style="font-size:0.8rem; font-weight:500; line-height:1.4;">${escapeAttr(label)}</span>
-                    ${domain ? `<span style="font-size:0.7rem; opacity:0.5;">${escapeAttr(domain)}</span>` : ''}
+                <span style="flex:1; min-width:0; padding:0.5rem 0.7rem; display:flex; flex-direction:column; justify-content:center; gap:0.1rem;">
+                    <span style="font-size:0.7rem; font-weight:500; line-height:1.4;">${escapeAttr(label)}</span>
+                    ${domain ? `<span style="font-size:0.6rem; opacity:0.5;">${escapeAttr(domain)}</span>` : ''}
                 </span>
-                ${image ? `<img src="${escapeAttr(image)}" style="width:3.5rem; flex-shrink:0; object-fit:cover; aspect-ratio:1;">` : ''}
+                ${image ? `<img src="${escapeAttr(image)}" style="width:3rem; flex-shrink:0; object-fit:cover; aspect-ratio:1;">` : ''}
             </a><p></p>`;
             document.execCommand('insertHTML', false, cardHtml);
             showToast('挿入しました');
