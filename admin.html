@@ -26,6 +26,18 @@
         .article-preview { max-height: 3.2em; overflow: hidden; }
         /* ブラウザ既定のドロップダウン展開部は背景が白になることが多く、継承した白文字のままだと見えなくなるため明示的に指定する */
         select option, select optgroup { color: #1a1a1a; background-color: #ffffff; }
+
+        /* タイプライターモード: 本文以外のUIをフェード+ぼかしで隠し、キャレットの行を画面上の一定位置にロックする */
+        .tw-hide { transition: opacity 0.3s ease, filter 0.3s ease; }
+        #app-screen.typewriter-mode .tw-hide {
+            opacity: 0;
+            pointer-events: none;
+            filter: blur(3px);
+        }
+        #app-screen.typewriter-mode #editor-view {
+            padding-top: 30vh;
+            padding-bottom: 50vh;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -44,7 +56,7 @@
 
     <!-- アプリ本体(ログイン後) -->
     <div id="app-screen" class="hidden min-h-screen flex flex-col">
-        <header class="border-b border-white/10 px-5 sm:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
+        <header class="tw-hide border-b border-white/10 px-5 sm:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
             <div class="flex items-center gap-4 sm:gap-6 flex-wrap">
                 <h1 class="text-sm font-medium tracking-wide whitespace-nowrap">管理画面</h1>
                 <nav class="flex items-center gap-1 text-xs">
@@ -70,10 +82,11 @@
 
         <!-- 編集ビュー -->
         <div id="editor-view" class="hidden flex-1 overflow-y-auto">
+            <button id="typewriter-toggle" onclick="toggleTypewriterMode()" class="fixed top-4 right-4 z-50 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm transition-colors" style="opacity: 0.4;" title="タイプライターモード切り替え">✍️</button>
             <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
-                <button onclick="backToList()" class="text-xs text-white/50 hover:text-white transition-colors mb-6">← 一覧に戻る</button>
+                <button onclick="backToList()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors mb-6">← 一覧に戻る</button>
 
-                <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                <div class="tw-hide flex flex-col sm:flex-row gap-4 mb-6">
                     <div class="flex-1">
                         <label class="text-xs text-white/50 block mb-1">日付</label>
                         <input id="edit-date" type="text" placeholder="2024.01.01" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
@@ -84,8 +97,8 @@
                     </div>
                 </div>
 
-                <label class="text-xs text-white/50 block mb-1">本文</label>
-                <div class="flex items-center flex-wrap gap-1 mb-2 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs">
+                <label class="tw-hide text-xs text-white/50 block mb-1">本文</label>
+                <div class="tw-hide flex items-center flex-wrap gap-1 mb-2 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs">
                     <button onclick="formatText('bold')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="太字 (Ctrl+B)">太字</button>
                     <button onclick="formatText('italic')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="斜体 (Ctrl+I)">斜体</button>
                     <button onclick="formatText('underline')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="下線 (Ctrl+U)">下線</button>
@@ -110,7 +123,7 @@
                 </div>
                 <div id="edit-content" class="content-editor bg-white/5 border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
 
-                <div class="mt-6">
+                <div class="tw-hide mt-6">
                     <label class="text-xs text-white/50 block mb-2">ハッシュタグ(クリックで選択・解除)</label>
                     <div id="edit-tags" class="flex flex-wrap gap-2 bg-white/5 border border-white/10 rounded p-3 text-xs"></div>
                     <div id="edit-tags-empty" class="hidden text-xs text-white/30 mt-2">タグがまだありません。下から新しく作成できます。</div>
@@ -129,7 +142,7 @@
                 </div>
 
                 <!-- この記事だけの文字組み -->
-                <div class="mt-6 pt-6 border-t border-white/10">
+                <div class="tw-hide mt-6 pt-6 border-t border-white/10">
                     <label class="flex items-center gap-2 text-xs text-white/70 mb-4">
                         <input type="checkbox" id="edit-override-typography" onchange="toggleTypographyOverride()">
                         この記事だけ文字組みを変える(オフの場合はサイト全体の表示設定に従います)
@@ -199,7 +212,7 @@
                 </div>
 
                 <!-- SNS投稿(保存済みの記事のみ。下書き文の自動生成とInstagram用画像の切り出し) -->
-                <div id="social-share-panel" class="hidden mt-6 pt-6 border-t border-white/10">
+                <div id="social-share-panel" class="tw-hide hidden mt-6 pt-6 border-t border-white/10">
                     <label class="text-xs text-white/50 block mb-3">SNS投稿</label>
                     <div id="social-drafts" class="flex flex-col gap-3 mb-5"></div>
 
@@ -220,7 +233,7 @@
                     </div>
                 </div>
 
-                <div class="flex flex-wrap gap-3 mt-6">
+                <div class="tw-hide flex flex-wrap gap-3 mt-6">
                     <button onclick="saveArticle()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">保存する</button>
                     <button onclick="backToList()" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">キャンセル</button>
                     <button id="delete-btn" onclick="deleteCurrentArticle()" class="hidden sm:ml-auto px-5 py-2.5 text-xs text-red-400/70 hover:text-red-400 transition-colors">この記事を削除</button>
@@ -698,6 +711,53 @@
         function todayString() {
             const d = new Date();
             return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        // --- タイプライターモード ---
+        // 本文以外のUIをフェードで隠し、キャレットのある行を画面上の一定位置にロックしたまま
+        // ウィンドウ側をスクロールする(本文自体はスクロールしない)。書くことだけに集中したいとき用
+        let typewriterMode = false;
+        const TYPEWRITER_ANCHOR = 0.5; // 画面の高さに対する固定位置(0.5=中央)
+
+        function toggleTypewriterMode() {
+            typewriterMode = !typewriterMode;
+            document.getElementById('app-screen').classList.toggle('typewriter-mode', typewriterMode);
+            document.getElementById('typewriter-toggle').style.opacity = typewriterMode ? '1' : '0.4';
+            if (typewriterMode) {
+                document.getElementById('edit-content').focus();
+                requestAnimationFrame(repositionCaretTypewriter);
+            }
+        }
+
+        // 現在のキャレット位置のビューポート上のY座標を取得する(contenteditable用。
+        // Range#getClientRectsで行の矩形が直接取れるので、textareaと違いミラー要素は不要)
+        function getCaretViewportTop() {
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return null;
+            const range = sel.getRangeAt(0).cloneRange();
+            range.collapse(true);
+            const rects = range.getClientRects();
+            if (rects.length > 0) return rects[0].top;
+            // 空行など矩形が取れない位置向けのフォールバック: ゼロ幅文字を仮挿入して計測する
+            const marker = document.createElement('span');
+            marker.textContent = '​';
+            range.insertNode(marker);
+            const rect = marker.getBoundingClientRect();
+            const parent = marker.parentNode;
+            parent.removeChild(marker);
+            parent.normalize();
+            return rect.top;
+        }
+
+        function repositionCaretTypewriter() {
+            if (!typewriterMode || document.activeElement !== document.getElementById('edit-content')) return;
+            const top = getCaretViewportTop();
+            if (top == null) return;
+            const anchor = window.innerHeight * TYPEWRITER_ANCHOR;
+            const delta = top - anchor;
+            if (Math.abs(delta) > 1.5) {
+                window.scrollBy({ top: delta, behavior: 'auto' });
+            }
         }
 
         const TYPOGRAPHY_DEFAULTS = { font: "'Shippori Mincho', serif", font_size: 16, line_height: 2.2, letter_spacing: 0.08, text_align: 'left' };
@@ -1534,6 +1594,12 @@
         setupImageResize();
         setupPastePlainText();
         checkAuth();
+
+        // タイプライターモード中、キャレット位置が変わるたびに固定位置へスクロールし直す
+        const twEditor = document.getElementById('edit-content');
+        ['input', 'keyup', 'click'].forEach(evt => {
+            twEditor.addEventListener(evt, () => requestAnimationFrame(repositionCaretTypewriter));
+        });
     </script>
 </body>
 </html>
