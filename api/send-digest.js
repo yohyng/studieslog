@@ -32,7 +32,7 @@ module.exports = async function handler(req, res) {
             `${SUPABASE_URL}/rest/v1/articles?created_at=gt.${encodeURIComponent(lastSentAt)}&status=eq.published&select=id,title,date,content,created_at&order=created_at.asc`,
             { headers: sbHeaders }
         ),
-        fetch(`${SUPABASE_URL}/rest/v1/site_settings?id=eq.1&select=site_title,og_image`, { headers: sbHeaders }),
+        fetch(`${SUPABASE_URL}/rest/v1/site_settings?id=eq.1&select=site_title,og_image,digest_bg_color,digest_text_color`, { headers: sbHeaders }),
     ]);
     const rawArticles = await articlesRes.json();
     const settingsRows = await settingsRes.json();
@@ -68,6 +68,8 @@ module.exports = async function handler(req, res) {
             siteUrl,
             articles,
             unsubscribeUrl: `${siteUrl}/api/unsubscribe?token=${sub.unsubscribe_token}`,
+            bgColor: settings.digest_bg_color,
+            textColor: settings.digest_text_color,
         }),
     }));
 

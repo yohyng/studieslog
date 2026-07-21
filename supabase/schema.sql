@@ -89,6 +89,8 @@ create table if not exists public.site_settings (
   gradient_bg_style text not null default '',
   list_heading_bg_color text not null default '#ffffff',
   list_heading_text_color text not null default '#6b7278',
+  digest_bg_color text not null default '#f4f1ea',
+  digest_text_color text not null default '#2b2b28',
   updated_at timestamptz not null default now(),
   constraint site_settings_singleton check (id = 1)
 );
@@ -119,6 +121,8 @@ alter table public.site_settings add column if not exists og_image text not null
 alter table public.site_settings add column if not exists gradient_bg_style text not null default '';
 alter table public.site_settings add column if not exists list_heading_bg_color text not null default '#ffffff';
 alter table public.site_settings add column if not exists list_heading_text_color text not null default '#6b7278';
+alter table public.site_settings add column if not exists digest_bg_color text not null default '#f4f1ea';
+alter table public.site_settings add column if not exists digest_text_color text not null default '#2b2b28';
 
 insert into public.site_settings (id) values (1)
 on conflict (id) do nothing;
