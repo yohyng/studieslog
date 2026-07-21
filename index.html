@@ -123,7 +123,7 @@
 
         /* テスト実装: タイトルに重なる不定形の台形の線。読み込むたびに少し形が変わり、カーソルを乗せて動かすとゆらゆら揺れる。
            不要なら #title-rect-wrap のdivとCSS、JSのsetupTitleRectSway()/randomizeTitleShape()呼び出しを削除すれば元に戻ります */
-        .title-rect-wrap { position: absolute; top: -20px; left: 0; width: 130px; height: 220px; z-index: 0; perspective: 500px; }
+        .title-rect-wrap { position: absolute; top: -10px; left: 0; width: 150px; height: 145px; z-index: 0; perspective: 500px; }
         .title-rect { width: 100%; height: 100%; overflow: visible; transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
         .title-rect polygon { fill: none; stroke: currentColor; stroke-width: 1; opacity: 0.4; }
 
@@ -199,8 +199,8 @@
 
     <header class="w-full content-width mb-24 opacity-0 fade-in relative" style="animation-delay: 0.2s;">
         <div class="title-rect-wrap" id="title-rect-wrap" aria-hidden="true">
-            <svg class="title-rect" id="title-rect" viewBox="0 0 130 220" preserveAspectRatio="none">
-                <polygon points="26,30 108,0 130,220 0,220" />
+            <svg class="title-rect" id="title-rect" viewBox="0 0 150 145" preserveAspectRatio="none">
+                <polygon points="0,0 150,0 94,145 0,67" />
             </svg>
         </div>
         <h1 id="site-title" class="font-medium tracking-widest cursor-pointer inline-block relative z-10" onclick="goHome()">空間試論</h1>
@@ -931,7 +931,7 @@
         let titleShapeBase = null;
         function randomizeTitleShape() {
             const jitterAmount = 14;
-            const basePoints = [[26, 30], [108, 0], [130, 220], [0, 220]];
+            const basePoints = [[0, 0], [150, 0], [94, 145], [0, 67]];
             titleShapeBase = basePoints.map(([x, y]) => [
                 x + (Math.random() * 2 - 1) * jitterAmount,
                 y + (Math.random() * 2 - 1) * jitterAmount,
