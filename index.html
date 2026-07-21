@@ -260,7 +260,11 @@
         const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpeXpsYXdtY3l5YmNoeHp5b3pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDI2MjQsImV4cCI6MjA5NTU3ODYyNH0.SZVwqWKkk31npqdiiG5m3HdkF4JnQ7SgEzThaFfZ4q4';
         // 匿名アクセスは毎回同じ形のリクエストになりがちで、ブラウザ/経路上のキャッシュに古い結果を返されることがあるため、明示的にキャッシュを無効化する
+        // また、admin.htmlと同じSupabaseプロジェクト・同じオリジンを使っているため、認証セッションを保持/自動読み込みすると
+        // 同じブラウザで管理画面にログイン中は閲覧側もそのセッションを拾ってしまい、下書き・予約投稿まで見えてしまう。
+        // このページは常に匿名(anon)としてアクセスすべきなので、セッションの永続化・自動読み込みを無効化する
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
             global: { fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }) }
         });
 
