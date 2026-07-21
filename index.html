@@ -298,6 +298,14 @@
             document.body.classList.remove('gradient-gray', 'gradient-dark', 'gradient-svg', 'gradient-silver');
             if (['gray', 'dark', 'svg', 'silver'].includes(data.gradient_bg_style)) {
                 document.body.classList.add('gradient-' + data.gradient_bg_style);
+                document.body.style.backgroundImage = '';
+                document.body.style.backgroundRepeat = '';
+            } else if (data.gradient_bg_style === 'custom' && data.bg_image_url) {
+                document.body.style.backgroundImage = `url("${data.bg_image_url}")`;
+                document.body.style.backgroundRepeat = 'repeat';
+            } else {
+                document.body.style.backgroundImage = '';
+                document.body.style.backgroundRepeat = '';
             }
             document.documentElement.style.setProperty('--text-color', data.text_color);
             document.documentElement.style.setProperty('--text-color-solid', data.text_color);

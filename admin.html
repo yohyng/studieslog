@@ -547,13 +547,21 @@
                         <button onclick="pickColor('set-bg-color', '#dfe6e0')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#dfe6e0;" title="薄青磁"></button>
                     </div>
                     <label class="text-xs text-white/50 block mb-2 mt-4">グラデーション背景(テスト機能。上の背景色の代わりに使われます)</label>
-                    <select id="set-gradient-bg-style" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                    <select id="set-gradient-bg-style" onchange="toggleBgImageUpload()" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30 mb-3">
                         <option value="">使わない(通常の背景色)</option>
                         <option value="gray">グレー(画像・粒状ノイズ、タイル状)</option>
                         <option value="dark">ダーク(画像・上から下へ黒くフェード)</option>
                         <option value="svg">プログラム生成(SVGノイズ、軽量)</option>
                         <option value="silver">シルバー(写真由来の細かいグレイン)</option>
+                        <option value="custom">画像をアップロードして使う</option>
                     </select>
+                    <div id="bg-image-upload-row" class="hidden">
+                        <div class="flex gap-2 mb-2">
+                            <input id="set-bg-image-url" type="text" placeholder="https://..." class="flex-1 bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                            <button onclick="uploadBgImage()" class="px-3 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap">📷 アップロード</button>
+                        </div>
+                        <p class="text-xs text-white/30">アップロードした画像はタイル状に敷き詰めて表示されます。継ぎ目のない模様やテクスチャ系の画像だと綺麗に見えます(人物や風景など柄が一目でわかる写真は、繰り返しの境目が目立つことがあります)。</p>
+                    </div>
                 </div>
 
                 <!-- 文字色 -->
@@ -1925,6 +1933,28 @@
             return data.publicUrl;
         }
 
+        function toggleBgImageUpload() {
+            const isCustom = document.getElementById('set-gradient-bg-style').value === 'custom';
+            document.getElementById('bg-image-upload-row').classList.toggle('hidden', !isCustom);
+        }
+
+        function uploadBgImage() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = async () => {
+                const file = input.files[0];
+                if (!file) return;
+                showToast('アップロード中...');
+                const url = await uploadImageFile(file);
+                if (url) {
+                    document.getElementById('set-bg-image-url').value = url;
+                    showToast('アップロードしました。保存するボタンを押して反映してください');
+                }
+            };
+            input.click();
+        }
+
         function uploadOgImage() {
             const input = document.createElement('input');
             input.type = 'file';
@@ -2116,6 +2146,8 @@
             document.getElementById('set-bg-color').value = data.bg_color;
             document.getElementById('set-bg-color-value').textContent = data.bg_color;
             document.getElementById('set-gradient-bg-style').value = data.gradient_bg_style || '';
+            document.getElementById('set-bg-image-url').value = data.bg_image_url || '';
+            toggleBgImageUpload();
             document.getElementById('set-text-color').value = data.text_color;
             document.getElementById('set-text-color-value').textContent = data.text_color;
             document.getElementById('set-list-heading-bg-color').value = data.list_heading_bg_color || '#ffffff';
@@ -2149,6 +2181,7 @@
                 menu_font_size: Number(document.getElementById('set-menu-font-size').value),
                 bg_color: document.getElementById('set-bg-color').value,
                 gradient_bg_style: document.getElementById('set-gradient-bg-style').value,
+                bg_image_url: document.getElementById('set-bg-image-url').value.trim(),
                 text_color: document.getElementById('set-text-color').value,
                 font: document.getElementById('set-font').value,
                 font_size: Number(document.getElementById('set-font-size').value),

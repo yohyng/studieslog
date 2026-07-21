@@ -94,6 +94,7 @@ create table if not exists public.site_settings (
   menu_font_size int not null default 12,
   og_image text not null default '',
   gradient_bg_style text not null default '',
+  bg_image_url text not null default '',
   list_heading_bg_color text not null default '#ffffff',
   list_heading_text_color text not null default '#6b7278',
   digest_bg_color text not null default '#f4f1ea',
@@ -128,6 +129,7 @@ alter table public.site_settings add column if not exists footnote_color text no
 alter table public.site_settings add column if not exists menu_font_size int not null default 12;
 alter table public.site_settings add column if not exists og_image text not null default '';
 alter table public.site_settings add column if not exists gradient_bg_style text not null default '';
+alter table public.site_settings add column if not exists bg_image_url text not null default '';
 alter table public.site_settings add column if not exists list_heading_bg_color text not null default '#ffffff';
 alter table public.site_settings add column if not exists list_heading_text_color text not null default '#6b7278';
 alter table public.site_settings add column if not exists digest_bg_color text not null default '#f4f1ea';
