@@ -45,6 +45,14 @@
             padding-right: 0;
             border-radius: 0;
         }
+        #app-screen.typewriter-mode #edit-date,
+        #app-screen.typewriter-mode #edit-title {
+            border-color: transparent;
+        }
+        #app-screen.typewriter-mode #edit-date:focus,
+        #app-screen.typewriter-mode #edit-title:focus {
+            border-color: color-mix(in srgb, currentColor 30%, transparent);
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -93,13 +101,13 @@
             <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
                 <button onclick="backToList()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors mb-6">← 一覧に戻る</button>
 
-                <div class="tw-hide flex flex-col sm:flex-row gap-4 mb-6">
+                <div class="flex flex-col sm:flex-row gap-4 mb-6">
                     <div class="flex-1">
-                        <label class="text-xs text-white/50 block mb-1">日付</label>
+                        <label class="tw-hide text-xs text-white/50 block mb-1">日付</label>
                         <input id="edit-date" type="text" placeholder="2024.01.01" class="w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1">
                     </div>
                     <div class="flex-[2]">
-                        <label class="text-xs text-white/50 block mb-1">タイトル</label>
+                        <label class="tw-hide text-xs text-white/50 block mb-1">タイトル</label>
                         <input id="edit-title" type="text" placeholder="記事のタイトル" class="w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1">
                     </div>
                 </div>
