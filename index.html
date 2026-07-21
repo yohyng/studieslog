@@ -151,6 +151,25 @@
         .fade-in { animation: fadeIn 1.5s ease-out forwards; opacity: 0; transform: translateY(10px); }
         @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
 
+        /* ハッシュタグ・SNSシェアアイコン・Subscribeボタン共通のグラスモーフィズム(すりガラス)スタイル */
+        .glass-chip {
+            backdrop-filter: blur(8px) saturate(160%);
+            -webkit-backdrop-filter: blur(8px) saturate(160%);
+            border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+        }
+        .glass-icon {
+            width: 2.15rem;
+            height: 2.15rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            background: color-mix(in srgb, var(--bg-color) 45%, transparent);
+            backdrop-filter: blur(8px) saturate(160%);
+            -webkit-backdrop-filter: blur(8px) saturate(160%);
+            border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+        }
+
         /* シルバー背景の光沢レイヤーを、よく見るとゆっくり動いているくらいの速度でドリフトさせる */
         body.gradient-silver { animation: silverDrift 90s ease-in-out infinite alternate; }
         @keyframes silverDrift {
@@ -272,7 +291,7 @@
     </div>
 
     <div class="w-full content-width mt-24 text-center">
-        <button onclick="openSubscribeModal()" class="px-4 py-2 text-xs border rounded hover:opacity-70 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">✉️ 更新をメールで受け取る</button>
+        <button onclick="openSubscribeModal()" class="glass-chip px-4 py-2 text-xs rounded hover:opacity-70 transition-opacity" style="background: color-mix(in srgb, var(--bg-color) 45%, transparent);">✉️ 更新をメールで受け取る</button>
     </div>
 
     <div id="subscribe-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.5);" onmousedown="if(event.target === this) closeSubscribeModal()">
@@ -477,7 +496,7 @@
                 overrideStyle = `style="font-family:${article.font}; font-size:${article.font_size}px; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};"`;
             }
             const tagsHtml = (article.tags && article.tags.length > 0)
-                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${t.name}</a>`).join('')}</div>`
+                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="glass-chip px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${t.name}</a>`).join('')}</div>`
                 : '';
             const related = relatedArticles(article, 3);
             const relatedHtml = related.length > 0
@@ -501,12 +520,12 @@
                     <div class="mt-8 text-center hidden close-btn">
                         ${relatedHtml}
                         ${backlinkHtml}
-                        <div class="flex items-center justify-center gap-5 mb-4">
-                            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="opacity-50 hover:opacity-100 transition-opacity" title="Xでシェア" aria-label="Xでシェア">${SHARE_ICONS.x}</a>
-                            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="opacity-50 hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>
-                            <button onclick="shareToInstagram(${article.id})" class="opacity-50 hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)" aria-label="リンクをコピー(Instagram用)">${SHARE_ICONS.instagram}</button>
-                            <button onclick="shareArticle(${article.id})" class="opacity-50 hover:opacity-100 transition-opacity" title="共有" aria-label="共有">${SHARE_ICONS.share}</button>
-                            <button onclick="event.stopPropagation(); openSubscribeModal()" class="hover:opacity-80 transition-opacity px-2.5 py-1 rounded-full" style="background-color: var(--subscribe-bg-color); color: var(--subscribe-text-color); font-size: 0.65rem;" title="更新をメールで受け取る" aria-label="購読">Subscribe</button>
+                        <div class="flex items-center justify-center gap-3 mb-4">
+                            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="Xでシェア" aria-label="Xでシェア">${SHARE_ICONS.x}</a>
+                            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>
+                            <button onclick="shareToInstagram(${article.id})" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)" aria-label="リンクをコピー(Instagram用)">${SHARE_ICONS.instagram}</button>
+                            <button onclick="shareArticle(${article.id})" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="共有" aria-label="共有">${SHARE_ICONS.share}</button>
+                            <button onclick="event.stopPropagation(); openSubscribeModal()" class="glass-chip hover:opacity-90 transition-opacity px-3 py-1.5 rounded-full" style="background: color-mix(in srgb, var(--subscribe-bg-color) 55%, transparent); color: var(--subscribe-text-color); font-size: 0.65rem;" title="更新をメールで受け取る" aria-label="購読">Subscribe</button>
                         </div>
                         <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;" onclick="closeArticle(this.parentElement.previousElementSibling)">↑ 閉じる</span>
                     </div>
@@ -670,7 +689,7 @@
             const tagsHtml = (!error && allTags && allTags.length > 0)
                 ? `<div class="flex flex-col gap-4">${allTags.map(t => `
                     <a href="/tag/${encodeURIComponent(t.slug)}" class="block hover:opacity-80 transition-opacity">
-                        <span class="inline-block px-2 py-0.5" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${t.name}</span>
+                        <span class="glass-chip inline-block px-2 py-0.5" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${t.name}</span>
                         ${t.description ? `<p class="mt-1" style="color: var(--tag-description-color); font-size: var(--tag-description-size); line-height: inherit;">${escapeHtml(t.description)}</p>` : ''}
                     </a>
                 `).join('')}</div>`
@@ -740,7 +759,7 @@
             const matched = articles.filter(a => (a.tags || []).some(t => t.slug === slug));
             view.innerHTML = `
                 <div class="mb-16 fade-in">
-                    <h2 class="inline-block font-normal mb-3 px-3 py-1" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: calc(var(--tag-font-size) * 1.4); font-family: var(--tag-font);">#${tag.name}</h2>
+                    <h2 class="glass-chip inline-block font-normal mb-3 px-3 py-1" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: calc(var(--tag-font-size) * 1.4); font-family: var(--tag-font);">#${tag.name}</h2>
                     ${tag.description ? `<p style="color: var(--tag-description-color); font-size: var(--tag-description-size); line-height: inherit;">${escapeHtml(tag.description)}</p>` : ''}
                 </div>
                 <div id="tag-article-list" class="flex flex-col gap-16"></div>
