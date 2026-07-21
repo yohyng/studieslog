@@ -89,8 +89,10 @@
         <!-- 記事一覧ビュー -->
         <div id="list-view" class="flex-1 overflow-y-auto">
             <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
-                <button onclick="openNewEditor()" class="mb-8 w-full sm:w-auto px-5 py-3 text-sm bg-white/10 hover:bg-white/20 rounded transition-colors">＋ 新しい記事を書く</button>
+                <button onclick="openNewEditor()" class="mb-4 w-full sm:w-auto px-5 py-3 text-sm bg-white/10 hover:bg-white/20 rounded transition-colors">＋ 新しい記事を書く</button>
+                <input id="article-search" type="text" placeholder="タイトル・本文で検索" oninput="renderArticleCards()" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-6 focus:outline-none focus:border-white/30">
                 <div id="article-cards" class="flex flex-col gap-3"></div>
+                <div id="article-search-empty" class="hidden text-xs text-white/40 text-center py-16">一致する記事がありません。</div>
                 <div id="empty-state" class="hidden text-xs text-white/40 text-center py-16">まだ記事がありません。「＋ 新しい記事を書く」から始めてください。</div>
             </div>
         </div>
@@ -133,6 +135,7 @@
                     <button onclick="formatText('redo')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="やり直す (Ctrl+Y)">↷ やり直す</button>
                 </div>
                 <div id="edit-content" class="content-editor bg-white/5 border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
+                <div id="edit-char-count" class="tw-hide text-xs text-white/30 mt-1 text-right">0文字</div>
 
                 <div class="tw-hide mt-6">
                     <label class="text-xs text-white/50 block mb-2">ハッシュタグ(クリックで選択・解除)</label>
@@ -706,6 +709,11 @@
             return (div.textContent || '').trim();
         }
 
+        function updateCharCount() {
+            const count = stripHtml(document.getElementById('edit-content').innerHTML).length;
+            document.getElementById('edit-char-count').textContent = `${count.toLocaleString()}文字`;
+        }
+
         async function loadArticleList() {
             const { data, error } = await sb.from('articles').select('*').order('date', { ascending: false }).order('id', { ascending: false });
             if (error) {
@@ -721,8 +729,16 @@
             const container = document.getElementById('article-cards');
             container.innerHTML = '';
             document.getElementById('empty-state').classList.toggle('hidden', articles.length > 0);
-            articles.forEach(article => {
-                const preview = stripHtml(article.content).slice(0, 70);
+
+            const query = (document.getElementById('article-search').value || '').trim().toLowerCase();
+            const filtered = query
+                ? articles.filter(a => (a.title || '').toLowerCase().includes(query) || stripHtml(a.content).toLowerCase().includes(query))
+                : articles;
+            document.getElementById('article-search-empty').classList.toggle('hidden', !(query && filtered.length === 0));
+
+            filtered.forEach(article => {
+                const plainText = stripHtml(article.content);
+                const preview = plainText.slice(0, 70);
                 const card = document.createElement('div');
                 card.className = 'flex items-center gap-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded px-4 py-3 cursor-pointer transition-colors';
                 card.onclick = () => openEditEditor(article.id);
@@ -731,6 +747,7 @@
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
                             <span class="text-xs text-white/40">${article.date}</span>
+                            <span class="text-xs text-white/30">${plainText.length.toLocaleString()}文字</span>
                             ${isDraft ? '<span class="text-xs px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-200/80">下書き</span>' : ''}
                         </div>
                         <div class="text-sm mb-1 truncate">${article.title || '(無題)'}</div>
@@ -937,6 +954,7 @@
             document.getElementById('edit-date').value = todayString();
             document.getElementById('edit-title').value = '';
             document.getElementById('edit-content').innerHTML = '<p></p>';
+            updateCharCount();
             document.getElementById('delete-btn').classList.add('hidden');
             document.getElementById('edit-status-label').textContent = '下書き';
             document.getElementById('edit-override-typography').checked = false;
@@ -1092,6 +1110,7 @@
             document.getElementById('edit-date').value = article.date;
             document.getElementById('edit-title').value = article.title;
             document.getElementById('edit-content').innerHTML = article.content;
+            updateCharCount();
             document.getElementById('delete-btn').classList.remove('hidden');
             document.getElementById('edit-status-label').textContent = article.status === 'draft' ? '下書き' : '公開中';
 
@@ -1725,6 +1744,7 @@
         ['input', 'keyup', 'click'].forEach(evt => {
             twEditor.addEventListener(evt, () => requestAnimationFrame(repositionCaretTypewriter));
         });
+        twEditor.addEventListener('input', updateCharCount);
     </script>
 </body>
 </html>
