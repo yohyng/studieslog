@@ -25,16 +25,29 @@ module.exports = async function handler(req, res) {
     const stateRows = await stateRes.json();
     const lastSentAt = (stateRows && stateRows[0] && stateRows[0].last_sent_at) || new Date(0).toISOString();
 
-    const articlesRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/articles?created_at=gt.${encodeURIComponent(lastSentAt)}&select=id,title,date,created_at&order=created_at.asc`,
-        { headers: sbHeaders }
-    );
-    const articles = await articlesRes.json();
+    const [articlesRes, settingsRes] = await Promise.all([
+        fetch(
+            `${SUPABASE_URL}/rest/v1/articles?created_at=gt.${encodeURIComponent(lastSentAt)}&status=eq.published&select=id,title,date,content,created_at&order=created_at.asc`,
+            { headers: sbHeaders }
+        ),
+        fetch(`${SUPABASE_URL}/rest/v1/site_settings?id=eq.1&select=site_title,og_image`, { headers: sbHeaders }),
+    ]);
+    const rawArticles = await articlesRes.json();
+    const settingsRows = await settingsRes.json();
+    const settings = (settingsRows && settingsRows[0]) || {};
+    const siteTitle = settings.site_title || '';
 
-    if (!Array.isArray(articles) || articles.length === 0) {
+    if (!Array.isArray(rawArticles) || rawArticles.length === 0) {
         res.status(200).json({ sent: false, reason: 'no new articles since last send' });
         return;
     }
+
+    const articles = rawArticles.map(a => ({
+        id: a.id,
+        title: a.title,
+        date: a.date,
+        image: extractFirstImage(a.content) || settings.og_image || null,
+    }));
 
     const subsRes = await fetch(`${SUPABASE_URL}/rest/v1/subscribers?select=email,unsubscribe_token`, { headers: sbHeaders });
     const subscribers = await subsRes.json();
@@ -44,23 +57,16 @@ module.exports = async function handler(req, res) {
         return;
     }
 
-    const listHtml = articles
-        .map(a => `<li><a href="${siteUrl}/article/${a.id}">${escapeHtml(a.title)}</a> <span style="opacity:0.6;">(${escapeHtml(a.date)})</span></li>`)
-        .join('');
-
     const messages = subscribers.map(sub => ({
         from: fromEmail,
         to: sub.email,
-        subject: `今週の更新(${articles.length}件)`,
-        html: `
-            <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; line-height: 1.7;">
-                <p>今週公開された記事です。</p>
-                <ul>${listHtml}</ul>
-                <p style="margin-top: 2em; font-size: 12px; opacity: 0.6;">
-                    <a href="${siteUrl}/api/unsubscribe?token=${sub.unsubscribe_token}">配信停止はこちら</a>
-                </p>
-            </div>
-        `,
+        subject: `【${siteTitle}】今週の更新(${articles.length}件)`,
+        html: buildDigestHtml({
+            siteTitle,
+            siteUrl,
+            articles,
+            unsubscribeUrl: `${siteUrl}/api/unsubscribe?token=${sub.unsubscribe_token}`,
+        }),
     }));
 
     // Resendのbatch送信APIは一度に最大100件まで
@@ -91,6 +97,80 @@ module.exports = async function handler(req, res) {
     res.status(200).json({ sent: true, articleCount: articles.length, subscriberCount: subscribers.length });
 };
 
+// 週次ダイジェストのメール本文。admin.htmlのプレビュー機能もこれと同じ見た目になるよう手動で揃えている。
+// テーブルレイアウトなのは、古いOutlookなどflexbox非対応のメールクライアントでも崩れないようにするため
+function buildDigestHtml({ siteTitle, siteUrl, articles, unsubscribeUrl }) {
+    const fontStack = "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif";
+    const rows = articles.map(a => {
+        const url = `${siteUrl}/article/${a.id}`;
+        const imageCell = a.image
+            ? `<td width="64" style="width:64px; padding-right:14px; vertical-align:top;"><img src="${escapeHtml(a.image)}" width="64" height="64" style="width:64px; height:64px; object-fit:cover; border-radius:6px; display:block;" alt=""></td>`
+            : '';
+        return `
+            <a href="${url}" style="text-decoration:none; display:block; padding:16px 0; border-bottom:1px solid #e8e4da;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                    <tr>
+                        ${imageCell}
+                        <td style="vertical-align:middle;">
+                            <div style="font-size:11px; color:#9a9284; margin-bottom:4px; font-family:${fontStack};">${escapeHtml(a.date)}</div>
+                            <div style="font-size:15px; color:#2b2b28; font-weight:600; line-height:1.5; font-family:${fontStack};">${escapeHtml(a.title)}</div>
+                        </td>
+                    </tr>
+                </table>
+            </a>
+        `;
+    }).join('');
+
+    return `<!doctype html>
+<html lang="ja">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0; padding:0; background-color:#f4f1ea;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f1ea;">
+        <tr>
+            <td align="center" style="padding: 40px 16px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; font-family:${fontStack};">
+                    <tr>
+                        <td align="center" style="padding-bottom: 32px;">
+                            <div style="font-size:11px; letter-spacing:0.15em; color:#a39c8c; text-transform:uppercase; margin-bottom:10px;">Weekly Update</div>
+                            <div style="font-size:22px; color:#2b2b28; font-weight:600;">${escapeHtml(siteTitle)}</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0 4px;">
+                            <p style="font-size:14px; color:#5a5548; line-height:1.8; margin:0 0 8px;">今週、${articles.length}件の記事を公開しました。</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0 4px;">
+                            ${rows}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding: 36px 0 8px;">
+                            <a href="${siteUrl}" style="display:inline-block; padding:12px 28px; background-color:#2b2b28; color:#ffffff; text-decoration:none; border-radius:4px; font-size:13px;">サイトで読む</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding-top: 40px; border-top: 1px solid #e8e4da;">
+                            <p style="font-size:11px; color:#a39c8c; line-height:1.8; margin: 24px 0 0;">
+                                このメールは ${escapeHtml(siteTitle)} の更新通知として送信されています。<br>
+                                <a href="${unsubscribeUrl}" style="color:#a39c8c;">配信停止はこちら</a>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`;
+}
+
 function escapeHtml(str) {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function extractFirstImage(html) {
+    const m = String(html).match(/<img[^>]+src="([^"]+)"/);
+    return m ? m[1] : null;
 }
