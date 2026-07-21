@@ -18,11 +18,18 @@ alter table public.articles add column if not exists text_align text;
 -- 紹介リンク(書籍など)。[{"label": "...", "url": "..."}, ...] の配列
 alter table public.articles add column if not exists book_links jsonb not null default '[]';
 
+-- 下書き/公開の状態。既存記事を巻き込んで非公開にしないよう、デフォルトは'published'
+alter table public.articles add column if not exists status text not null default 'published';
+
 alter table public.articles enable row level security;
 
--- 閲覧は誰でも可能(公開ブログのため)
+-- 閲覧は誰でも可能(公開ブログのため)だが、下書き(status='draft')は公開されていないので隠す
 create policy "articles_public_read" on public.articles
-  for select using (true);
+  for select to anon using (status = 'published');
+
+-- ログイン済み(管理者)は下書きも含めて全部読める
+create policy "articles_authenticated_read_all" on public.articles
+  for select to authenticated using (true);
 
 -- 作成・更新・削除はログイン済みユーザーのみ
 create policy "articles_auth_insert" on public.articles
