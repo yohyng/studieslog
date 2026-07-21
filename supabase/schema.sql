@@ -67,6 +67,7 @@ create table if not exists public.site_settings (
   tag_bg_color text not null default '#ffffff',
   tag_text_color text not null default '#6b7278',
   tag_font_size int not null default 12,
+  tag_font text not null default '',
   site_title_size int not null default 14,
   site_title_color text not null default '#ffffff',
   site_subtitle_size int not null default 12,
@@ -96,6 +97,7 @@ alter table public.site_settings add column if not exists text_align text not nu
 alter table public.site_settings add column if not exists tag_bg_color text not null default '#ffffff';
 alter table public.site_settings add column if not exists tag_text_color text not null default '#6b7278';
 alter table public.site_settings add column if not exists tag_font_size int not null default 12;
+alter table public.site_settings add column if not exists tag_font text not null default '';
 alter table public.site_settings add column if not exists site_title_size int not null default 14;
 alter table public.site_settings add column if not exists site_title_color text not null default '#ffffff';
 alter table public.site_settings add column if not exists site_subtitle_size int not null default 12;

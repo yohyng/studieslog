@@ -20,6 +20,7 @@
             --tag-bg-color: #ffffff;
             --tag-text-color: #6b7278;
             --tag-font-size: 12px;
+            --tag-font: 'Shippori Mincho', serif;
             --tag-description-color: #ffffff;
             --tag-description-size: 12px;
             --footnote-color: #7dd3fc;
@@ -272,6 +273,7 @@
             document.documentElement.style.setProperty('--tag-bg-color', data.tag_bg_color || data.text_color);
             document.documentElement.style.setProperty('--tag-text-color', data.tag_text_color || data.bg_color);
             document.documentElement.style.setProperty('--tag-font-size', (data.tag_font_size || 12) + 'px');
+            document.documentElement.style.setProperty('--tag-font', data.tag_font || data.font);
             document.documentElement.style.setProperty('--tag-description-color', data.tag_description_color || data.text_color);
             document.documentElement.style.setProperty('--footnote-color', data.footnote_color || data.text_color);
             siteFootnoteColor = data.footnote_color || data.text_color;
@@ -364,7 +366,7 @@
                 overrideStyle = `style="font-family:${article.font}; font-size:${article.font_size}px; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};"`;
             }
             const tagsHtml = (article.tags && article.tags.length > 0)
-                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: var(--tag-font-size);">#${t.name}</a>`).join('')}</div>`
+                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${t.name}</a>`).join('')}</div>`
                 : '';
             const related = relatedArticles(article, 3);
             const relatedHtml = related.length > 0
@@ -556,7 +558,7 @@
             const tagsHtml = (!error && allTags && allTags.length > 0)
                 ? `<div class="flex flex-col gap-4">${allTags.map(t => `
                     <a href="/tag/${encodeURIComponent(t.slug)}" class="block hover:opacity-80 transition-opacity">
-                        <span class="inline-block px-2 py-0.5" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: var(--tag-font-size);">#${t.name}</span>
+                        <span class="inline-block px-2 py-0.5" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${t.name}</span>
                         ${t.description ? `<p class="mt-1" style="color: var(--tag-description-color); font-size: var(--tag-description-size); line-height: inherit;">${escapeHtml(t.description)}</p>` : ''}
                     </a>
                 `).join('')}</div>`
@@ -626,7 +628,7 @@
             const matched = articles.filter(a => (a.tags || []).some(t => t.slug === slug));
             view.innerHTML = `
                 <div class="mb-16 fade-in">
-                    <h2 class="inline-block font-normal mb-3 px-3 py-1" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: calc(var(--tag-font-size) * 1.4);">#${tag.name}</h2>
+                    <h2 class="inline-block font-normal mb-3 px-3 py-1" style="background: var(--tag-bg-color); color: var(--tag-text-color); font-size: calc(var(--tag-font-size) * 1.4); font-family: var(--tag-font);">#${tag.name}</h2>
                     ${tag.description ? `<p style="color: var(--tag-description-color); font-size: var(--tag-description-size); line-height: inherit;">${escapeHtml(tag.description)}</p>` : ''}
                 </div>
                 <div id="tag-article-list" class="flex flex-col gap-16"></div>
