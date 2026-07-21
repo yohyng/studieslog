@@ -422,12 +422,12 @@
                     <div class="mt-8 text-center hidden close-btn">
                         ${relatedHtml}
                         ${backlinkHtml}
-                        <div class="flex items-center justify-center gap-5 opacity-50 mb-4">
-                            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Xでシェア" aria-label="Xでシェア">${SHARE_ICONS.x}</a>
-                            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>
-                            <button onclick="shareToInstagram(${article.id})" class="hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)" aria-label="リンクをコピー(Instagram用)">${SHARE_ICONS.instagram}</button>
-                            <button onclick="shareArticle(${article.id})" class="hover:opacity-100 transition-opacity" title="共有" aria-label="共有">${SHARE_ICONS.share}</button>
-                            <button onclick="event.stopPropagation(); openSubscribeModal()" class="hover:opacity-100 transition-opacity px-3 py-1 rounded-full text-xs" style="background-color: var(--subscribe-bg-color); color: var(--subscribe-text-color);" title="更新をメールで受け取る" aria-label="購読">Subscribe</button>
+                        <div class="flex items-center justify-center gap-5 mb-4">
+                            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="opacity-50 hover:opacity-100 transition-opacity" title="Xでシェア" aria-label="Xでシェア">${SHARE_ICONS.x}</a>
+                            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="opacity-50 hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>
+                            <button onclick="shareToInstagram(${article.id})" class="opacity-50 hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)" aria-label="リンクをコピー(Instagram用)">${SHARE_ICONS.instagram}</button>
+                            <button onclick="shareArticle(${article.id})" class="opacity-50 hover:opacity-100 transition-opacity" title="共有" aria-label="共有">${SHARE_ICONS.share}</button>
+                            <button onclick="event.stopPropagation(); openSubscribeModal()" class="hover:opacity-80 transition-opacity px-3 py-1 rounded-full text-xs" style="background-color: var(--subscribe-bg-color); color: var(--subscribe-text-color);" title="更新をメールで受け取る" aria-label="購読">Subscribe</button>
                         </div>
                         <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;" onclick="closeArticle(this.parentElement.previousElementSibling)">↑ 閉じる</span>
                     </div>
