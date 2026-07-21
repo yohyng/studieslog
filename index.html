@@ -312,6 +312,18 @@
                 document.body.style.backgroundImage = `${macroSheen}, ${tileImage}`;
                 document.body.style.backgroundRepeat = 'no-repeat, no-repeat, repeat';
                 document.body.style.backgroundSize = '100% 100%, 100% 100%, 500px 500px';
+            } else if (data.gradient_bg_style === 'smooth') {
+                // ノイズを一切使わない、なめらかな金属光沢グラデーション。画像を使わずCSSだけで生成しているので軽量で、
+                // 読み込むたびハイライトの位置が少し変わる(タイル画像ではないので繰り返しの継ぎ目もそもそも発生しない)
+                const hx1 = Math.round(55 + Math.random() * 30);
+                const hy1 = Math.round(10 + Math.random() * 25);
+                const hx2 = Math.round(15 + Math.random() * 30);
+                const hy2 = Math.round(55 + Math.random() * 30);
+                const baseAngle = Math.round(110 + Math.random() * 40);
+                const smoothGradient = `radial-gradient(ellipse 85% 55% at ${hx1}% ${hy1}%, rgba(255,255,255,0.9), rgba(255,255,255,0) 60%), radial-gradient(ellipse 70% 50% at ${hx2}% ${hy2}%, rgba(255,255,255,0.55), rgba(255,255,255,0) 55%), linear-gradient(${baseAngle}deg, #c9cccf, #dcdedf)`;
+                document.body.style.backgroundImage = smoothGradient;
+                document.body.style.backgroundRepeat = 'no-repeat';
+                document.body.style.backgroundSize = '100% 100%';
             } else if (['gray', 'dark', 'svg'].includes(data.gradient_bg_style)) {
                 document.body.classList.add('gradient-' + data.gradient_bg_style);
                 document.body.style.backgroundImage = '';
