@@ -101,15 +101,11 @@
             <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
                 <button onclick="backToList()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors mb-6">← 一覧に戻る</button>
 
-                <div class="flex flex-col sm:flex-row gap-4 mb-6">
-                    <div class="flex-1">
-                        <label class="tw-hide text-xs text-white/50 block mb-1">日付</label>
-                        <input id="edit-date" type="text" placeholder="2024.01.01" class="w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1">
-                    </div>
-                    <div class="flex-[2]">
-                        <label class="tw-hide text-xs text-white/50 block mb-1">タイトル</label>
-                        <input id="edit-title" type="text" placeholder="記事のタイトル" class="w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1">
-                    </div>
+                <div class="mb-6">
+                    <label class="tw-hide text-xs text-white/50 block mb-1">日付</label>
+                    <input id="edit-date" type="text" placeholder="2024.01.01" class="w-40 bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1 mb-4 block">
+                    <label class="tw-hide text-xs text-white/50 block mb-1">タイトル</label>
+                    <input id="edit-title" type="text" placeholder="記事のタイトル" class="w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1">
                 </div>
 
                 <label class="tw-hide text-xs text-white/50 block mb-1">本文</label>
