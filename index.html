@@ -31,15 +31,18 @@
             --content-width: 42rem;
             --base-line-height: 2.2;
             --base-font-size: 16px;
+            --base-letter-spacing: 0.08em;
             /* スマホは画面幅が狭く1行の文字数が少ないため、同じ行間・文字サイズの数値でも間延びして見える。狭い画面では少し詰める */
             --line-height-scale: 1;
             --font-size-scale: 1;
+            /* スマホでは文字自体を縮小する一方、字間は据え置きだと相対的に間延びして1行の文字数がさらに減るため、字間も詰める */
+            --letter-spacing-scale: 1;
             /* bodyの左右余白(px-5 / min-[450px]:px-8 / md:px-12 / lg:px-0)と同じ値。ハンバーガーメニューの右端をコンテンツの右端に揃えるための計算に使う */
             --body-pad: 1.25rem;
         }
 
         @media (max-width: 640px) {
-            :root { --line-height-scale: 0.75; --font-size-scale: 0.85; }
+            :root { --line-height-scale: 0.75; --font-size-scale: 0.85; --letter-spacing-scale: 0.5; }
         }
 
         @media (min-width: 450px) {
@@ -103,7 +106,7 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             line-height: calc(var(--base-line-height) * var(--line-height-scale));
-            letter-spacing: 0.08em;
+            letter-spacing: calc(var(--base-letter-spacing) * var(--letter-spacing-scale));
             opacity: 0;
             transition: opacity 0.4s ease, background-color 0.5s ease, color 0.5s ease;
         }
@@ -283,7 +286,7 @@
             document.body.style.fontFamily = data.font;
             siteLineHeight = data.line_height;
             document.documentElement.style.setProperty('--base-line-height', data.line_height);
-            document.body.style.letterSpacing = data.letter_spacing + 'em';
+            document.documentElement.style.setProperty('--base-letter-spacing', data.letter_spacing + 'em');
             document.body.style.textAlign = data.text_align || 'left';
             previewLines = data.preview_lines || 3;
             if (data.content_width) document.documentElement.style.setProperty('--content-width', data.content_width + 'px');
