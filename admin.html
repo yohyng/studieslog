@@ -783,6 +783,7 @@
                 .eq('id', 1).single();
             if (!error && data) {
                 siteTypography = data;
+                document.body.style.backgroundColor = data.bg_color;
                 applyEditorPreviewStyle();
             }
         }
@@ -1646,6 +1647,7 @@
                 return;
             }
             siteTypography = payload;
+            document.body.style.backgroundColor = payload.bg_color;
             applyEditorPreviewStyle();
             showToast('表示設定を保存しました');
         }
