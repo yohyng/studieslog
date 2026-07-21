@@ -251,6 +251,8 @@
                 <div class="tw-hide flex flex-wrap items-center gap-3 mt-6">
                     <span id="edit-status-label" class="text-xs text-white/40"></span>
                     <button onclick="saveArticle('draft')" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">下書き保存</button>
+                    <input type="datetime-local" id="edit-scheduled-at" class="bg-white/5 text-xs rounded px-2 py-2.5 border border-white/10 focus:outline-none focus:border-white/30">
+                    <button onclick="saveScheduledArticle()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">予約投稿</button>
                     <button onclick="saveArticle('published')" class="px-5 py-2.5 text-xs bg-white/20 hover:bg-white/30 rounded transition-colors">公開する</button>
                     <button onclick="backToList()" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">キャンセル</button>
                     <button id="delete-btn" onclick="deleteCurrentArticle()" class="hidden sm:ml-auto px-5 py-2.5 text-xs text-red-400/70 hover:text-red-400 transition-colors">この記事を削除</button>
@@ -806,13 +808,21 @@
                 const card = document.createElement('div');
                 card.className = 'flex items-center gap-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded px-4 py-3 cursor-pointer transition-colors';
                 card.onclick = () => openEditEditor(article.id);
-                const isDraft = article.status === 'draft';
+                const effectiveStatus = computeEffectiveStatus(article);
+                let badgeHtml = '';
+                if (article.status === 'draft') {
+                    badgeHtml = '<span class="text-xs px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-200/80">下書き</span>';
+                } else if (article.status === 'scheduled' && effectiveStatus === 'scheduled') {
+                    const d = new Date(article.scheduled_at);
+                    const label = d.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                    badgeHtml = `<span class="text-xs px-1.5 py-0.5 rounded bg-sky-400/20 text-sky-200/80">予約 ${label}</span>`;
+                }
                 card.innerHTML = `
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
                             <span class="text-xs text-white/40">${article.date}</span>
                             <span class="text-xs text-white/30">${plainText.length.toLocaleString()}文字</span>
-                            ${isDraft ? '<span class="text-xs px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-200/80">下書き</span>' : ''}
+                            ${badgeHtml}
                         </div>
                         <div class="text-sm mb-1 truncate">${article.title || '(無題)'}</div>
                         <div class="text-xs text-white/40 truncate">${preview}</div>
@@ -1021,6 +1031,7 @@
             updateCharCount();
             document.getElementById('delete-btn').classList.add('hidden');
             document.getElementById('edit-status-label').textContent = '下書き';
+            document.getElementById('edit-scheduled-at').value = '';
             document.getElementById('edit-override-typography').checked = false;
             setTypographyFields(TYPOGRAPHY_DEFAULTS);
             toggleTypographyOverride();
@@ -1176,7 +1187,8 @@
             document.getElementById('edit-content').innerHTML = article.content;
             updateCharCount();
             document.getElementById('delete-btn').classList.remove('hidden');
-            document.getElementById('edit-status-label').textContent = article.status === 'draft' ? '下書き' : '公開中';
+            document.getElementById('edit-status-label').textContent = formatStatusLabel(article);
+            document.getElementById('edit-scheduled-at').value = article.scheduled_at ? toDatetimeLocalValue(article.scheduled_at) : '';
 
             const hasOverride = article.font != null;
             document.getElementById('edit-override-typography').checked = hasOverride;
@@ -1193,7 +1205,46 @@
             showEditorView();
         }
 
-        async function saveArticle(status) {
+        // 予約投稿は「cronで自動的にstatusを書き換える」方式ではなく、
+        // 閲覧側のRLS(articles_public_read)がscheduled_atを過ぎたscheduled記事を自動的に見せる方式にしている。
+        // Vercelの無料プランはcronの実行頻度に制限があり、正確な時刻に発火できないため
+        function toDatetimeLocalValue(isoString) {
+            const d = new Date(isoString);
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        function computeEffectiveStatus(article) {
+            if (article.status === 'scheduled' && article.scheduled_at && new Date(article.scheduled_at) <= new Date()) {
+                return 'published';
+            }
+            return article.status;
+        }
+
+        function formatStatusLabel(article) {
+            if (article.status === 'draft') return '下書き';
+            if (article.status === 'scheduled' && computeEffectiveStatus(article) === 'scheduled') {
+                const d = new Date(article.scheduled_at);
+                return `予約済み(${d.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}に公開)`;
+            }
+            return '公開中';
+        }
+
+        async function saveScheduledArticle() {
+            const input = document.getElementById('edit-scheduled-at');
+            if (!input.value) {
+                showToast('予約日時を選択してください');
+                return;
+            }
+            const scheduledDate = new Date(input.value);
+            if (scheduledDate <= new Date()) {
+                showToast('予約日時は未来の日時を指定してください');
+                return;
+            }
+            await saveArticle('scheduled', scheduledDate.toISOString());
+        }
+
+        async function saveArticle(status, scheduledAt = null) {
             const date = document.getElementById('edit-date').value.trim();
             const title = document.getElementById('edit-title').value.trim();
             const content = document.getElementById('edit-content').innerHTML;
@@ -1206,6 +1257,7 @@
             const useOverride = document.getElementById('edit-override-typography').checked;
             const payload = {
                 date, title, content, status,
+                scheduled_at: status === 'scheduled' ? scheduledAt : null,
                 font: useOverride ? document.getElementById('edit-font').value : null,
                 font_size: useOverride ? Number(document.getElementById('edit-font-size').value) : null,
                 line_height: useOverride ? Number(document.getElementById('edit-line-height').value) : null,
@@ -1222,7 +1274,7 @@
                 return;
             }
             await syncArticleTags(data.id);
-            showToast(status === 'draft' ? '下書き保存しました' : '公開しました');
+            showToast(status === 'draft' ? '下書き保存しました' : status === 'scheduled' ? '予約投稿を設定しました' : '公開しました');
             backToList();
         }
 
@@ -1653,7 +1705,7 @@
             const [{ data: items, error }, { data: settingsData }] = await Promise.all([
                 sb.from('articles')
                     .select('id, title, date, content')
-                    .eq('status', 'published')
+                    .or(`status.eq.published,and(status.eq.scheduled,scheduled_at.lte.${new Date().toISOString()})`)
                     .order('date', { ascending: false })
                     .limit(5),
                 sb.from('site_settings').select('site_title, og_image, digest_bg_color, digest_text_color, font').eq('id', 1).single(),

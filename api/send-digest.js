@@ -26,10 +26,15 @@ module.exports = async function handler(req, res) {
     const stateRes = await fetch(`${SUPABASE_URL}/rest/v1/newsletter_state?id=eq.1&select=last_sent_at`, { headers: sbHeaders });
     const stateRows = await stateRes.json();
     const lastSentAt = (stateRows && stateRows[0] && stateRows[0].last_sent_at) || new Date(0).toISOString();
+    const nowIso = new Date().toISOString();
+
+    // 公開済み記事は作成日時、予約投稿は予約日時を基準に「前回送信以降の新着」を判定する
+    // (予約投稿はcronで自動的にstatusが書き換わらないため、created_atだけで判定すると予定日時を過ぎても永久に拾われない)
+    const orFilter = `or=(and(status.eq.published,created_at.gt.${encodeURIComponent(lastSentAt)}),and(status.eq.scheduled,scheduled_at.gt.${encodeURIComponent(lastSentAt)},scheduled_at.lte.${encodeURIComponent(nowIso)}))`;
 
     const [articlesRes, settingsRes] = await Promise.all([
         fetch(
-            `${SUPABASE_URL}/rest/v1/articles?created_at=gt.${encodeURIComponent(lastSentAt)}&status=eq.published&select=id,title,date,content,created_at&order=created_at.asc`,
+            `${SUPABASE_URL}/rest/v1/articles?${orFilter}&select=id,title,date,content,created_at&order=created_at.asc`,
             { headers: sbHeaders }
         ),
         fetch(`${SUPABASE_URL}/rest/v1/site_settings?id=eq.1&select=site_title,og_image,digest_bg_color,digest_text_color,font`, { headers: sbHeaders }),

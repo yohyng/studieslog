@@ -18,14 +18,21 @@ alter table public.articles add column if not exists text_align text;
 -- 紹介リンク(書籍など)。[{"label": "...", "url": "..."}, ...] の配列
 alter table public.articles add column if not exists book_links jsonb not null default '[]';
 
--- 下書き/公開の状態。既存記事を巻き込んで非公開にしないよう、デフォルトは'published'
+-- 下書き/予約/公開の状態。既存記事を巻き込んで非公開にしないよう、デフォルトは'published'
 alter table public.articles add column if not exists status text not null default 'published';
+
+-- 予約投稿の公開予定日時(status='scheduled'の時だけ使う)
+alter table public.articles add column if not exists scheduled_at timestamptz;
 
 alter table public.articles enable row level security;
 
--- 閲覧は誰でも可能(公開ブログのため)だが、下書き(status='draft')は公開されていないので隠す
+-- 閲覧は誰でも可能(公開ブログのため)。下書きは常に隠すが、
+-- 予約投稿(status='scheduled')は予定日時を過ぎた瞬間に自動で見えるようになる(cron不要)
+drop policy if exists "articles_public_read" on public.articles;
 create policy "articles_public_read" on public.articles
-  for select to anon using (status = 'published');
+  for select to anon using (
+    status = 'published' or (status = 'scheduled' and scheduled_at <= now())
+  );
 
 -- ログイン済み(管理者)は下書きも含めて全部読める
 create policy "articles_authenticated_read_all" on public.articles

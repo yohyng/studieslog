@@ -53,8 +53,10 @@ module.exports = async function handler(req, res) {
     const settings = (settingsRows && settingsRows[0]) || {};
     const siteTitle = settings.site_title || '';
 
+    const nowIso = new Date().toISOString();
+    const orFilter = `or=(status.eq.published,and(status.eq.scheduled,scheduled_at.lte.${encodeURIComponent(nowIso)}))`;
     const articlesRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/articles?status=eq.published&select=id,title,date,content,created_at&order=created_at.desc&limit=5`,
+        `${SUPABASE_URL}/rest/v1/articles?${orFilter}&select=id,title,date,content,created_at&order=created_at.desc&limit=5`,
         { headers: sbHeaders }
     );
     const rawArticles = await articlesRes.json();
