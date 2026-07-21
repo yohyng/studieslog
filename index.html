@@ -192,7 +192,12 @@
     <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
 
     <!-- ハンバーガーメニュー -->
-    <button id="hamburger-btn" onclick="toggleMenu()" class="fixed top-6 z-40 w-5 h-5 opacity-80 hover:opacity-100 transition-opacity" style="background: rgba(255,255,255,0.75); border: 1px solid #ffffff; backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%);" title="メニュー" aria-label="メニュー"></button>
+    <button id="hamburger-btn" onclick="toggleMenu()" class="fixed top-6 z-40 opacity-80 hover:opacity-100 transition-opacity" title="メニュー" aria-label="メニュー">
+        <svg viewBox="0 0 28 28" width="26" height="26" fill="none" stroke="#ffffff" stroke-width="1.4" aria-hidden="true">
+            <circle cx="14" cy="14" r="12" />
+            <rect x="9" y="9" width="10" height="10" rx="1.5" />
+        </svg>
+    </button>
 
     <div id="menu-overlay" class="fixed inset-0 z-50 pointer-events-none">
         <div id="menu-catcher" class="absolute inset-0 pointer-events-none opacity-0" onclick="toggleMenu()"></div>
