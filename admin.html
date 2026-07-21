@@ -77,6 +77,7 @@
                 <nav class="flex items-center gap-1 text-xs">
                     <button id="nav-articles" onclick="showTab('articles')" class="px-3 py-1.5 rounded transition-colors bg-white/10">記事</button>
                     <button id="nav-tags" onclick="showTab('tags')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">タグ</button>
+                    <button id="nav-subscribers" onclick="showTab('subscribers')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">購読者</button>
                     <button id="nav-settings" onclick="showTab('settings')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">表示設定</button>
                 </nav>
             </div>
@@ -287,6 +288,15 @@
                     <button onclick="backToTagList()" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">キャンセル</button>
                     <button id="tag-delete-btn" onclick="deleteCurrentTag()" class="hidden sm:ml-auto px-5 py-2.5 text-xs text-red-400/70 hover:text-red-400 transition-colors">このタグを削除</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- 購読者一覧ビュー -->
+        <div id="subscribers-view" class="hidden flex-1 overflow-y-auto">
+            <div class="max-w-2xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
+                <p class="text-xs text-white/40 mb-6">週次ダイジェストメールの購読者一覧です。<span id="subscriber-count"></span></p>
+                <div id="subscriber-cards" class="flex flex-col gap-2"></div>
+                <div id="subscriber-empty-state" class="hidden text-xs text-white/40 text-center py-16">まだ購読者がいません。</div>
             </div>
         </div>
 
@@ -682,12 +692,14 @@
         function showTab(tab) {
             document.getElementById('nav-articles').classList.toggle('bg-white/10', tab === 'articles');
             document.getElementById('nav-tags').classList.toggle('bg-white/10', tab === 'tags');
+            document.getElementById('nav-subscribers').classList.toggle('bg-white/10', tab === 'subscribers');
             document.getElementById('nav-settings').classList.toggle('bg-white/10', tab === 'settings');
 
             document.getElementById('list-view').classList.add('hidden');
             document.getElementById('editor-view').classList.add('hidden');
             document.getElementById('tags-view').classList.add('hidden');
             document.getElementById('tag-editor-view').classList.add('hidden');
+            document.getElementById('subscribers-view').classList.add('hidden');
             document.getElementById('settings-view').classList.add('hidden');
 
             if (tab === 'articles') {
@@ -696,6 +708,9 @@
             } else if (tab === 'tags') {
                 showTagListView();
                 loadTagsList();
+            } else if (tab === 'subscribers') {
+                document.getElementById('subscribers-view').classList.remove('hidden');
+                loadSubscribersList();
             } else {
                 document.getElementById('settings-view').classList.remove('hidden');
                 loadSiteSettings();
@@ -1364,6 +1379,53 @@
             renderTagCheckboxes();
             input.value = '';
             input.focus();
+        }
+
+        // --- 購読者(週次ダイジェストメールの宛先リスト) ---
+        let subscribers = [];
+
+        async function loadSubscribersList() {
+            const { data, error } = await sb.from('subscribers').select('*').order('created_at', { ascending: false });
+            if (error) {
+                console.error(error);
+                showToast('購読者の読み込みに失敗しました');
+                return;
+            }
+            subscribers = data || [];
+            renderSubscriberCards();
+        }
+
+        function renderSubscriberCards() {
+            const container = document.getElementById('subscriber-cards');
+            container.innerHTML = '';
+            document.getElementById('subscriber-empty-state').classList.toggle('hidden', subscribers.length > 0);
+            document.getElementById('subscriber-count').textContent = subscribers.length > 0 ? `(${subscribers.length}件)` : '';
+            subscribers.forEach(sub => {
+                const card = document.createElement('div');
+                card.className = 'flex items-center justify-between gap-4 bg-white/5 border border-white/10 rounded px-4 py-3';
+                const date = new Date(sub.created_at).toLocaleDateString('ja-JP');
+                card.innerHTML = `
+                    <div class="min-w-0">
+                        <div class="text-sm truncate">${escapeAttr(sub.email)}</div>
+                        <div class="text-xs text-white/40">${date} 登録</div>
+                    </div>
+                    <button onclick="deleteSubscriber(${sub.id})" class="shrink-0 text-xs text-red-400/70 hover:text-red-400 transition-colors">削除</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function deleteSubscriber(id) {
+            if (!confirm('この購読者を削除しますか？')) return;
+            const { error } = await sb.from('subscribers').delete().eq('id', id);
+            if (error) {
+                console.error(error);
+                showToast('削除に失敗しました');
+                return;
+            }
+            subscribers = subscribers.filter(s => s.id !== id);
+            renderSubscriberCards();
+            showToast('削除しました');
         }
 
         // --- 本文フォーマット・画像挿入 ---
