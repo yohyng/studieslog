@@ -336,12 +336,16 @@
                 // ビューポート内ではほぼ単色に見えてしまうため、画面数枚分の高さ(tileHeight)で
                 // 縦方向にループする単位を作り、それをrepeat-yで繰り返す方式にしている。
                 // 基準色はループの継ぎ目で色が合うよう始点と終点を同じにしてあるので、繰り返しの境目もできない
+                // ハイライトの楕円は、縦方向のフェードがタイルの上下端で完全に透明になりきる前に
+                // 打ち切られると、繰り返しの境目に明るさの断層(継ぎ目)ができてしまう。
+                // 楕円を小さめにし、中心位置もタイル上下端から十分離れた範囲に収めることで
+                // フェードがタイル内で完結するようにしている
                 const tileHeight = 1400;
                 const hx1 = Math.round(55 + Math.random() * 30);
-                const hy1 = Math.round(10 + Math.random() * 25);
+                const hy1 = Math.round(25 + Math.random() * 25);
                 const hx2 = Math.round(15 + Math.random() * 30);
-                const hy2 = Math.round(55 + Math.random() * 30);
-                const smoothGradient = `radial-gradient(ellipse 85% 55% at ${hx1}% ${hy1}%, rgba(255,255,255,0.28), rgba(255,255,255,0) 60%), radial-gradient(ellipse 70% 50% at ${hx2}% ${hy2}%, rgba(255,255,255,0.14), rgba(255,255,255,0) 55%), linear-gradient(180deg, #55585a, #6c6e71, #55585a)`;
+                const hy2 = Math.round(50 + Math.random() * 25);
+                const smoothGradient = `radial-gradient(ellipse 60% 35% at ${hx1}% ${hy1}%, rgba(255,255,255,0.28), rgba(255,255,255,0) 60%), radial-gradient(ellipse 50% 30% at ${hx2}% ${hy2}%, rgba(255,255,255,0.14), rgba(255,255,255,0) 55%), linear-gradient(180deg, #55585a, #6c6e71, #55585a)`;
                 document.body.style.backgroundImage = smoothGradient;
                 document.body.style.backgroundRepeat = 'repeat-y';
                 document.body.style.backgroundSize = `100% ${tileHeight}px`;
