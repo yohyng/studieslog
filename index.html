@@ -297,7 +297,22 @@
             applyTitleShapeSettings(data);
             document.documentElement.style.setProperty('--bg-color', data.bg_color);
             document.body.classList.remove('gradient-gray', 'gradient-dark', 'gradient-svg', 'gradient-silver');
-            if (['gray', 'dark', 'svg', 'silver'].includes(data.gradient_bg_style)) {
+            document.body.style.backgroundSize = '';
+            if (data.gradient_bg_style === 'silver') {
+                // 細かい粒のタイルはそのままに、その下に読み込むたびランダムな向き・位置の
+                // 大きく柔らかい金属光沢を2枚重ねることで、単調な一本の帯にならないようにし、
+                // タイルの反復感も目立ちにくくする
+                document.body.classList.add('gradient-silver');
+                const tileImage = getComputedStyle(document.body).backgroundImage;
+                const angle1 = Math.round(Math.random() * 360);
+                const pos1 = Math.round(25 + Math.random() * 30);
+                const angle2 = Math.round(Math.random() * 360);
+                const pos2 = Math.round(45 + Math.random() * 30);
+                const macroSheen = `linear-gradient(${angle1}deg, rgba(255,255,255,0) 20%, rgba(255,255,255,0.14) ${pos1}%, rgba(255,255,255,0) 65%), linear-gradient(${angle2}deg, rgba(255,255,255,0) 35%, rgba(255,255,255,0.1) ${pos2}%, rgba(255,255,255,0) 80%)`;
+                document.body.style.backgroundImage = `${macroSheen}, ${tileImage}`;
+                document.body.style.backgroundRepeat = 'no-repeat, no-repeat, repeat';
+                document.body.style.backgroundSize = '100% 100%, 100% 100%, 500px 500px';
+            } else if (['gray', 'dark', 'svg'].includes(data.gradient_bg_style)) {
                 document.body.classList.add('gradient-' + data.gradient_bg_style);
                 document.body.style.backgroundImage = '';
                 document.body.style.backgroundRepeat = '';
