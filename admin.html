@@ -294,9 +294,24 @@
         <!-- 購読者一覧ビュー -->
         <div id="subscribers-view" class="hidden flex-1 overflow-y-auto">
             <div class="max-w-2xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
+                <button onclick="previewDigestEmail()" class="mb-6 px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">📧 配信メールのプレビューを見る</button>
                 <p class="text-xs text-white/40 mb-6">週次ダイジェストメールの購読者一覧です。<span id="subscriber-count"></span></p>
                 <div id="subscriber-cards" class="flex flex-col gap-2"></div>
                 <div id="subscriber-empty-state" class="hidden text-xs text-white/40 text-center py-16">まだ購読者がいません。</div>
+            </div>
+        </div>
+
+        <!-- メールプレビューモーダル(疑似ビューアー。実際には送信しない) -->
+        <div id="email-preview-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.6);" onmousedown="if(event.target === this) closeEmailPreview()">
+            <div class="w-full max-w-2xl bg-[#2f3438] border border-white/10 rounded-lg overflow-hidden flex flex-col" style="max-height: 85vh;">
+                <div class="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
+                    <div>
+                        <h2 class="text-xs font-medium">配信メールのプレビュー</h2>
+                        <p id="email-preview-subject" class="text-xs text-white/40 mt-0.5"></p>
+                    </div>
+                    <button onclick="closeEmailPreview()" class="opacity-50 hover:opacity-100 transition-opacity text-lg leading-none" aria-label="閉じる">×</button>
+                </div>
+                <iframe id="email-preview-frame" class="flex-1" style="min-height: 60vh; background: #fff;"></iframe>
             </div>
         </div>
 
@@ -1426,6 +1441,43 @@
             subscribers = subscribers.filter(s => s.id !== id);
             renderSubscriberCards();
             showToast('削除しました');
+        }
+
+        // 実際に送信はせず、send-digest.js と同じテンプレートで疑似的にレンダリングして中身を確認するだけの機能
+        async function previewDigestEmail() {
+            const { data, error } = await sb.from('articles')
+                .select('id, title, date')
+                .eq('status', 'published')
+                .order('date', { ascending: false })
+                .limit(10);
+            if (error) {
+                console.error(error);
+                showToast('プレビューの生成に失敗しました');
+                return;
+            }
+            const items = data || [];
+            const siteUrl = location.origin;
+            const listHtml = items.length > 0
+                ? items.map(a => `<li><a href="${siteUrl}/article/${a.id}">${escapeAttr(a.title)}</a> <span style="opacity:0.6;">(${escapeAttr(a.date)})</span></li>`).join('')
+                : '<li style="opacity:0.5;">(公開済みの記事がまだありません)</li>';
+
+            const html = `
+                <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; line-height: 1.7; padding: 24px;">
+                    <p>今週公開された記事です。</p>
+                    <ul>${listHtml}</ul>
+                    <p style="margin-top: 2em; font-size: 12px; opacity: 0.6;">
+                        <a href="${siteUrl}/api/unsubscribe?token=PREVIEW_TOKEN">配信停止はこちら</a>
+                    </p>
+                </div>
+            `;
+
+            document.getElementById('email-preview-subject').textContent = `件名: 今週の更新(${items.length}件) ※実際の送信内容そのままではなく、直近の公開記事を使った見た目確認用です`;
+            document.getElementById('email-preview-frame').srcdoc = html;
+            document.getElementById('email-preview-modal').classList.remove('hidden');
+        }
+
+        function closeEmailPreview() {
+            document.getElementById('email-preview-modal').classList.add('hidden');
         }
 
         // --- 本文フォーマット・画像挿入 ---
