@@ -331,32 +331,23 @@
                 document.body.style.backgroundSize = '100% 100%, 220% 220%, 220% 220%, 500px 500px';
                 document.body.style.backgroundPosition = '0 0, 10% 20%, 90% 80%, 0 0';
             } else if (data.gradient_bg_style === 'smooth') {
-                // ノイズを一切使わない、なめらかな金属光沢グラデーション。画像を使わずCSSだけで生成しているので軽量。
-                // ページ全体の高さに対して1回だけ描くと、記事が増えて縦に長くなるほど間延びして
-                // ビューポート内ではほぼ単色に見えてしまうため、画面数枚分の高さ(tileHeight)で
-                // 縦方向にループする単位を作り、それをrepeat-yで繰り返す方式にしている。
-                // 基準色はループの継ぎ目で色が合うよう始点と終点を同じにしてあるので、繰り返しの境目もできない
-                // ハイライトの楕円は、縦方向のフェードがタイルの上下端で完全に透明になりきる前に
-                // 打ち切られると、繰り返しの境目に明るさの断層(継ぎ目)ができてしまう。
-                // 楕円を小さめにし、中心位置もタイル上下端から十分離れた範囲に収めることで
-                // フェードがタイル内で完結するようにしている
-                const tileHeight = 1400;
-                const hx1 = Math.round(55 + Math.random() * 30);
-                const hy1 = Math.round(25 + Math.random() * 25);
-                const hx2 = Math.round(15 + Math.random() * 30);
-                const hy2 = Math.round(50 + Math.random() * 25);
-                const smoothGradient = `radial-gradient(ellipse 60% 35% at ${hx1}% ${hy1}%, rgba(255,255,255,0.28), rgba(255,255,255,0) 60%), radial-gradient(ellipse 50% 30% at ${hx2}% ${hy2}%, rgba(255,255,255,0.14), rgba(255,255,255,0) 55%), linear-gradient(180deg, #55585a, #6c6e71, #55585a)`;
-                document.body.style.backgroundImage = smoothGradient;
-                document.body.style.backgroundRepeat = 'repeat-y';
-                document.body.style.backgroundSize = `100% ${tileHeight}px`;
+                // タイルを繰り返す方式だと継ぎ目のリスクが残るので、ページ全体の高さ分をcanvasで
+                // 一枚だけ生成する方式にした(その分、生成コストは高いが繰り返しがそもそも存在しない)。
+                // 記事の追加読み込みなどで高さが変わったら自動で再生成する
+                currentSmoothBgActive = true;
+                generateSmoothCanvasBackground();
+                setupSmoothBgObserver();
             } else if (['gray', 'dark', 'svg'].includes(data.gradient_bg_style)) {
+                currentSmoothBgActive = false;
                 document.body.classList.add('gradient-' + data.gradient_bg_style);
                 document.body.style.backgroundImage = '';
                 document.body.style.backgroundRepeat = '';
             } else if (data.gradient_bg_style === 'custom' && data.bg_image_url) {
+                currentSmoothBgActive = false;
                 document.body.style.backgroundImage = `url("${data.bg_image_url}")`;
                 document.body.style.backgroundRepeat = 'repeat';
             } else {
+                currentSmoothBgActive = false;
                 document.body.style.backgroundImage = '';
                 document.body.style.backgroundRepeat = '';
             }
@@ -1058,6 +1049,66 @@
         requestAnimationFrame(animateTitleShape);
 
         // テスト実装: タイトル横の矩形の線に、カーソルの動きに合わせたゆらぎ(3D傾き)を付ける
+        // テスト実装: スムース背景をタイル繰り返しではなく、ページ全体の高さ分をcanvasで一枚だけ生成する方式。
+        // 繰り返しがそもそも存在しないので継ぎ目の心配がない代わりに、生成コストは高くなる(ユーザー了承済み)
+        let currentSmoothBgActive = false;
+        let smoothBgLastHeight = 0;
+        let smoothBgObserver = null;
+        let smoothBgResizeTimer = null;
+
+        function generateSmoothCanvasBackground() {
+            const targetHeight = Math.max(document.body.scrollHeight, window.innerHeight);
+            if (smoothBgLastHeight > 0 && Math.abs(targetHeight - smoothBgLastHeight) < 400) return;
+            smoothBgLastHeight = targetHeight;
+
+            const canvasWidth = 480;
+            const canvas = document.createElement('canvas');
+            canvas.width = canvasWidth;
+            canvas.height = targetHeight;
+            const ctx = canvas.getContext('2d');
+
+            // ベースになる縦方向のグラデーション。区間ごとにランダムな明るさのstopを打って、ゆるやかに明暗が変化し続けるようにする
+            const base = ctx.createLinearGradient(0, 0, 0, targetHeight);
+            const stopCount = Math.max(4, Math.round(targetHeight / 900));
+            for (let i = 0; i <= stopCount; i++) {
+                const t = i / stopCount;
+                const shade = Math.round(82 + Math.sin(t * Math.PI * (1.4 + Math.random() * 0.8) + Math.random() * 3) * 14);
+                base.addColorStop(t, `rgb(${shade},${shade + 2},${shade + 4})`);
+            }
+            ctx.fillStyle = base;
+            ctx.fillRect(0, 0, canvasWidth, targetHeight);
+
+            // 柔らかいハイライトの塊をページ全体にランダムに散らす(タイルではないので繰り返しは発生しない)
+            const blobCount = Math.max(4, Math.round(targetHeight / 700));
+            for (let i = 0; i < blobCount; i++) {
+                const bx = Math.random() * canvasWidth;
+                const by = Math.random() * targetHeight;
+                const r = 200 + Math.random() * 260;
+                const blob = ctx.createRadialGradient(bx, by, 0, bx, by, r);
+                const alpha = 0.08 + Math.random() * 0.14;
+                blob.addColorStop(0, `rgba(255,255,255,${alpha})`);
+                blob.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = blob;
+                ctx.fillRect(bx - r, by - r, r * 2, r * 2);
+            }
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+            document.body.style.backgroundImage = `url("${dataUrl}")`;
+            document.body.style.backgroundRepeat = 'no-repeat';
+            document.body.style.backgroundSize = `100% ${targetHeight}px`;
+            document.body.style.backgroundPosition = '0 0';
+        }
+
+        function setupSmoothBgObserver() {
+            if (smoothBgObserver) return;
+            smoothBgObserver = new ResizeObserver(() => {
+                if (!currentSmoothBgActive) return;
+                clearTimeout(smoothBgResizeTimer);
+                smoothBgResizeTimer = setTimeout(generateSmoothCanvasBackground, 400);
+            });
+            smoothBgObserver.observe(document.body);
+        }
+
         function setupTitleRectSway() {
             const wrap = document.getElementById('title-rect-wrap');
             const rect = document.getElementById('title-rect');
