@@ -38,6 +38,13 @@
             padding-top: 30vh;
             padding-bottom: 50vh;
         }
+        #app-screen.typewriter-mode #edit-content {
+            background: transparent !important;
+            border-color: transparent;
+            padding-left: 0;
+            padding-right: 0;
+            border-radius: 0;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -150,7 +157,7 @@
                     <div id="typography-override-fields" class="hidden flex flex-col gap-4 bg-white/5 border border-white/10 rounded p-4">
                         <div>
                             <label class="text-xs text-white/50 block mb-1">本文フォント</label>
-                            <select id="edit-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                            <select id="edit-font" onchange="applyEditorPreviewStyle()" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
                                 <optgroup label="明朝体">
                                     <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
                                     <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
@@ -185,23 +192,23 @@
                             <div class="flex justify-between text-xs text-white/50 mb-1">
                                 <span>文字サイズ</span><span id="edit-font-size-value"></span>
                             </div>
-                            <input type="range" id="edit-font-size" min="10" max="40" step="1" class="w-full" oninput="document.getElementById('edit-font-size-value').textContent = this.value + 'px'">
+                            <input type="range" id="edit-font-size" min="10" max="40" step="1" class="w-full" oninput="document.getElementById('edit-font-size-value').textContent = this.value + 'px'; applyEditorPreviewStyle()">
                         </div>
                         <div>
                             <div class="flex justify-between text-xs text-white/50 mb-1">
                                 <span>行間</span><span id="edit-line-height-value"></span>
                             </div>
-                            <input type="range" id="edit-line-height" min="1.0" max="10" step="0.1" class="w-full" oninput="document.getElementById('edit-line-height-value').textContent = this.value">
+                            <input type="range" id="edit-line-height" min="1.0" max="10" step="0.1" class="w-full" oninput="document.getElementById('edit-line-height-value').textContent = this.value; applyEditorPreviewStyle()">
                         </div>
                         <div>
                             <div class="flex justify-between text-xs text-white/50 mb-1">
                                 <span>文字間隔</span><span id="edit-letter-spacing-value"></span>
                             </div>
-                            <input type="range" id="edit-letter-spacing" min="-0.05" max="0.6" step="0.01" class="w-full" oninput="document.getElementById('edit-letter-spacing-value').textContent = this.value + 'em'">
+                            <input type="range" id="edit-letter-spacing" min="-0.05" max="0.6" step="0.01" class="w-full" oninput="document.getElementById('edit-letter-spacing-value').textContent = this.value + 'em'; applyEditorPreviewStyle()">
                         </div>
                         <div>
                             <label class="text-xs text-white/50 block mb-1">文字揃え</label>
-                            <select id="edit-text-align" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                            <select id="edit-text-align" onchange="applyEditorPreviewStyle()" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
                                 <option value="left">左揃え</option>
                                 <option value="center">中央揃え</option>
                                 <option value="right">右揃え</option>
@@ -587,6 +594,7 @@
         let tags = [];
         let editingTagId = null;
         let selectedTagIds = new Set();
+        let siteTypography = null;
 
         function showToast(msg) {
             const t = document.getElementById('toast'); t.textContent = msg; t.style.opacity = '1';
@@ -627,6 +635,7 @@
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('app-screen').classList.remove('hidden');
             showTab('articles');
+            loadSiteTypographyForPreview();
         }
 
         // --- タブ切り替え(記事 / タグ / 表示設定) ---
@@ -764,6 +773,55 @@
 
         function toggleTypographyOverride() {
             document.getElementById('typography-override-fields').classList.toggle('hidden', !document.getElementById('edit-override-typography').checked);
+            applyEditorPreviewStyle();
+        }
+
+        // --- 本文欄を閲覧ページと同じ文字組み・配色にして、公開時の見え方をある程度推測できるようにする ---
+        async function loadSiteTypographyForPreview() {
+            const { data, error } = await sb.from('site_settings')
+                .select('font, font_size, line_height, letter_spacing, text_align, bg_color, text_color')
+                .eq('id', 1).single();
+            if (!error && data) {
+                siteTypography = data;
+                applyEditorPreviewStyle();
+            }
+        }
+
+        function currentPreviewTypography() {
+            const useOverride = document.getElementById('edit-override-typography').checked;
+            if (useOverride) {
+                return {
+                    font: document.getElementById('edit-font').value,
+                    font_size: Number(document.getElementById('edit-font-size').value),
+                    line_height: Number(document.getElementById('edit-line-height').value),
+                    letter_spacing: Number(document.getElementById('edit-letter-spacing').value),
+                    text_align: document.getElementById('edit-text-align').value,
+                };
+            }
+            if (!siteTypography) return null;
+            return {
+                font: siteTypography.font,
+                font_size: siteTypography.font_size,
+                line_height: siteTypography.line_height,
+                letter_spacing: siteTypography.letter_spacing,
+                text_align: siteTypography.text_align || 'left',
+            };
+        }
+
+        function applyEditorPreviewStyle() {
+            const editor = document.getElementById('edit-content');
+            const t = currentPreviewTypography();
+            if (t) {
+                editor.style.fontFamily = t.font;
+                editor.style.fontSize = t.font_size + 'px';
+                editor.style.lineHeight = t.line_height;
+                editor.style.letterSpacing = t.letter_spacing + 'em';
+                editor.style.textAlign = t.text_align;
+            }
+            if (siteTypography) {
+                editor.style.color = siteTypography.text_color;
+                editor.style.backgroundColor = siteTypography.bg_color;
+            }
         }
 
         function setTypographyFields(values) {
@@ -1587,6 +1645,8 @@
                 showToast('保存に失敗しました');
                 return;
             }
+            siteTypography = payload;
+            applyEditorPreviewStyle();
             showToast('表示設定を保存しました');
         }
 
