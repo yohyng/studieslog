@@ -329,17 +329,20 @@
                 document.body.style.backgroundSize = '100% 100%, 220% 220%, 220% 220%, 500px 500px';
                 document.body.style.backgroundPosition = '0 0, 10% 20%, 90% 80%, 0 0';
             } else if (data.gradient_bg_style === 'smooth') {
-                // ノイズを一切使わない、なめらかな金属光沢グラデーション。画像を使わずCSSだけで生成しているので軽量で、
-                // 読み込むたびハイライトの位置が少し変わる(タイル画像ではないので繰り返しの継ぎ目もそもそも発生しない)
+                // ノイズを一切使わない、なめらかな金属光沢グラデーション。画像を使わずCSSだけで生成しているので軽量。
+                // ページ全体の高さに対して1回だけ描くと、記事が増えて縦に長くなるほど間延びして
+                // ビューポート内ではほぼ単色に見えてしまうため、画面数枚分の高さ(tileHeight)で
+                // 縦方向にループする単位を作り、それをrepeat-yで繰り返す方式にしている。
+                // 基準色はループの継ぎ目で色が合うよう始点と終点を同じにしてあるので、繰り返しの境目もできない
+                const tileHeight = 1400;
                 const hx1 = Math.round(55 + Math.random() * 30);
                 const hy1 = Math.round(10 + Math.random() * 25);
                 const hx2 = Math.round(15 + Math.random() * 30);
                 const hy2 = Math.round(55 + Math.random() * 30);
-                const baseAngle = Math.round(110 + Math.random() * 40);
-                const smoothGradient = `radial-gradient(ellipse 85% 55% at ${hx1}% ${hy1}%, rgba(255,255,255,0.28), rgba(255,255,255,0) 60%), radial-gradient(ellipse 70% 50% at ${hx2}% ${hy2}%, rgba(255,255,255,0.14), rgba(255,255,255,0) 55%), linear-gradient(${baseAngle}deg, #55585a, #6c6e71)`;
+                const smoothGradient = `radial-gradient(ellipse 85% 55% at ${hx1}% ${hy1}%, rgba(255,255,255,0.28), rgba(255,255,255,0) 60%), radial-gradient(ellipse 70% 50% at ${hx2}% ${hy2}%, rgba(255,255,255,0.14), rgba(255,255,255,0) 55%), linear-gradient(180deg, #55585a, #6c6e71, #55585a)`;
                 document.body.style.backgroundImage = smoothGradient;
-                document.body.style.backgroundRepeat = 'no-repeat';
-                document.body.style.backgroundSize = '100% 100%';
+                document.body.style.backgroundRepeat = 'repeat-y';
+                document.body.style.backgroundSize = `100% ${tileHeight}px`;
             } else if (['gray', 'dark', 'svg'].includes(data.gradient_bg_style)) {
                 document.body.classList.add('gradient-' + data.gradient_bg_style);
                 document.body.style.backgroundImage = '';
