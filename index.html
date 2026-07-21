@@ -309,6 +309,8 @@
             document.documentElement.style.setProperty('--tag-description-size', (data.tag_description_size || 12) + 'px');
             document.documentElement.style.setProperty('--selection-bg-color', data.selection_bg_color || data.text_color);
             document.documentElement.style.setProperty('--selection-text-color', data.selection_text_color || data.bg_color);
+            document.documentElement.style.setProperty('--subscribe-bg-color', data.subscribe_bg_color || data.text_color);
+            document.documentElement.style.setProperty('--subscribe-text-color', data.subscribe_text_color || data.bg_color);
             siteFontSize = data.font_size;
             document.documentElement.style.setProperty('--base-font-size', data.font_size + 'px');
             document.body.style.fontFamily = data.font;
@@ -343,8 +345,7 @@
             x: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M18.9 2h3.1l-7.6 8.7L23 22h-7l-5.4-6.6L4 22H1l8.1-9.3L1 2h7.2l4.9 6.1L18.9 2zm-1.2 18h1.9L7.4 3.9H5.4L17.7 20z"/></svg>',
             facebook: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/></svg>',
             instagram: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="0.6" fill="currentColor" stroke="none"/></svg>',
-            share: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><line x1="8.3" y1="10.7" x2="15.7" y2="6.3"/><line x1="8.3" y1="13.3" x2="15.7" y2="17.7"/></svg>',
-            subscribe: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>'
+            share: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><line x1="8.3" y1="10.7" x2="15.7" y2="6.3"/><line x1="8.3" y1="13.3" x2="15.7" y2="17.7"/></svg>'
         };
 
         // 注釈の色・注釈本文を、DOM挿入前のHTML文字列の時点で確定させる(挿入後にJSで探して書き換える方式は、
@@ -422,7 +423,7 @@
                             <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>
                             <button onclick="shareToInstagram(${article.id})" class="hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)" aria-label="リンクをコピー(Instagram用)">${SHARE_ICONS.instagram}</button>
                             <button onclick="shareArticle(${article.id})" class="hover:opacity-100 transition-opacity" title="共有" aria-label="共有">${SHARE_ICONS.share}</button>
-                            <button onclick="event.stopPropagation(); openSubscribeModal()" class="hover:opacity-100 transition-opacity" title="更新をメールで受け取る" aria-label="購読">${SHARE_ICONS.subscribe}</button>
+                            <button onclick="event.stopPropagation(); openSubscribeModal()" class="hover:opacity-100 transition-opacity px-3 py-1 rounded-full text-xs" style="background-color: var(--subscribe-bg-color); color: var(--subscribe-text-color);" title="更新をメールで受け取る" aria-label="購読">Subscribe</button>
                         </div>
                         <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;" onclick="closeArticle(this.parentElement.previousElementSibling)">↑ 閉じる</span>
                     </div>
