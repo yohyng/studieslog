@@ -926,22 +926,35 @@
             }
         });
 
-        // テスト実装: ページ読み込みのたびに、台形の4つの頂点を基準形からわずかにランダムずらしする
+        // テスト実装: ページ読み込みのたびに台形の基準形を少しランダムにずらし、
+        // 何もしていない間も頂点ごとに違う周期のsin/cosでゆっくり辺の長さが揺れ続ける
+        let titleShapeBase = null;
         function randomizeTitleShape() {
-            const polygon = document.querySelector('#title-rect polygon');
-            if (!polygon) return;
             const jitterAmount = 14;
             const basePoints = [[43, 18], [183, 0], [220, 130], [0, 130]];
-            const points = basePoints
-                .map(([x, y]) => {
-                    const jx = x + (Math.random() * 2 - 1) * jitterAmount;
-                    const jy = y + (Math.random() * 2 - 1) * jitterAmount;
-                    return `${jx.toFixed(1)},${jy.toFixed(1)}`;
-                })
-                .join(' ');
-            polygon.setAttribute('points', points);
+            titleShapeBase = basePoints.map(([x, y]) => [
+                x + (Math.random() * 2 - 1) * jitterAmount,
+                y + (Math.random() * 2 - 1) * jitterAmount,
+            ]);
         }
         randomizeTitleShape();
+
+        function animateTitleShape(timestamp) {
+            const polygon = document.querySelector('#title-rect polygon');
+            if (polygon && titleShapeBase) {
+                const t = timestamp / 1000;
+                const points = titleShapeBase
+                    .map(([x, y], i) => {
+                        const ox = Math.sin(t * (0.3 + i * 0.07) + i * 1.7) * 6;
+                        const oy = Math.cos(t * (0.25 + i * 0.05) + i * 2.3) * 6;
+                        return `${(x + ox).toFixed(1)},${(y + oy).toFixed(1)}`;
+                    })
+                    .join(' ');
+                polygon.setAttribute('points', points);
+            }
+            requestAnimationFrame(animateTitleShape);
+        }
+        requestAnimationFrame(animateTitleShape);
 
         // テスト実装: タイトル横の矩形の線に、カーソルの動きに合わせたゆらぎ(3D傾き)を付ける
         function setupTitleRectSway() {
