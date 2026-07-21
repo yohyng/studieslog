@@ -186,6 +186,9 @@ create table if not exists public.subscribers (
   created_at timestamptz not null default now()
 );
 
+-- 購読者の中で「管理者用テストアドレス」として、配信メールの実機確認送信の宛先にする1件の目印
+alter table public.subscribers add column if not exists is_admin_test boolean not null default false;
+
 alter table public.subscribers enable row level security;
 
 create policy "subscribers_public_insert" on public.subscribers
@@ -196,6 +199,9 @@ create policy "subscribers_auth_select" on public.subscribers
 
 create policy "subscribers_auth_delete" on public.subscribers
   for delete to authenticated using (true);
+
+create policy "subscribers_auth_update" on public.subscribers
+  for update to authenticated using (true) with check (true);
 
 -- 週次ダイジェストを最後に送った時刻を覚えておく1行だけのテーブル(この時刻より新しい記事があれば送信対象になる)
 create table if not exists public.newsletter_state (
