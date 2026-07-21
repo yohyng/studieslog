@@ -96,11 +96,11 @@
                 <div class="tw-hide flex flex-col sm:flex-row gap-4 mb-6">
                     <div class="flex-1">
                         <label class="text-xs text-white/50 block mb-1">日付</label>
-                        <input id="edit-date" type="text" placeholder="2024.01.01" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                        <input id="edit-date" type="text" placeholder="2024.01.01" class="w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1">
                     </div>
                     <div class="flex-[2]">
                         <label class="text-xs text-white/50 block mb-1">タイトル</label>
-                        <input id="edit-title" type="text" placeholder="記事のタイトル" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                        <input id="edit-title" type="text" placeholder="記事のタイトル" class="w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1">
                     </div>
                 </div>
 
@@ -811,6 +811,8 @@
 
         function applyEditorPreviewStyle() {
             const editor = document.getElementById('edit-content');
+            const titleEl = document.getElementById('edit-title');
+            const dateEl = document.getElementById('edit-date');
             const t = currentPreviewTypography();
             if (t) {
                 editor.style.fontFamily = t.font;
@@ -818,10 +820,26 @@
                 editor.style.lineHeight = t.line_height;
                 editor.style.letterSpacing = t.letter_spacing + 'em';
                 editor.style.textAlign = t.text_align;
+
+                // 閲覧ページのタイトル・日付は本文とフォント/文字間隔だけ共有し、サイズは独自(text-lg/text-xs)なので、
+                // ここも本文のフォント設定を使いつつサイズだけ見出し・キャプション相当に近づける
+                titleEl.style.fontFamily = t.font;
+                titleEl.style.letterSpacing = t.letter_spacing + 'em';
+                titleEl.style.fontSize = '1.25rem';
+
+                dateEl.style.fontFamily = t.font;
+                dateEl.style.letterSpacing = t.letter_spacing + 'em';
+                dateEl.style.fontSize = '0.75rem';
             }
             if (siteTypography) {
                 editor.style.color = siteTypography.text_color;
                 editor.style.backgroundColor = siteTypography.bg_color;
+
+                titleEl.style.color = siteTypography.text_color;
+                titleEl.style.opacity = '0.85';
+
+                dateEl.style.color = siteTypography.text_color;
+                dateEl.style.opacity = '0.4';
             }
         }
 
