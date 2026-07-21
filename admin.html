@@ -567,6 +567,10 @@
                         </div>
                         <p class="text-xs text-white/30">アップロードした画像はタイル状に敷き詰めて表示されます。継ぎ目のない模様やテクスチャ系の画像だと綺麗に見えます(人物や風景など柄が一目でわかる写真は、繰り返しの境目が目立つことがあります)。</p>
                     </div>
+                    <div class="mt-3">
+                        <div class="flex justify-between text-xs text-white/50 mb-1"><span>シルバー背景の暗さ</span><span id="set-silver-darkness-value"></span></div>
+                        <input type="range" id="set-silver-darkness" min="0" max="0.6" step="0.05" class="w-full" oninput="document.getElementById('set-silver-darkness-value').textContent = this.value">
+                    </div>
                 </div>
 
                 <!-- タイトルの台形装飾(テスト機能) -->
@@ -2200,6 +2204,8 @@
             document.getElementById('set-gradient-bg-style').value = data.gradient_bg_style || '';
             document.getElementById('set-bg-image-url').value = data.bg_image_url || '';
             toggleBgImageUpload();
+            document.getElementById('set-silver-darkness').value = data.silver_darkness ?? 0.25;
+            document.getElementById('set-silver-darkness-value').textContent = data.silver_darkness ?? 0.25;
             document.getElementById('set-title-shape-enabled').checked = data.title_shape_enabled !== false;
             document.getElementById('set-title-shape-width').value = data.title_shape_width ?? 200;
             document.getElementById('set-title-shape-width-value').textContent = (data.title_shape_width ?? 200) + 'px';
@@ -2251,6 +2257,7 @@
                 bg_color: document.getElementById('set-bg-color').value,
                 gradient_bg_style: document.getElementById('set-gradient-bg-style').value,
                 bg_image_url: document.getElementById('set-bg-image-url').value.trim(),
+                silver_darkness: Number(document.getElementById('set-silver-darkness').value),
                 title_shape_enabled: document.getElementById('set-title-shape-enabled').checked,
                 title_shape_width: Number(document.getElementById('set-title-shape-width').value),
                 title_shape_height: Number(document.getElementById('set-title-shape-height').value),

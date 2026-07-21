@@ -104,6 +104,7 @@ create table if not exists public.site_settings (
   title_shape_jitter numeric not null default 14,
   title_shape_wobble numeric not null default 6,
   title_shape_hover_intensity numeric not null default 1,
+  silver_darkness numeric not null default 0.25,
   list_heading_bg_color text not null default '#ffffff',
   list_heading_text_color text not null default '#6b7278',
   digest_bg_color text not null default '#f4f1ea',
@@ -148,6 +149,7 @@ alter table public.site_settings add column if not exists title_shape_stroke_wid
 alter table public.site_settings add column if not exists title_shape_jitter numeric not null default 14;
 alter table public.site_settings add column if not exists title_shape_wobble numeric not null default 6;
 alter table public.site_settings add column if not exists title_shape_hover_intensity numeric not null default 1;
+alter table public.site_settings add column if not exists silver_darkness numeric not null default 0.25;
 alter table public.site_settings add column if not exists list_heading_bg_color text not null default '#ffffff';
 alter table public.site_settings add column if not exists list_heading_text_color text not null default '#6b7278';
 alter table public.site_settings add column if not exists digest_bg_color text not null default '#f4f1ea';

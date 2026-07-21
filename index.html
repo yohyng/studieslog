@@ -129,9 +129,9 @@
         /* シルバー背景の光沢レイヤーを、よく見るとゆっくり動いているくらいの速度でドリフトさせる */
         body.gradient-silver { animation: silverDrift 90s ease-in-out infinite alternate; }
         @keyframes silverDrift {
-            0% { background-position: 10% 20%, 90% 80%, 0 0; }
-            50% { background-position: 70% 60%, 30% 40%, 0 0; }
-            100% { background-position: 20% 90%, 80% 10%, 0 0; }
+            0% { background-position: 0 0, 10% 20%, 90% 80%, 0 0; }
+            50% { background-position: 0 0, 70% 60%, 30% 40%, 0 0; }
+            100% { background-position: 0 0, 20% 90%, 80% 10%, 0 0; }
         }
 
         /* テスト実装: タイトルに重なる不定形の台形の線。読み込むたびに少し形が変わり、カーソルを乗せて動かすとゆらゆら揺れる。
@@ -192,7 +192,7 @@
     <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
 
     <!-- ハンバーガーメニュー -->
-    <button id="hamburger-btn" onclick="toggleMenu()" class="fixed top-6 z-40 w-10 h-10 opacity-70 hover:opacity-100 transition-opacity" style="border: 1px solid #ffffff;" title="メニュー" aria-label="メニュー"></button>
+    <button id="hamburger-btn" onclick="toggleMenu()" class="fixed top-6 z-40 w-6 h-6 opacity-70 hover:opacity-100 transition-opacity" style="border: 1px solid #ffffff;" title="メニュー" aria-label="メニュー"></button>
 
     <div id="menu-overlay" class="fixed inset-0 z-50 pointer-events-none">
         <div id="menu-catcher" class="absolute inset-0 pointer-events-none opacity-0" onclick="toggleMenu()"></div>
@@ -316,10 +316,13 @@
                 const angle2 = Math.round(Math.random() * 360);
                 const pos2 = Math.round(45 + Math.random() * 30);
                 const macroSheen = `linear-gradient(${angle1}deg, rgba(255,255,255,0) 20%, rgba(255,255,255,0.14) ${pos1}%, rgba(255,255,255,0) 65%), linear-gradient(${angle2}deg, rgba(255,255,255,0) 35%, rgba(255,255,255,0.1) ${pos2}%, rgba(255,255,255,0) 80%)`;
-                document.body.style.backgroundImage = `${macroSheen}, ${tileImage}`;
-                document.body.style.backgroundRepeat = 'no-repeat, no-repeat, repeat';
-                document.body.style.backgroundSize = '220% 220%, 220% 220%, 500px 500px';
-                document.body.style.backgroundPosition = '10% 20%, 90% 80%, 0 0';
+                // 全体の暗さは表示設定のスライダー(silver_darkness)で調整できる。単純な半透明の黒を一番上に重ねるだけ
+                const darkness = data.silver_darkness != null ? data.silver_darkness : 0.25;
+                const darkOverlay = `linear-gradient(rgba(0,0,0,${darkness}), rgba(0,0,0,${darkness}))`;
+                document.body.style.backgroundImage = `${darkOverlay}, ${macroSheen}, ${tileImage}`;
+                document.body.style.backgroundRepeat = 'no-repeat, no-repeat, no-repeat, repeat';
+                document.body.style.backgroundSize = '100% 100%, 220% 220%, 220% 220%, 500px 500px';
+                document.body.style.backgroundPosition = '0 0, 10% 20%, 90% 80%, 0 0';
             } else if (data.gradient_bg_style === 'smooth') {
                 // ノイズを一切使わない、なめらかな金属光沢グラデーション。画像を使わずCSSだけで生成しているので軽量で、
                 // 読み込むたびハイライトの位置が少し変わる(タイル画像ではないので繰り返しの継ぎ目もそもそも発生しない)
