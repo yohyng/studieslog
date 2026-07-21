@@ -1,7 +1,7 @@
 // 管理画面から呼ばれる。購読者リストの中で「管理者用テストアドレス」に指定された1件だけに、
 // 実際にResendでダイジェストメールを送る(見え方の実機確認用。他の購読者には送らない)。
 
-const { buildDigestHtml, extractFirstImage } = require('../lib/digest-template');
+const { buildDigestHtml, extractFirstImage, extractExcerpt } = require('../lib/digest-template');
 
 const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
 
@@ -63,6 +63,7 @@ module.exports = async function handler(req, res) {
         title: a.title,
         date: a.date,
         image: extractFirstImage(a.content) || settings.og_image || null,
+        excerpt: extractExcerpt(a.content),
     }));
 
     if (articles.length === 0) {

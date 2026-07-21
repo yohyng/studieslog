@@ -77,7 +77,7 @@
                 <nav class="flex items-center gap-1 text-xs">
                     <button id="nav-articles" onclick="showTab('articles')" class="px-3 py-1.5 rounded transition-colors bg-white/10">記事</button>
                     <button id="nav-tags" onclick="showTab('tags')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">タグ</button>
-                    <button id="nav-subscribers" onclick="showTab('subscribers')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">購読者</button>
+                    <button id="nav-subscribers" onclick="showTab('subscribers')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">サブスクリプション</button>
                     <button id="nav-settings" onclick="showTab('settings')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">表示設定</button>
                 </nav>
             </div>
@@ -291,16 +291,46 @@
             </div>
         </div>
 
-        <!-- 購読者一覧ビュー -->
+        <!-- サブスクリプションビュー(設定 / 配信まわり / メーリングリスト) -->
         <div id="subscribers-view" class="hidden flex-1 overflow-y-auto">
             <div class="max-w-2xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
-                <div class="flex flex-wrap gap-2 mb-6">
-                    <button onclick="previewDigestEmail()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">📧 配信メールのプレビューを見る</button>
-                    <button onclick="sendTestDigest()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">✉️ 管理者アドレスにテストメールを送信</button>
-                </div>
-                <p class="text-xs text-white/40 mb-6">週次ダイジェストメールの購読者一覧です。<span id="subscriber-count"></span> 星マークを付けたアドレスが「管理者用テストアドレス」になり、テストメールの送信先になります。</p>
-                <div id="subscriber-cards" class="flex flex-col gap-2"></div>
-                <div id="subscriber-empty-state" class="hidden text-xs text-white/40 text-center py-16">まだ購読者がいません。</div>
+
+                <!-- 設定 -->
+                <section class="mb-10 pb-8 border-b border-white/10">
+                    <h2 class="text-xs font-medium text-white/70 mb-4">設定</h2>
+                    <label class="text-xs text-white/50 block mb-2">配信メール(ニュースレター)の配色</label>
+                    <div class="flex items-center gap-6 mb-3">
+                        <div class="flex items-center gap-2">
+                            <input id="set-digest-bg-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                            <span class="text-xs text-white/40">背景色</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input id="set-digest-text-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                            <span class="text-xs text-white/40">文字色</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-white/30 mb-4">見出し・本文の色はここから、細かい部分(メタ情報・枠線など)の色は自動で調整されます。</p>
+                    <button onclick="saveDigestColors()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">保存する</button>
+                </section>
+
+                <!-- 配信まわり -->
+                <section class="mb-10 pb-8 border-b border-white/10">
+                    <h2 class="text-xs font-medium text-white/70 mb-4">配信まわり</h2>
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        <button onclick="previewDigestEmail()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">📧 配信メールのプレビューを見る</button>
+                        <button onclick="sendTestDigest()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">✉️ 管理者アドレスにテストメールを送信</button>
+                    </div>
+                    <p class="text-xs text-white/30">メーリングリストの中で★マークを付けたアドレスが「管理者用テストアドレス」になり、テストメールの送信先になります。</p>
+                </section>
+
+                <!-- メーリングリスト -->
+                <section>
+                    <h2 class="text-xs font-medium text-white/70 mb-4">メーリングリスト</h2>
+                    <p class="text-xs text-white/40 mb-6">週次ダイジェストメールの購読者一覧です。<span id="subscriber-count"></span></p>
+                    <div id="subscriber-cards" class="flex flex-col gap-2"></div>
+                    <div id="subscriber-empty-state" class="hidden text-xs text-white/40 text-center py-16">まだ購読者がいません。</div>
+                </section>
+
             </div>
         </div>
 
@@ -618,22 +648,6 @@
                     <textarea id="set-about-content" rows="6" placeholder="サイトや運営者についての紹介文" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30"></textarea>
                 </div>
 
-                <!-- 配信メールの配色 -->
-                <div class="mb-6 pb-6 border-b border-white/10">
-                    <label class="text-xs text-white/50 block mb-2">配信メール(ニュースレター)の配色</label>
-                    <div class="flex items-center gap-6">
-                        <div class="flex items-center gap-2">
-                            <input id="set-digest-bg-color" type="color" class="w-10 h-10 rounded cursor-pointer">
-                            <span class="text-xs text-white/40">背景色</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input id="set-digest-text-color" type="color" class="w-10 h-10 rounded cursor-pointer">
-                            <span class="text-xs text-white/40">文字色</span>
-                        </div>
-                    </div>
-                    <p class="text-xs text-white/30 mt-2">見出し・本文の色はここから、細かい部分(メタ情報・枠線など)の色は自動で調整されます。</p>
-                </div>
-
                 <div class="mb-6 pb-6 border-b border-white/10">
                     <label class="text-xs text-white/50 block mb-2">SNSシェア時の既定画像(記事に画像がない場合に使われます)</label>
                     <div class="flex gap-2 mb-2">
@@ -745,6 +759,7 @@
             } else if (tab === 'subscribers') {
                 document.getElementById('subscribers-view').classList.remove('hidden');
                 loadSubscribersList();
+                loadDigestColorSettings();
             } else {
                 document.getElementById('settings-view').classList.remove('hidden');
                 loadSiteSettings();
@@ -1418,6 +1433,30 @@
         // --- 購読者(週次ダイジェストメールの宛先リスト) ---
         let subscribers = [];
 
+        async function loadDigestColorSettings() {
+            const { data, error } = await sb.from('site_settings').select('digest_bg_color, digest_text_color').eq('id', 1).single();
+            if (error) {
+                console.error(error);
+                return;
+            }
+            document.getElementById('set-digest-bg-color').value = data.digest_bg_color || '#f4f1ea';
+            document.getElementById('set-digest-text-color').value = data.digest_text_color || '#2b2b28';
+        }
+
+        async function saveDigestColors() {
+            const payload = {
+                digest_bg_color: document.getElementById('set-digest-bg-color').value,
+                digest_text_color: document.getElementById('set-digest-text-color').value,
+            };
+            const { error } = await sb.from('site_settings').update(payload).eq('id', 1);
+            if (error) {
+                console.error(error);
+                showToast('保存に失敗しました');
+                return;
+            }
+            showToast('保存されました');
+        }
+
         async function loadSubscribersList() {
             const { data, error } = await sb.from('subscribers').select('*').order('created_at', { ascending: false });
             if (error) {
@@ -1517,11 +1556,15 @@
             const text = textColor || '#2b2b28';
             const muted = mixHexPreview(text, bg, 0.55);
             const border = mixHexPreview(text, bg, 0.88);
+            const excerptColor = mixHexPreview(text, bg, 0.3);
             const fontStack = "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif";
             const rows = articles.map(a => {
                 const url = `${siteUrl}/article/${a.id}`;
                 const imageCell = a.image
                     ? `<td width="64" style="width:64px; padding-right:14px; vertical-align:top;"><img src="${escapeAttr(a.image)}" width="64" height="64" style="width:64px; height:64px; object-fit:cover; border-radius:6px; display:block;" alt=""></td>`
+                    : '';
+                const excerptHtml = a.excerpt
+                    ? `<div style="font-size:13px; color:${excerptColor}; line-height:1.6; margin-top:6px; font-family:${fontStack};">${escapeAttr(a.excerpt)}</div>`
                     : '';
                 return `
                     <a href="${url}" style="text-decoration:none; display:block; padding:16px 0; border-bottom:1px solid ${border};">
@@ -1531,6 +1574,7 @@
                                 <td style="vertical-align:middle;">
                                     <div style="font-size:11px; color:${muted}; margin-bottom:4px; font-family:${fontStack};">${escapeAttr(a.date)}</div>
                                     <div style="font-size:15px; color:${text}; font-weight:600; line-height:1.5; font-family:${fontStack};">${escapeAttr(a.title)}</div>
+                                    ${excerptHtml}
                                 </td>
                             </tr>
                         </table>
@@ -1586,6 +1630,22 @@
             return m ? m[1] : null;
         }
 
+        // lib/digest-template.jsのextractExcerptと同じロジック(admin.html側はクライアントJSなのでrequireできず、手動で複製している)
+        function extractExcerptFromHtml(html, maxLen = 90) {
+            let s = String(html || '');
+            s = s.replace(/<a[^>]*class="[^"]*book-link-card[^"]*"[^>]*>[\s\S]*?<\/a>/gi, ' ');
+            s = s.replace(/<span[^>]*class="[^"]*footnote-note[^"]*"[^>]*>[\s\S]*?<\/span>/gi, ' ');
+            s = s.replace(/<sup[^>]*class="[^"]*footnote-ref[^"]*"[^>]*>[\s\S]*?<\/sup>/gi, ' ');
+            s = s.replace(/<img[^>]*>/gi, ' ');
+            s = s.replace(/<br\s*\/?>/gi, ' ');
+            s = s.replace(/<\/(p|div|li|h[1-6])>/gi, ' ');
+            s = s.replace(/<[^>]+>/g, '');
+            s = s.replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+            s = s.replace(/\s+/g, ' ').trim();
+            if (s.length > maxLen) s = s.slice(0, maxLen).trim() + '…';
+            return s;
+        }
+
         // 実際に送信はせず、send-digest.js / lib/digest-template.js と同じテンプレートで疑似的にレンダリングして中身を確認するだけの機能
         async function previewDigestEmail() {
             const [{ data: items, error }, { data: settingsData }] = await Promise.all([
@@ -1608,6 +1668,7 @@
                 title: a.title,
                 date: a.date,
                 image: extractFirstImageFromHtml(a.content) || settings.og_image || null,
+                excerpt: extractExcerptFromHtml(a.content),
             }));
 
             const html = buildDigestPreviewHtml({
@@ -1981,8 +2042,6 @@
             document.getElementById('set-selection-text-color').value = data.selection_text_color;
             document.getElementById('set-about-content').value = data.about_content || '';
             document.getElementById('set-og-image').value = data.og_image || '';
-            document.getElementById('set-digest-bg-color').value = data.digest_bg_color || '#f4f1ea';
-            document.getElementById('set-digest-text-color').value = data.digest_text_color || '#2b2b28';
             checkSetContrast();
         }
 
@@ -2019,9 +2078,7 @@
                 selection_bg_color: document.getElementById('set-selection-bg-color').value,
                 selection_text_color: document.getElementById('set-selection-text-color').value,
                 about_content: document.getElementById('set-about-content').value.trim(),
-                og_image: document.getElementById('set-og-image').value.trim(),
-                digest_bg_color: document.getElementById('set-digest-bg-color').value,
-                digest_text_color: document.getElementById('set-digest-text-color').value
+                og_image: document.getElementById('set-og-image').value.trim()
             };
             const { error } = await sb.from('site_settings').update(payload).eq('id', 1);
             if (error) {

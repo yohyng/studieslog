@@ -1,7 +1,7 @@
 // Vercel Cron(vercel.jsonのcrons)から週1回呼ばれる。前回送信以降に公開された記事があれば、
 // 購読者全員にダイジェストメールを送る。なければ何もしない。
 
-const { buildDigestHtml, extractFirstImage } = require('../lib/digest-template');
+const { buildDigestHtml, extractFirstImage, extractExcerpt } = require('../lib/digest-template');
 
 const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
 
@@ -49,6 +49,7 @@ module.exports = async function handler(req, res) {
         title: a.title,
         date: a.date,
         image: extractFirstImage(a.content) || settings.og_image || null,
+        excerpt: extractExcerpt(a.content),
     }));
 
     const subsRes = await fetch(`${SUPABASE_URL}/rest/v1/subscribers?select=email,unsubscribe_token`, { headers: sbHeaders });
