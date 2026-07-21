@@ -126,6 +126,14 @@
         .fade-in { animation: fadeIn 1.5s ease-out forwards; opacity: 0; transform: translateY(10px); }
         @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
 
+        /* シルバー背景の光沢レイヤーを、よく見るとゆっくり動いているくらいの速度でドリフトさせる */
+        body.gradient-silver { animation: silverDrift 90s ease-in-out infinite alternate; }
+        @keyframes silverDrift {
+            0% { background-position: 10% 20%, 90% 80%, 0 0; }
+            50% { background-position: 70% 60%, 30% 40%, 0 0; }
+            100% { background-position: 20% 90%, 80% 10%, 0 0; }
+        }
+
         /* テスト実装: タイトルに重なる不定形の台形の線。読み込むたびに少し形が変わり、カーソルを乗せて動かすとゆらゆら揺れる。
            不要なら #title-rect-wrap のdivとCSS、JSのsetupTitleRectSway()/randomizeTitleShape()呼び出しを削除すれば元に戻ります */
         .title-rect-wrap { position: absolute; left: 0; z-index: 0; perspective: 500px; }
@@ -184,9 +192,7 @@
     <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
 
     <!-- ハンバーガーメニュー -->
-    <button id="hamburger-btn" onclick="toggleMenu()" class="group fixed top-6 z-40 p-2 rounded-full backdrop-blur-md" style="background: color-mix(in srgb, var(--bg-color) 65%, transparent); box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);" title="メニュー" aria-label="メニュー">
-        <svg class="opacity-60 group-hover:opacity-100 transition-opacity duration-300" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
-    </button>
+    <button id="hamburger-btn" onclick="toggleMenu()" class="fixed top-6 z-40 w-10 h-10 opacity-70 hover:opacity-100 transition-opacity" style="border: 1px solid #ffffff;" title="メニュー" aria-label="メニュー"></button>
 
     <div id="menu-overlay" class="fixed inset-0 z-50 pointer-events-none">
         <div id="menu-catcher" class="absolute inset-0 pointer-events-none opacity-0" onclick="toggleMenu()"></div>
@@ -298,6 +304,7 @@
             document.documentElement.style.setProperty('--bg-color', data.bg_color);
             document.body.classList.remove('gradient-gray', 'gradient-dark', 'gradient-svg', 'gradient-silver');
             document.body.style.backgroundSize = '';
+            document.body.style.backgroundPosition = '';
             if (data.gradient_bg_style === 'silver') {
                 // 細かい粒のタイルはそのままに、その下に読み込むたびランダムな向き・位置の
                 // 大きく柔らかい金属光沢を2枚重ねることで、単調な一本の帯にならないようにし、
@@ -311,7 +318,8 @@
                 const macroSheen = `linear-gradient(${angle1}deg, rgba(255,255,255,0) 20%, rgba(255,255,255,0.14) ${pos1}%, rgba(255,255,255,0) 65%), linear-gradient(${angle2}deg, rgba(255,255,255,0) 35%, rgba(255,255,255,0.1) ${pos2}%, rgba(255,255,255,0) 80%)`;
                 document.body.style.backgroundImage = `${macroSheen}, ${tileImage}`;
                 document.body.style.backgroundRepeat = 'no-repeat, no-repeat, repeat';
-                document.body.style.backgroundSize = '100% 100%, 100% 100%, 500px 500px';
+                document.body.style.backgroundSize = '220% 220%, 220% 220%, 500px 500px';
+                document.body.style.backgroundPosition = '10% 20%, 90% 80%, 0 0';
             } else if (data.gradient_bg_style === 'smooth') {
                 // ノイズを一切使わない、なめらかな金属光沢グラデーション。画像を使わずCSSだけで生成しているので軽量で、
                 // 読み込むたびハイライトの位置が少し変わる(タイル画像ではないので繰り返しの継ぎ目もそもそも発生しない)
