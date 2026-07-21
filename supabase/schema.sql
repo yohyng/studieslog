@@ -95,6 +95,15 @@ create table if not exists public.site_settings (
   og_image text not null default '',
   gradient_bg_style text not null default '',
   bg_image_url text not null default '',
+  title_shape_enabled boolean not null default true,
+  title_shape_width int not null default 200,
+  title_shape_height int not null default 193,
+  title_shape_top int not null default -45,
+  title_shape_opacity numeric not null default 0.4,
+  title_shape_stroke_width numeric not null default 1,
+  title_shape_jitter numeric not null default 14,
+  title_shape_wobble numeric not null default 6,
+  title_shape_hover_intensity numeric not null default 1,
   list_heading_bg_color text not null default '#ffffff',
   list_heading_text_color text not null default '#6b7278',
   digest_bg_color text not null default '#f4f1ea',
@@ -130,6 +139,15 @@ alter table public.site_settings add column if not exists menu_font_size int not
 alter table public.site_settings add column if not exists og_image text not null default '';
 alter table public.site_settings add column if not exists gradient_bg_style text not null default '';
 alter table public.site_settings add column if not exists bg_image_url text not null default '';
+alter table public.site_settings add column if not exists title_shape_enabled boolean not null default true;
+alter table public.site_settings add column if not exists title_shape_width int not null default 200;
+alter table public.site_settings add column if not exists title_shape_height int not null default 193;
+alter table public.site_settings add column if not exists title_shape_top int not null default -45;
+alter table public.site_settings add column if not exists title_shape_opacity numeric not null default 0.4;
+alter table public.site_settings add column if not exists title_shape_stroke_width numeric not null default 1;
+alter table public.site_settings add column if not exists title_shape_jitter numeric not null default 14;
+alter table public.site_settings add column if not exists title_shape_wobble numeric not null default 6;
+alter table public.site_settings add column if not exists title_shape_hover_intensity numeric not null default 1;
 alter table public.site_settings add column if not exists list_heading_bg_color text not null default '#ffffff';
 alter table public.site_settings add column if not exists list_heading_text_color text not null default '#6b7278';
 alter table public.site_settings add column if not exists digest_bg_color text not null default '#f4f1ea';
