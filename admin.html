@@ -1551,13 +1551,13 @@
         }
 
         // send-digest.js / lib/digest-template.js と同じ見た目のHTMLを組み立てる(admin.html側はクライアントJSなのでrequireできず、手動で複製している)
-        function buildDigestPreviewHtml({ siteTitle, siteUrl, articles, unsubscribeUrl, bgColor, textColor }) {
+        function buildDigestPreviewHtml({ siteTitle, siteUrl, articles, unsubscribeUrl, bgColor, textColor, fontFamily }) {
             const bg = bgColor || '#f4f1ea';
             const text = textColor || '#2b2b28';
             const muted = mixHexPreview(text, bg, 0.55);
             const border = mixHexPreview(text, bg, 0.88);
             const excerptColor = mixHexPreview(text, bg, 0.3);
-            const fontStack = "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif";
+            const fontStack = fontFamily || "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif";
             const rows = articles.map(a => {
                 const url = `${siteUrl}/article/${a.id}`;
                 const imageCell = a.image
@@ -1582,7 +1582,9 @@
                 `;
             }).join('');
 
+            const googleFontsUrl = "https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500&family=Shippori+Mincho+B1:wght@400;500&family=Noto+Serif+JP:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&family=Kaisei+Tokumin:wght@400;500;700&family=Kaisei+Decol:wght@400;700&family=BIZ+UDPMincho:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=BIZ+UDPGothic:wght@400;700&family=Sawarabi+Gothic&family=M+PLUS+1p:wght@400;500;700&family=Kosugi+Maru&family=Zen+Maru+Gothic:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;500;700&family=Klee+One:wght@400;600&family=New+Tegomin&family=Yuji+Syuku&display=swap";
             return `
+                <head><link rel="stylesheet" href="${googleFontsUrl}"></head>
                 <body style="margin:0; padding:0; background-color:${bg};">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${bg};">
                         <tr>
@@ -1654,7 +1656,7 @@
                     .eq('status', 'published')
                     .order('date', { ascending: false })
                     .limit(5),
-                sb.from('site_settings').select('site_title, og_image, digest_bg_color, digest_text_color').eq('id', 1).single(),
+                sb.from('site_settings').select('site_title, og_image, digest_bg_color, digest_text_color, font').eq('id', 1).single(),
             ]);
             if (error) {
                 console.error(error);
@@ -1678,6 +1680,7 @@
                 unsubscribeUrl: `${siteUrl}/api/unsubscribe?token=PREVIEW_TOKEN`,
                 bgColor: settings.digest_bg_color,
                 textColor: settings.digest_text_color,
+                fontFamily: settings.font,
             });
 
             document.getElementById('email-preview-subject').textContent = `件名: 【${settings.site_title || ''}】今週の更新(${articles.length}件) ※実際の送信内容そのままではなく、直近の公開記事を使った見た目確認用です`;

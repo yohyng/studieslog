@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
 
     const [subRes, settingsRes] = await Promise.all([
         fetch(`${SUPABASE_URL}/rest/v1/subscribers?is_admin_test=eq.true&select=email,unsubscribe_token&limit=1`, { headers: sbHeaders }),
-        fetch(`${SUPABASE_URL}/rest/v1/site_settings?id=eq.1&select=site_title,og_image,digest_bg_color,digest_text_color`, { headers: sbHeaders }),
+        fetch(`${SUPABASE_URL}/rest/v1/site_settings?id=eq.1&select=site_title,og_image,digest_bg_color,digest_text_color,font`, { headers: sbHeaders }),
     ]);
     const subRows = await subRes.json();
     const adminSub = Array.isArray(subRows) ? subRows[0] : null;
@@ -88,6 +88,7 @@ module.exports = async function handler(req, res) {
                 unsubscribeUrl: `${siteUrl}/api/unsubscribe?token=${adminSub.unsubscribe_token}`,
                 bgColor: settings.digest_bg_color,
                 textColor: settings.digest_text_color,
+                fontFamily: settings.font,
             }),
         }),
     });
