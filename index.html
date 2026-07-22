@@ -304,6 +304,7 @@
             <p class="text-xs opacity-60 mb-4">新着記事をメールで受け取れます(週1回、更新があった週だけ届きます)</p>
             <form onsubmit="return submitSubscribe(event)" class="flex flex-col gap-3">
                 <input id="subscribe-email" type="email" required placeholder="you@example.com" class="bg-transparent border-b text-sm px-2 py-1.5 focus:outline-none" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">
+                <input id="subscribe-hp" type="text" name="url" tabindex="-1" autocomplete="off" aria-hidden="true" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;">
                 <button type="submit" class="px-3 py-2 text-xs border rounded hover:opacity-70 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">登録する</button>
             </form>
             <p id="subscribe-message" class="text-xs opacity-50 mt-2 hidden"></p>
@@ -958,10 +959,13 @@
         }
 
         // ニュースレター購読(週次ダイジェストの送信対象に登録する)
+        let subscribeModalOpenedAt = 0;
+
         function openSubscribeModal() {
             document.getElementById('subscribe-modal').classList.remove('hidden');
             document.getElementById('subscribe-message').classList.add('hidden');
             document.getElementById('subscribe-email').focus();
+            subscribeModalOpenedAt = Date.now();
         }
 
         function closeSubscribeModal() {
@@ -974,6 +978,19 @@
             const msg = document.getElementById('subscribe-message');
             const email = input.value.trim();
             if (!email) return false;
+
+            // 簡易bot対策: 本来空のはずのハニーポット欄が埋まっている、
+            // またはモーダルを開いてから極端に早く送信されている場合はbotとみなし、
+            // 実際には登録せず成功したふりだけ見せる(botに検知されたと悟らせない)
+            const honeypot = document.getElementById('subscribe-hp').value;
+            const tooFast = Date.now() - subscribeModalOpenedAt < 1500;
+            if (honeypot || tooFast) {
+                msg.classList.remove('hidden');
+                msg.textContent = '登録しました。ありがとうございます。';
+                input.value = '';
+                return false;
+            }
+
             const { error } = await sb.from('subscribers').insert({ email });
             msg.classList.remove('hidden');
             if (error) {
