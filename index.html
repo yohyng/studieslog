@@ -120,6 +120,15 @@
         }
         /* コンテンツ本体(.content-widthで中央寄せ)の右端と、ハンバーガーボタンの右端を揃える */
         #hamburger-btn { right: max(var(--body-pad), calc((100vw - var(--content-width)) / 2)); }
+        /* サイドバーと同じ透け方(低めの背景不透明度・弱めの影)に揃える */
+        #hamburger-btn {
+            background: color-mix(in srgb, var(--bg-color) 5%, transparent) !important;
+            backdrop-filter: blur(10px) saturate(190%) !important;
+            -webkit-backdrop-filter: blur(10px) saturate(190%) !important;
+            box-shadow:
+                inset 0 1px 0 color-mix(in srgb, white 25%, transparent),
+                0 4px 16px color-mix(in srgb, black 10%, transparent) !important;
+        }
 
         ::selection { background: var(--selection-bg-color); color: var(--selection-text-color); }
 
@@ -250,7 +259,7 @@
 
     <!-- ハンバーガーメニュー -->
     <button id="hamburger-btn" onclick="toggleMenu()" class="fixed top-6 z-40 glass-icon opacity-80 hover:opacity-100 transition-opacity" title="メニュー" aria-label="メニュー">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#ffffff" stroke-width="1.3" stroke-linecap="round" aria-hidden="true" style="transform: skewX(-10deg);">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#ffffff" stroke-width="1.3" stroke-linecap="round" aria-hidden="true">
             <line x1="3" y1="7" x2="21" y2="7" />
             <line x1="3" y1="12" x2="21" y2="12" />
             <line x1="3" y1="17" x2="21" y2="17" />
