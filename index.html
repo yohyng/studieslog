@@ -242,7 +242,7 @@
         .footnote-ref a { color: inherit; text-decoration: inherit; }
         .footnote-list { margin-top: 2.5em; padding-top: 1.2em; border-top: 1px dotted color-mix(in srgb, currentColor 30%, transparent); font-size: 0.8em; opacity: 0.75; list-style: none; }
         .footnote-list li { display: flex; gap: 0.5em; margin-bottom: 0.6em; }
-        .footnote-list li span:first-child { flex-shrink: 0; opacity: 0.6; }
+        .footnote-list li span:first-child { flex-shrink: 0; }
         .footnote-list a.footnote-back { opacity: 0.5; text-decoration: none; margin-left: 0.3em; }
         .search-highlight { background: color-mix(in srgb, currentColor 25%, transparent); border-radius: 2px; padding: 0 0.1em; }
     </style>
@@ -501,7 +501,7 @@
             let notesHtml = '';
             if (notes.length > 0) {
                 notesHtml = `<ol class="footnote-list">${notes.map((text, i) => `
-                    <li id="fn-${articleId}-${i + 1}"><span>[${i + 1}]</span><span>${escapeHtml(text)}<a href="#fnref-${articleId}-${i + 1}" class="footnote-back">↩</a></span></li>
+                    <li id="fn-${articleId}-${i + 1}"><span style="color:${siteFootnoteColor};">[${i + 1}]</span><span>${escapeHtml(text)}<a href="#fnref-${articleId}-${i + 1}" class="footnote-back">↩</a></span></li>
                 `).join('')}</ol>`;
             }
             return container.innerHTML + notesHtml;
