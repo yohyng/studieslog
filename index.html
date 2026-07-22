@@ -804,7 +804,9 @@
             const body = siteAboutContent
                 ? escapeHtml(siteAboutContent).replace(/\n/g, '<br>')
                 : '<p class="opacity-40">まだ内容がありません。</p>';
-            view.innerHTML = `<div class="text-sm opacity-90 fade-in" style="line-height: inherit;">${body}</div>`;
+            // 記事本文と同じ行間になるよう、article本文と同じ計算式で!important付きの行間を直接指定する
+            const lineHeight = siteLineHeight * currentLineHeightScale();
+            view.innerHTML = `<div class="text-sm opacity-90 fade-in" style="line-height: ${lineHeight} !important;">${body}</div>`;
         }
 
         // プライバシーポリシー+お問い合わせページ
