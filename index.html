@@ -262,7 +262,7 @@
         <div id="menu-panel" class="absolute top-0 right-0 h-full w-36 max-w-[55vw] pointer-events-auto transform translate-x-full transition-transform duration-300 ease-out">
             <!-- backdrop-filterはtransformと同じ要素に付けるとSafariで正しくぼけない(透けて見えなくなる)ため、
                  スライドさせる外側とガラス表現(ぼかし)の内側を別要素に分けている -->
-            <div class="h-full p-5" style="background: color-mix(in srgb, var(--bg-color) 5%, transparent); backdrop-filter: blur(14px) saturate(190%); -webkit-backdrop-filter: blur(14px) saturate(190%); color: var(--text-color); border-left: 1px solid color-mix(in srgb, currentColor 30%, transparent); box-shadow: inset 1px 0 0 color-mix(in srgb, white 25%, transparent), -16px 0 44px color-mix(in srgb, black 20%, transparent);">
+            <div class="h-full p-5" style="background: color-mix(in srgb, var(--bg-color) 5%, transparent); backdrop-filter: blur(10px) saturate(190%); -webkit-backdrop-filter: blur(10px) saturate(190%); color: var(--text-color); border-left: 1px solid color-mix(in srgb, currentColor 30%, transparent); box-shadow: inset 1px 0 0 color-mix(in srgb, white 25%, transparent), -4px 0 16px color-mix(in srgb, black 10%, transparent);">
                 <button onclick="toggleMenu()" class="opacity-50 hover:opacity-100 transition-opacity mb-10 text-lg leading-none" aria-label="閉じる">×</button>
                 <nav class="flex flex-col gap-3" style="font-size: var(--menu-font-size);">
                     <a href="/" class="opacity-80 hover:opacity-100 transition-opacity">Top</a>
