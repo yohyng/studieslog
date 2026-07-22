@@ -1137,7 +1137,8 @@
                 wrap.style.display = titleShapeSettings.enabled ? '' : 'none';
                 wrap.style.width = titleShapeSettings.width + 'px';
                 wrap.style.height = titleShapeSettings.height + 'px';
-                wrap.style.top = titleShapeSettings.top + 'px';
+                // +32はheaderのpt-8とバランスを合わせるための固定オフセット(絶対配置の基準はheaderのpaddingでは動かないため手動で足している)
+                wrap.style.top = (titleShapeSettings.top + 32) + 'px';
             }
             if (polygon) {
                 polygon.style.opacity = titleShapeSettings.opacity;
