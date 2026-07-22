@@ -366,6 +366,8 @@
         let siteFootnoteColor = '#7dd3fc';
         let siteFontSize = 16;
         let siteAboutContent = '';
+        let siteSnsXUrl = '';
+        let siteSnsInstagramUrl = '';
 
         const listContainer = document.getElementById('article-list');
         let displayedCount = 0;
@@ -467,6 +469,8 @@
             subtitleEl.style.fontSize = (data.site_subtitle_size || 12) + 'px';
             subtitleEl.style.color = data.site_subtitle_color || data.text_color;
             siteAboutContent = data.about_content || '';
+            siteSnsXUrl = data.sns_x_url || '';
+            siteSnsInstagramUrl = data.sns_instagram_url || '';
             const footerTitle = data.site_title || document.getElementById('site-title').textContent;
             document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} ${footerTitle}`;
         }
@@ -806,7 +810,12 @@
                 : '<p class="opacity-40">まだ内容がありません。</p>';
             // 記事本文と同じ行間になるよう、article本文と同じ計算式で!important付きの行間を直接指定する
             const lineHeight = siteLineHeight * currentLineHeightScale();
-            view.innerHTML = `<div class="text-sm opacity-90 fade-in" style="line-height: ${lineHeight} !important;">${body}</div>`;
+            const snsLinks = [
+                siteSnsXUrl ? `<a href="${escapeHtml(siteSnsXUrl)}" target="_blank" rel="noopener noreferrer" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="X" aria-label="X">${SHARE_ICONS.x}</a>` : '',
+                siteSnsInstagramUrl ? `<a href="${escapeHtml(siteSnsInstagramUrl)}" target="_blank" rel="noopener noreferrer" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="Instagram" aria-label="Instagram">${SHARE_ICONS.instagram}</a>` : '',
+            ].filter(Boolean).join('');
+            const snsHtml = snsLinks ? `<div class="flex items-center gap-3 mt-8 fade-in">${snsLinks}</div>` : '';
+            view.innerHTML = `<div class="text-sm opacity-90 fade-in" style="line-height: ${lineHeight} !important;">${body}</div>${snsHtml}`;
         }
 
         // プライバシーポリシー+お問い合わせページ

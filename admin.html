@@ -754,7 +754,12 @@
                 <!-- アバウトページ -->
                 <div class="mb-6 pb-6 border-b border-white/10">
                     <label class="text-xs text-white/50 block mb-2">アバウトページの内容(/about に表示されます)</label>
-                    <textarea id="set-about-content" rows="6" placeholder="サイトや運営者についての紹介文" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30"></textarea>
+                    <textarea id="set-about-content" rows="6" placeholder="サイトや運営者についての紹介文" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30 mb-4"></textarea>
+                    <label class="text-xs text-white/50 block mb-2">SNSリンク(空欄なら非表示。アバウトページ本文の下にアイコンで表示されます)</label>
+                    <div class="flex flex-col gap-2">
+                        <input id="set-sns-x-url" type="text" placeholder="XのプロフィールURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                        <input id="set-sns-instagram-url" type="text" placeholder="InstagramのプロフィールURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                    </div>
                 </div>
 
                 <div class="mb-6 pb-6 border-b border-white/10">
@@ -2364,6 +2369,8 @@
             document.getElementById('set-selection-bg-color').value = data.selection_bg_color;
             document.getElementById('set-selection-text-color').value = data.selection_text_color;
             document.getElementById('set-about-content').value = data.about_content || '';
+            document.getElementById('set-sns-x-url').value = data.sns_x_url || '';
+            document.getElementById('set-sns-instagram-url').value = data.sns_instagram_url || '';
             document.getElementById('set-og-image').value = data.og_image || '';
             checkSetContrast();
         }
@@ -2412,6 +2419,8 @@
                 selection_bg_color: document.getElementById('set-selection-bg-color').value,
                 selection_text_color: document.getElementById('set-selection-text-color').value,
                 about_content: document.getElementById('set-about-content').value.trim(),
+                sns_x_url: document.getElementById('set-sns-x-url').value.trim(),
+                sns_instagram_url: document.getElementById('set-sns-instagram-url').value.trim(),
                 og_image: document.getElementById('set-og-image').value.trim()
             };
             const { error } = await sb.from('site_settings').update(payload).eq('id', 1);
