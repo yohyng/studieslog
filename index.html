@@ -298,6 +298,8 @@
 
     <main id="article-list" class="w-full content-width flex flex-col gap-16 relative"></main>
 
+    <main id="hub-view" class="hidden w-full content-width relative"></main>
+
     <main id="title-list-view" class="hidden w-full content-width flex flex-col relative"></main>
 
     <main id="about-view" class="hidden w-full content-width relative"></main>
@@ -369,6 +371,7 @@
         let siteSnsXUrl = '';
         let siteSnsInstagramUrl = '';
         let siteSnsWebsiteUrl = '';
+        let homepageLayout = 'timeline'; // 'timeline'(パターンA・既定) or 'hub'(パターンB)
 
         const listContainer = document.getElementById('article-list');
         let displayedCount = 0;
@@ -473,6 +476,7 @@
             siteSnsXUrl = data.sns_x_url || '';
             siteSnsInstagramUrl = data.sns_instagram_url || '';
             siteSnsWebsiteUrl = data.sns_website_url || '';
+            homepageLayout = data.homepage_layout || 'timeline';
             const footerTitle = data.site_title || document.getElementById('site-title').textContent;
             document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} ${footerTitle}`;
         }
@@ -720,6 +724,7 @@
         // ルートに応じて表示するビューだけを残し、他は隠す
         function hideAllViews() {
             document.getElementById('article-list').classList.add('hidden');
+            document.getElementById('hub-view').classList.add('hidden');
             document.getElementById('title-list-view').classList.add('hidden');
             document.getElementById('about-view').classList.add('hidden');
             document.getElementById('contact-view').classList.add('hidden');
@@ -778,6 +783,34 @@
             listView.innerHTML = `
                 <h2 class="glass-chip self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: color-mix(in srgb, var(--list-heading-bg-color) 55%, transparent); color: var(--list-heading-text-color);">tag</h2>
                 ${tagsHtml}
+            `;
+        }
+
+        // パターンB(ハブ型トップ)用のトップページ。ナビゲーションと主要タグ一覧だけを並べ、記事本文は置かない
+        async function renderHubPage() {
+            hideAllViews();
+            const view = document.getElementById('hub-view');
+            view.classList.remove('hidden');
+
+            const { data: allTags, error } = await sb.from('tags').select('*').order('name', { ascending: true });
+            const tagsHtml = (!error && allTags && allTags.length > 0)
+                ? `<div class="flex flex-wrap gap-2">${allTags.map(t => `
+                    <a href="/tag/${encodeURIComponent(t.slug)}" class="glass-chip inline-block px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${t.name}</a>
+                `).join('')}</div>`
+                : '<p class="text-xs opacity-40">まだタグがありません。</p>';
+
+            view.innerHTML = `
+                <nav class="flex flex-col gap-4 mb-16 fade-in" style="font-size: 1.1rem;">
+                    <a href="/list" class="opacity-80 hover:opacity-100 transition-opacity">Article</a>
+                    <a href="/tags" class="opacity-80 hover:opacity-100 transition-opacity">Tag</a>
+                    <a href="/about" class="opacity-80 hover:opacity-100 transition-opacity">About</a>
+                    <a href="/contact" class="opacity-80 hover:opacity-100 transition-opacity">Contact</a>
+                    <a href="/search" class="opacity-80 hover:opacity-100 transition-opacity">Search</a>
+                </nav>
+                <div class="fade-in">
+                    <h2 class="glass-chip self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: color-mix(in srgb, var(--list-heading-bg-color) 55%, transparent); color: var(--list-heading-text-color);">tag</h2>
+                    ${tagsHtml}
+                </div>
             `;
         }
 
@@ -1006,7 +1039,13 @@
                 await renderTagPage(tagSlug);
                 return;
             }
-            if (isListRoute()) {
+            // パターンB(ハブ型トップ)では"/"がナビゲーション+タグ一覧のハブに、"/list"が本文プレビュー付きの
+            // 時系列フィード(パターンAの"/"相当)になる。パターンA(既定)は今まで通り"/"がフィード、"/list"がタイトル一覧
+            if (homepageLayout === 'hub' && location.pathname.replace(/\/$/, '') === '') {
+                await renderHubPage();
+                return;
+            }
+            if (isListRoute() && homepageLayout !== 'hub') {
                 await renderTitleList();
                 return;
             }
@@ -1157,6 +1196,8 @@
         }
 
         function isHomeRoute() {
+            // パターンBでは本文プレビュー付きフィードは"/"ではなく"/list"に出るため、判定を入れ替える
+            if (homepageLayout === 'hub') return isListRoute();
             return !isListRoute() && !isTagListRoute() && !isAboutRoute() && !isContactRoute() && !isSearchRoute() && !getTagSlug();
         }
 
