@@ -800,7 +800,7 @@
             return `
                 <div class="outline-item">
                     <div class="outline-toggle flex items-center gap-2 cursor-pointer py-2 opacity-90 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)" style="font-size: 1.05rem;">
-                        <svg class="outline-arrow" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; flex-shrink:0; opacity:0.6; transition: transform 0.2s ease;"><polyline points="9 6 15 12 9 18"/></svg>
+                        <svg class="outline-arrow" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; width:0.625rem; height:0.625rem; flex-shrink:0; opacity:0.6; transition: transform 0.2s ease;"><polyline points="9 6 15 12 9 18"/></svg>
                         <span>${label}</span>
                     </div>
                     <div class="outline-children hidden pb-4" style="padding-left: 1.125rem;" data-kind="${kind}"></div>
@@ -812,7 +812,7 @@
             return `
                 <div class="outline-item">
                     <div class="outline-toggle flex items-start gap-2 cursor-pointer py-1.5 opacity-80 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)">
-                        <svg class="outline-arrow" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; flex-shrink:0; margin-top:0.35em; opacity:0.6; transition: transform 0.2s ease;"><polyline points="9 6 15 12 9 18"/></svg>
+                        <svg class="outline-arrow" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; width:0.625rem; height:0.625rem; flex-shrink:0; margin-top:0.35em; opacity:0.6; transition: transform 0.2s ease;"><polyline points="9 6 15 12 9 18"/></svg>
                         <span class="text-sm">${escapeHtml(article.title)}</span>
                         <span class="opacity-40 whitespace-nowrap" style="font-size: 0.65rem; margin-top:0.25em;">${escapeHtml(article.date)}</span>
                     </div>
@@ -825,7 +825,7 @@
             return `
                 <div class="outline-item">
                     <div class="outline-toggle flex items-center gap-2 cursor-pointer py-1.5 opacity-80 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)">
-                        <svg class="outline-arrow" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; flex-shrink:0; opacity:0.6; transition: transform 0.2s ease;"><polyline points="9 6 15 12 9 18"/></svg>
+                        <svg class="outline-arrow" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; width:0.625rem; height:0.625rem; flex-shrink:0; opacity:0.6; transition: transform 0.2s ease;"><polyline points="9 6 15 12 9 18"/></svg>
                         <span class="glass-chip inline-block px-2 py-0.5" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${escapeHtml(tag.name)}</span>
                     </div>
                     <div class="outline-children hidden pb-4" style="padding-left: 1.125rem;" data-kind="tag-articles" data-tag-slug="${escapeHtml(tag.slug)}"></div>
