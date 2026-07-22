@@ -789,10 +789,13 @@
         }
 
         // サイト運営者についてのアバウトページ
+        let aboutPageRenderedAt = 0;
+
         function renderAboutPage() {
             hideAllViews();
             const view = document.getElementById('about-view');
             view.classList.remove('hidden');
+            aboutPageRenderedAt = Date.now();
             const body = siteAboutContent
                 ? escapeHtml(siteAboutContent).replace(/\n/g, '<br>')
                 : '<p class="opacity-40">まだ内容がありません。</p>';
@@ -802,7 +805,17 @@
                     <h2 class="text-xs opacity-90 mb-3" style="letter-spacing: 0.05em;">プライバシーポリシー</h2>
                     <p>当サイトのニュースレター購読フォームでは、更新通知の送信のみを目的としてメールアドレスをお預かりしています。取得した情報を第三者に提供・販売することはありません。</p>
                     <p class="mt-3">メールの送信にはResend、データの保管にはSupabaseを利用しています。また、文字表示のためGoogle Fontsを読み込んでおり、その際にご利用のブラウザからGoogleのサーバーへ通信が発生します。</p>
-                    <p class="mt-3">購読の解除は、配信されたメール内の「配信停止はこちら」リンクからいつでも行えます。解除された時点でメールアドレスは削除されます。取得情報の開示・削除等のご要望は、このページ経由でお問い合わせください。</p>
+                    <p class="mt-3">購読の解除は、配信されたメール内の「配信停止はこちら」リンクからいつでも行えます。解除された時点でメールアドレスは削除されます。取得情報の開示・削除等のご要望は、下記のお問い合わせフォームからご連絡ください。</p>
+                </div>
+                <div class="mt-10 pt-8 text-xs opacity-90 fade-in" style="border-top: 1px solid currentColor;">
+                    <h2 class="text-xs opacity-90 mb-3" style="letter-spacing: 0.05em;">お問い合わせ</h2>
+                    <form onsubmit="return submitInquiry(event)" class="flex flex-col gap-3 max-w-sm">
+                        <input id="inquiry-email" type="email" required placeholder="you@example.com" class="bg-transparent border-b text-sm px-2 py-1.5 focus:outline-none" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">
+                        <textarea id="inquiry-message" required rows="4" placeholder="お問い合わせ内容" class="bg-transparent border rounded text-sm px-2 py-1.5 focus:outline-none resize-none" style="border-color: color-mix(in srgb, currentColor 30%, transparent);"></textarea>
+                        <input id="inquiry-hp" type="text" name="url" tabindex="-1" autocomplete="off" aria-hidden="true" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;">
+                        <button type="submit" class="px-3 py-2 text-xs border rounded hover:opacity-70 transition-opacity self-start" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">送信する</button>
+                    </form>
+                    <p id="inquiry-status" class="text-xs opacity-50 mt-2 hidden"></p>
                 </div>
             `;
         }
@@ -1063,6 +1076,39 @@
             } else {
                 msg.textContent = '登録しました。ありがとうございます。';
                 input.value = '';
+            }
+            return false;
+        }
+
+        // お問い合わせフォーム。送信内容はメール等では送らず、管理画面から確認できるようDBに保存するだけ
+        async function submitInquiry(event) {
+            event.preventDefault();
+            const emailInput = document.getElementById('inquiry-email');
+            const messageInput = document.getElementById('inquiry-message');
+            const status = document.getElementById('inquiry-status');
+            const email = emailInput.value.trim();
+            const message = messageInput.value.trim();
+            if (!email || !message) return false;
+
+            // 購読フォームと同じ簡易bot対策(ハニーポット+送信速度チェック)
+            const honeypot = document.getElementById('inquiry-hp').value;
+            const tooFast = Date.now() - aboutPageRenderedAt < 1500;
+            if (honeypot || tooFast) {
+                status.classList.remove('hidden');
+                status.textContent = '送信しました。ありがとうございます。';
+                emailInput.value = '';
+                messageInput.value = '';
+                return false;
+            }
+
+            const { error } = await sb.from('inquiries').insert({ email, message });
+            status.classList.remove('hidden');
+            if (error) {
+                status.textContent = '送信に失敗しました';
+            } else {
+                status.textContent = '送信しました。ありがとうございます。';
+                emailInput.value = '';
+                messageInput.value = '';
             }
             return false;
         }

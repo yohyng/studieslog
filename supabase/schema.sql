@@ -254,3 +254,23 @@ alter table public.newsletter_state enable row level security;
 
 create policy "newsletter_state_auth_all" on public.newsletter_state
   for all to authenticated using (true) with check (true);
+
+-- Aboutページのお問い合わせフォームからの送信を保存するテーブル。
+-- メール送信はせず、管理画面から確認・削除するだけのシンプルな受信箱として使う
+create table if not exists public.inquiries (
+  id bigint generated always as identity primary key,
+  email text not null,
+  message text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.inquiries enable row level security;
+
+create policy "inquiries_public_insert" on public.inquiries
+  for insert with check (true);
+
+create policy "inquiries_auth_select" on public.inquiries
+  for select to authenticated using (true);
+
+create policy "inquiries_auth_delete" on public.inquiries
+  for delete to authenticated using (true);
