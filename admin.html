@@ -109,7 +109,14 @@
                     <label class="tw-hide text-xs text-white/50 block mb-1">日付</label>
                     <input id="edit-date" type="text" placeholder="2024.01.01" class="w-40 bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1 mb-4 block">
                     <label class="tw-hide text-xs text-white/50 block mb-1">タイトル</label>
-                    <input id="edit-title" type="text" placeholder="記事のタイトル" class="w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1">
+                    <input id="edit-title" type="text" placeholder="記事のタイトル" class="w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1 mb-4">
+                    <label class="tw-hide text-xs text-white/50 block mb-1">カテゴリ(ジャンル。タグと違い1つだけ選ぶ)</label>
+                    <select id="edit-category" class="w-40 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
+                        <option value="">未設定</option>
+                        <option value="エッセイ">エッセイ</option>
+                        <option value="ノート">ノート</option>
+                        <option value="試論">試論</option>
+                    </select>
                 </div>
 
                 <label class="tw-hide text-xs text-white/50 block mb-1">本文</label>
@@ -1216,6 +1223,7 @@
             editingId = null;
             document.getElementById('edit-date').value = todayString();
             document.getElementById('edit-title').value = '';
+            document.getElementById('edit-category').value = '';
             document.getElementById('edit-content').innerHTML = '<p></p>';
             updateCharCount();
             document.getElementById('delete-btn').classList.add('hidden');
@@ -1373,6 +1381,7 @@
             editingId = article.id;
             document.getElementById('edit-date').value = article.date;
             document.getElementById('edit-title').value = article.title;
+            document.getElementById('edit-category').value = article.category || '';
             document.getElementById('edit-content').innerHTML = article.content;
             updateCharCount();
             document.getElementById('delete-btn').classList.remove('hidden');
@@ -1444,8 +1453,9 @@
             }
 
             const useOverride = document.getElementById('edit-override-typography').checked;
+            const category = document.getElementById('edit-category').value;
             const payload = {
-                date, title, content, status,
+                date, title, content, status, category,
                 scheduled_at: status === 'scheduled' ? scheduledAt : null,
                 font: useOverride ? document.getElementById('edit-font').value : null,
                 font_size: useOverride ? Number(document.getElementById('edit-font-size').value) : null,

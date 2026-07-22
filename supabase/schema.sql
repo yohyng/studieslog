@@ -24,6 +24,9 @@ alter table public.articles add column if not exists status text not null defaul
 -- 予約投稿の公開予定日時(status='scheduled'の時だけ使う)
 alter table public.articles add column if not exists scheduled_at timestamptz;
 
+-- ジャンルとしてのカテゴリ(1記事につき1つ、任意)。タグ(複数付けられる横串)とは別の分類軸
+alter table public.articles add column if not exists category text not null default '';
+
 alter table public.articles enable row level security;
 
 -- 閲覧は誰でも可能(公開ブログのため)。下書きは常に隠すが、

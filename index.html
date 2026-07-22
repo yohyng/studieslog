@@ -810,7 +810,7 @@
 
         function outlineArticleBulletHtml(article) {
             return `
-                <div class="outline-item">
+                <div class="outline-item transition-opacity" data-category="${escapeHtml(article.category || '')}">
                     <div class="outline-toggle flex items-start gap-2 cursor-pointer py-1.5 opacity-80 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)">
                         <svg class="outline-arrow" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; width:0.625rem; height:0.625rem; flex-shrink:0; margin-top:0.35em; opacity:0.6; transition: transform 0.2s ease;"><polyline points="9 6 15 12 9 18"/></svg>
                         <span class="text-sm">${escapeHtml(article.title)}</span>
@@ -884,6 +884,40 @@
             container._outlineItems = items;
         }
 
+        // Articleブランチだけは、全記事を常にフラット表示したまま、カテゴリ(ジャンル)フィルターで
+        // 該当するものだけ強調・それ以外を薄くする形式にする(タグと違い1記事につき1カテゴリ)。
+        // 一覧性を保ったまま絞り込める見せ方の参考: 一覧は隠さず色の濃淡だけで焦点を変える
+        const ARTICLE_CATEGORIES = ['エッセイ', 'ノート', '試論'];
+
+        function renderArticleCategoryList(container) {
+            if (articles.length === 0) {
+                container.innerHTML = '<p class="text-xs opacity-40 py-2">まだ記事がありません。</p>';
+                return;
+            }
+            const filterHtml = ['', ...ARTICLE_CATEGORIES].map(cat => `
+                <span class="category-filter-item cursor-pointer transition-opacity hover:opacity-100 ${cat === '' ? 'opacity-90' : 'opacity-50'}" data-category="${escapeHtml(cat)}" onclick="filterArticleCategory(this)">${escapeHtml(cat || 'All')}</span>
+            `).join('<span class="opacity-30" style="margin: 0 0.4em;">/</span>');
+
+            container.innerHTML = `
+                <div class="category-filter-row text-sm mb-4">${filterHtml}</div>
+                <div class="category-article-list">${articles.map(a => outlineArticleBulletHtml(a)).join('')}</div>
+            `;
+        }
+
+        function filterArticleCategory(el) {
+            const row = el.closest('.category-filter-row');
+            row.querySelectorAll('.category-filter-item').forEach(btn => {
+                btn.classList.toggle('opacity-90', btn === el);
+                btn.classList.toggle('opacity-50', btn !== el);
+            });
+            const value = el.dataset.category;
+            const list = row.nextElementSibling;
+            list.querySelectorAll(':scope > .outline-item[data-category]').forEach(item => {
+                const match = !value || item.dataset.category === value;
+                item.style.opacity = match ? '' : '0.25';
+            });
+        }
+
         function expandOutlineList(btnEl) {
             const container = btnEl.parentElement;
             const items = container._outlineItems || [];
@@ -909,7 +943,7 @@
 
             const kind = children.dataset.kind;
             if (kind === 'article-list') {
-                renderOutlinePaginatedList(children, articles, 'まだ記事がありません。');
+                renderArticleCategoryList(children);
             } else if (kind === 'article-body') {
                 const id = Number(children.dataset.articleId);
                 const article = articles.find(a => a.id === id);
