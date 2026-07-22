@@ -245,6 +245,8 @@
         .footnote-list li span:first-child { flex-shrink: 0; }
         .footnote-list a.footnote-back { opacity: 0.5; text-decoration: none; margin-left: 0.3em; }
         .search-highlight { background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); border-radius: 2px; padding: 0 0.1em; }
+        /* パターンB(ハブ)のWorkFlowy風アウトライン */
+        .outline-toggle { user-select: none; }
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -786,30 +788,139 @@
             `;
         }
 
-        // パターンB(ハブ型トップ)用のトップページ。ナビゲーションと主要タグ一覧だけを並べ、記事本文は置かない
-        async function renderHubPage() {
+        // パターンB(ハブ型トップ)用のトップページ。WorkFlowy風に、Article/Tag/About/Contact/Searchの
+        // トグルから子(記事タイトル→本文、タグ→該当記事、など)へどんどん展開していく形式。
+        // 開閉状態は保持せず、毎回全て閉じた状態から始まる。子要素は初めて開いた時だけ組み立てる(遅延生成)
+        let hubTagsCache = null;
+
+        function outlineTopItemHtml(label, kind) {
+            return `
+                <div class="outline-item">
+                    <div class="outline-toggle flex items-center gap-2 cursor-pointer py-2 opacity-90 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)" style="font-size: 1.05rem;">
+                        <span class="outline-arrow" style="display:inline-block; width:0.9em; flex-shrink:0; transition: transform 0.2s ease;">▸</span>
+                        <span>${label}</span>
+                    </div>
+                    <div class="outline-children hidden pl-6 pb-4" data-kind="${kind}"></div>
+                </div>
+            `;
+        }
+
+        function outlineArticleBulletHtml(article) {
+            return `
+                <div class="outline-item">
+                    <div class="outline-toggle flex items-center gap-2 cursor-pointer py-1.5 opacity-80 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)">
+                        <span class="outline-arrow" style="display:inline-block; width:0.9em; flex-shrink:0; transition: transform 0.2s ease;">▸</span>
+                        <span class="text-xs opacity-50 whitespace-nowrap">${escapeHtml(article.date)}</span>
+                        <span class="text-sm truncate">${escapeHtml(article.title)}</span>
+                    </div>
+                    <div class="outline-children hidden pl-6 pb-4" data-kind="article-body" data-article-id="${article.id}"></div>
+                </div>
+            `;
+        }
+
+        function outlineTagBulletHtml(tag) {
+            return `
+                <div class="outline-item">
+                    <div class="outline-toggle flex items-center gap-2 cursor-pointer py-1.5 opacity-80 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)">
+                        <span class="outline-arrow" style="display:inline-block; width:0.9em; flex-shrink:0; transition: transform 0.2s ease;">▸</span>
+                        <span class="glass-chip inline-block px-2 py-0.5" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${escapeHtml(tag.name)}</span>
+                    </div>
+                    <div class="outline-children hidden pl-6 pb-4" data-kind="tag-articles" data-tag-slug="${escapeHtml(tag.slug)}"></div>
+                </div>
+            `;
+        }
+
+        // 記事本文と同じ計算式で文字組み(記事ごとの上書き含む)を再現し、そのまま展開表示する
+        function articleOutlineBodyHtml(article) {
+            const overrideStyle = article.font != null
+                ? `font-family:${article.font}; font-size:${article.font_size}px; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};`
+                : '';
+            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
+            return `
+                <div class="content-body text-sm opacity-90" style="${overrideStyle} line-height: ${lineHeight} !important;">${applyFootnoteStyling(article.content, article.id)}</div>
+                <a href="/article/${article.id}" class="text-xs opacity-40 hover:opacity-80 transition-opacity mt-3 inline-block">→ ページで開く</a>
+            `;
+        }
+
+        function outlineSearchBoxHtml() {
+            return `
+                <input type="text" placeholder="タイトル・本文・タグで検索" oninput="handleOutlineSearchInput(this)" class="w-full max-w-sm bg-transparent border-b text-sm px-2 py-1.5 mb-3 focus:outline-none" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">
+                <div class="outline-search-results"></div>
+            `;
+        }
+
+        function handleOutlineSearchInput(inputEl) {
+            const resultsEl = inputEl.nextElementSibling;
+            const query = inputEl.value.trim();
+            if (!query) {
+                resultsEl.innerHTML = '';
+                return;
+            }
+            const results = searchArticles(query);
+            resultsEl.innerHTML = results.length > 0
+                ? results.map(a => outlineArticleBulletHtml(a)).join('')
+                : '<p class="text-xs opacity-40 py-2">見つかりませんでした。</p>';
+        }
+
+        // トグルの開閉と、子要素の遅延生成をまとめて担当する
+        async function toggleOutlineItem(rowEl) {
+            const item = rowEl.parentElement;
+            const children = item.querySelector(':scope > .outline-children');
+            const arrow = rowEl.querySelector('.outline-arrow');
+            const isOpen = !children.classList.contains('hidden');
+            if (isOpen) {
+                children.classList.add('hidden');
+                arrow.style.transform = '';
+                return;
+            }
+            children.classList.remove('hidden');
+            arrow.style.transform = 'rotate(90deg)';
+            if (children.dataset.loaded === 'true') return;
+            children.dataset.loaded = 'true';
+
+            const kind = children.dataset.kind;
+            if (kind === 'article-list') {
+                children.innerHTML = articles.length > 0
+                    ? articles.map(a => outlineArticleBulletHtml(a)).join('')
+                    : '<p class="text-xs opacity-40 py-2">まだ記事がありません。</p>';
+            } else if (kind === 'article-body') {
+                const id = Number(children.dataset.articleId);
+                const article = articles.find(a => a.id === id);
+                children.innerHTML = article ? articleOutlineBodyHtml(article) : '';
+            } else if (kind === 'tag-list') {
+                if (!hubTagsCache) {
+                    const { data, error } = await sb.from('tags').select('*').order('name', { ascending: true });
+                    hubTagsCache = (!error && data) ? data : [];
+                }
+                children.innerHTML = hubTagsCache.length > 0
+                    ? hubTagsCache.map(t => outlineTagBulletHtml(t)).join('')
+                    : '<p class="text-xs opacity-40 py-2">まだタグがありません。</p>';
+            } else if (kind === 'tag-articles') {
+                const slug = children.dataset.tagSlug;
+                const matched = articles.filter(a => (a.tags || []).some(t => t.slug === slug));
+                children.innerHTML = matched.length > 0
+                    ? matched.map(a => outlineArticleBulletHtml(a)).join('')
+                    : '<p class="text-xs opacity-40 py-2">このタグの記事はまだありません。</p>';
+            } else if (kind === 'about') {
+                children.innerHTML = aboutBodyHtml();
+            } else if (kind === 'contact') {
+                children.innerHTML = contactBodyHtml();
+            } else if (kind === 'search') {
+                children.innerHTML = outlineSearchBoxHtml();
+            }
+        }
+
+        function renderHubPage() {
             hideAllViews();
             const view = document.getElementById('hub-view');
             view.classList.remove('hidden');
-
-            const { data: allTags, error } = await sb.from('tags').select('*').order('name', { ascending: true });
-            const tagsHtml = (!error && allTags && allTags.length > 0)
-                ? `<div class="flex flex-wrap gap-2">${allTags.map(t => `
-                    <a href="/tag/${encodeURIComponent(t.slug)}" class="glass-chip inline-block px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${t.name}</a>
-                `).join('')}</div>`
-                : '<p class="text-xs opacity-40">まだタグがありません。</p>';
-
             view.innerHTML = `
-                <nav class="flex flex-col gap-4 mb-16 fade-in" style="font-size: 1.1rem;">
-                    <a href="/list" class="opacity-80 hover:opacity-100 transition-opacity">Article</a>
-                    <a href="/tags" class="opacity-80 hover:opacity-100 transition-opacity">Tag</a>
-                    <a href="/about" class="opacity-80 hover:opacity-100 transition-opacity">About</a>
-                    <a href="/contact" class="opacity-80 hover:opacity-100 transition-opacity">Contact</a>
-                    <a href="/search" class="opacity-80 hover:opacity-100 transition-opacity">Search</a>
-                </nav>
                 <div class="fade-in">
-                    <h2 class="glass-chip self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: color-mix(in srgb, var(--list-heading-bg-color) 55%, transparent); color: var(--list-heading-text-color);">tag</h2>
-                    ${tagsHtml}
+                    ${outlineTopItemHtml('Article', 'article-list')}
+                    ${outlineTopItemHtml('Tag', 'tag-list')}
+                    ${outlineTopItemHtml('About', 'about')}
+                    ${outlineTopItemHtml('Contact', 'contact')}
+                    ${outlineTopItemHtml('Search', 'search')}
                 </div>
             `;
         }
@@ -836,11 +947,9 @@
             renderTitleRows();
         }
 
-        // サイト運営者についてのアバウトページ
-        function renderAboutPage() {
-            hideAllViews();
-            const view = document.getElementById('about-view');
-            view.classList.remove('hidden');
+        // サイト運営者についての自己紹介文+SNSリンク。通常のAboutページと、パターンBのハブの
+        // アウトラインの両方から呼べるよう、HTML組み立てを共通の関数にまとめている
+        function aboutBodyHtml() {
             const body = siteAboutContent
                 ? escapeHtml(siteAboutContent).replace(/\n/g, '<br>')
                 : '<p class="opacity-40">まだ内容がありません。</p>';
@@ -861,18 +970,23 @@
                 snsRow('Web', siteSnsWebsiteUrl, SHARE_ICONS.website),
             ].filter(Boolean).join('');
             const snsHtml = snsLinks ? `<div class="flex flex-col gap-3 mt-8 fade-in max-w-sm">${snsLinks}</div>` : '';
-            view.innerHTML = `<div class="text-sm opacity-90 fade-in" style="line-height: ${lineHeight} !important;">${body}</div>${snsHtml}`;
+            return `<div class="text-sm opacity-90 fade-in" style="line-height: ${lineHeight} !important;">${body}</div>${snsHtml}`;
         }
 
-        // プライバシーポリシー+お問い合わせページ
+        function renderAboutPage() {
+            hideAllViews();
+            const view = document.getElementById('about-view');
+            view.classList.remove('hidden');
+            view.innerHTML = aboutBodyHtml();
+        }
+
+        // プライバシーポリシー+お問い合わせフォーム。通常のContactページと、パターンBのハブの
+        // アウトラインの両方から呼べるよう、HTML組み立てを共通の関数にまとめている
         let contactPageRenderedAt = 0;
 
-        function renderContactPage() {
-            hideAllViews();
-            const view = document.getElementById('contact-view');
-            view.classList.remove('hidden');
+        function contactBodyHtml() {
             contactPageRenderedAt = Date.now();
-            view.innerHTML = `
+            return `
                 <div class="text-xs opacity-50 fade-in" style="line-height: 1.9;">
                     <h2 class="text-xs opacity-90 mb-3" style="letter-spacing: 0.05em;">プライバシーポリシー</h2>
                     <p>当サイトのニュースレター購読フォームでは、更新通知の送信のみを目的としてメールアドレスをお預かりしています。取得した情報を第三者に提供・販売することはありません。</p>
@@ -890,6 +1004,13 @@
                     <p id="inquiry-status" class="text-xs opacity-50 mt-2 hidden"></p>
                 </div>
             `;
+        }
+
+        function renderContactPage() {
+            hideAllViews();
+            const view = document.getElementById('contact-view');
+            view.classList.remove('hidden');
+            view.innerHTML = contactBodyHtml();
         }
 
         // ハッシュタグ別の一覧ページ(タグ名・説明+該当記事)
