@@ -230,7 +230,11 @@
         .content-body blockquote { border-left: 1px solid var(--text-color-solid); padding-left: 1.5em; margin: 2em 0; font-style: italic; opacity: 0.7; }
         .content-body h2 { font-size: 1.2em; margin: 2em 0 1em 0; opacity: 0.9; }
         .footnote-ref { color: var(--footnote-color); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
-        .footnote-note { font-size: 0.8em; opacity: 0.65; border-bottom: 1px dotted currentColor; padding: 0 0.3em; }
+        .footnote-ref a { color: inherit; text-decoration: inherit; }
+        .footnote-list { margin-top: 2.5em; padding-top: 1.2em; border-top: 1px dotted color-mix(in srgb, currentColor 30%, transparent); font-size: 0.8em; opacity: 0.75; list-style: none; }
+        .footnote-list li { display: flex; gap: 0.5em; margin-bottom: 0.6em; }
+        .footnote-list li span:first-child { flex-shrink: 0; opacity: 0.6; }
+        .footnote-list a.footnote-back { opacity: 0.5; text-decoration: none; margin-left: 0.3em; }
         .search-highlight { background: color-mix(in srgb, currentColor 25%, transparent); border-radius: 2px; padding: 0 0.1em; }
     </style>
 
@@ -258,7 +262,7 @@
         <div id="menu-panel" class="absolute top-0 right-0 h-full w-36 max-w-[55vw] pointer-events-auto transform translate-x-full transition-transform duration-300 ease-out">
             <!-- backdrop-filterはtransformと同じ要素に付けるとSafariで正しくぼけない(透けて見えなくなる)ため、
                  スライドさせる外側とガラス表現(ぼかし)の内側を別要素に分けている -->
-            <div class="h-full p-5" style="background: color-mix(in srgb, var(--bg-color) 48%, transparent); backdrop-filter: blur(26px) saturate(190%); -webkit-backdrop-filter: blur(26px) saturate(190%); color: var(--text-color); border-left: 1px solid color-mix(in srgb, currentColor 30%, transparent); box-shadow: inset 1px 0 0 color-mix(in srgb, white 25%, transparent), -16px 0 44px color-mix(in srgb, black 20%, transparent);">
+            <div class="h-full p-5" style="background: color-mix(in srgb, var(--bg-color) 22%, transparent); backdrop-filter: blur(14px) saturate(190%); -webkit-backdrop-filter: blur(14px) saturate(190%); color: var(--text-color); border-left: 1px solid color-mix(in srgb, currentColor 30%, transparent); box-shadow: inset 1px 0 0 color-mix(in srgb, white 25%, transparent), -16px 0 44px color-mix(in srgb, black 20%, transparent);">
                 <button onclick="toggleMenu()" class="opacity-50 hover:opacity-100 transition-opacity mb-10 text-lg leading-none" aria-label="閉じる">×</button>
                 <nav class="flex flex-col gap-3" style="font-size: var(--menu-font-size);">
                     <a href="/" class="opacity-80 hover:opacity-100 transition-opacity">Top</a>
@@ -468,21 +472,30 @@
         };
 
         // 注釈の色・注釈本文を、DOM挿入前のHTML文字列の時点で確定させる(挿入後にJSで探して書き換える方式は、
-        // 実行順序やレンダリング経路によって適用されないことがあったため、生成の起点を一本化した)
-        function applyFootnoteStyling(html) {
+        // 実行順序やレンダリング経路によって適用されないことがあったため、生成の起点を一本化した)。
+        // 注釈は本文中に埋め込まず、記事の末尾に番号付きでまとめて表示する(参照元は番号リンクのみ)。
+        // 同じページに複数の記事が並ぶ(一覧など)ことがあるため、アンカーIDは記事IDで名前空間を分ける
+        function applyFootnoteStyling(html, articleId) {
             const container = document.createElement('div');
             container.innerHTML = html;
+            const notes = [];
             container.querySelectorAll('.footnote-ref').forEach(el => {
-                el.style.setProperty('color', siteFootnoteColor, 'important');
                 const next = el.nextElementSibling;
-                if (!next || !next.classList.contains('footnote-note')) {
-                    const note = document.createElement('span');
-                    note.className = 'footnote-note';
-                    note.textContent = el.dataset.note || '';
-                    el.after(note);
-                }
+                const noteText = el.dataset.note || (next && next.classList.contains('footnote-note') ? next.textContent : '');
+                if (next && next.classList.contains('footnote-note')) next.remove();
+                const n = notes.length + 1;
+                notes.push(noteText);
+                el.id = `fnref-${articleId}-${n}`;
+                el.style.setProperty('color', siteFootnoteColor, 'important');
+                el.innerHTML = `<a href="#fn-${articleId}-${n}">[${n}]</a>`;
             });
-            return container.innerHTML;
+            let notesHtml = '';
+            if (notes.length > 0) {
+                notesHtml = `<ol class="footnote-list">${notes.map((text, i) => `
+                    <li id="fn-${articleId}-${i + 1}"><span>[${i + 1}]</span><span>${escapeHtml(text)}<a href="#fnref-${articleId}-${i + 1}" class="footnote-back">↩</a></span></li>
+                `).join('')}</ol>`;
+            }
+            return container.innerHTML + notesHtml;
         }
 
         // 実験的機能: 関連記事(共有タグが多い順、なければ表示しない)。不要ならこの関数とbuildArticleHtml内の
@@ -529,7 +542,7 @@
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
                         <h2 class="text-lg font-normal mb-4 article-title">${article.title}</h2>
                         ${tagsHtml}
-                        <div class="article-snippet text-sm opacity-70 content-body">${applyFootnoteStyling(article.content)}</div>
+                        <div class="article-snippet text-sm opacity-70 content-body">${applyFootnoteStyling(article.content, article.id)}</div>
                         <div class="mt-4 text-center open-btn">
                             <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;">↓ 続きを読む</span>
                         </div>
