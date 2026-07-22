@@ -276,7 +276,8 @@
                 <nav class="flex flex-col gap-3" style="font-size: var(--menu-font-size);">
                     <a href="/" class="opacity-80 hover:opacity-100 transition-opacity">Top</a>
                     <a href="/about" class="opacity-80 hover:opacity-100 transition-opacity">About</a>
-                    <a href="/list" class="opacity-80 hover:opacity-100 transition-opacity">List</a>
+                    <a href="/list" class="opacity-80 hover:opacity-100 transition-opacity">Article</a>
+                    <a href="/tags" class="opacity-80 hover:opacity-100 transition-opacity">Tag</a>
                     <a href="/search" class="opacity-80 hover:opacity-100 transition-opacity">Search</a>
                     <button onclick="toggleMenu(); openSubscribeModal();" class="glass-chip self-start -ml-2.5 -mt-1.5 px-2.5 py-1 rounded-full hover:opacity-90 transition-opacity" style="background: color-mix(in srgb, var(--subscribe-bg-color) 55%, transparent); color: var(--subscribe-text-color); font-size: inherit; font-family: inherit;">Subscribe</button>
                 </nav>
@@ -685,6 +686,10 @@
             return location.pathname.replace(/\/$/, '') === '/list';
         }
 
+        function isTagListRoute() {
+            return location.pathname.replace(/\/$/, '') === '/tags';
+        }
+
         function isAboutRoute() {
             return location.pathname.replace(/\/$/, '') === '/about';
         }
@@ -717,22 +722,12 @@
         const TITLE_LIST_PAGE_SIZE = 6;
         let titleListCount = TITLE_LIST_PAGE_SIZE;
 
-        // タイトルと日付だけを並べた一覧ページ+ハッシュタグ一覧
+        // タイトルと日付だけを並べた記事一覧ページ
         async function renderTitleList() {
             hideAllViews();
             const listView = document.getElementById('title-list-view');
             listView.classList.remove('hidden');
             titleListCount = TITLE_LIST_PAGE_SIZE;
-
-            const { data: allTags, error } = await sb.from('tags').select('*').order('name', { ascending: true });
-            const tagsHtml = (!error && allTags && allTags.length > 0)
-                ? `<div class="flex flex-col gap-4">${allTags.map(t => `
-                    <a href="/tag/${encodeURIComponent(t.slug)}" class="block hover:opacity-80 transition-opacity">
-                        <span class="glass-chip inline-block px-2 py-0.5" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${t.name}</span>
-                        ${t.description ? `<p class="mt-1" style="color: var(--tag-description-color); font-size: var(--tag-description-size); line-height: inherit;">${escapeHtml(t.description)}</p>` : ''}
-                    </a>
-                `).join('')}</div>`
-                : '';
 
             listView.innerHTML = `
                 <h2 class="self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: var(--list-heading-bg-color); color: var(--list-heading-text-color);">article list</h2>
@@ -745,9 +740,30 @@
                         <span onclick="collapseTitleRows()" class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;">↑ 閉じる</span>
                     </div>
                 </div>
-                ${tagsHtml ? `<h2 class="self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: var(--list-heading-bg-color); color: var(--list-heading-text-color);">tag</h2>${tagsHtml}` : ''}
             `;
             renderTitleRows();
+        }
+
+        // ハッシュタグ一覧ページ
+        async function renderTagList() {
+            hideAllViews();
+            const listView = document.getElementById('title-list-view');
+            listView.classList.remove('hidden');
+
+            const { data: allTags, error } = await sb.from('tags').select('*').order('name', { ascending: true });
+            const tagsHtml = (!error && allTags && allTags.length > 0)
+                ? `<div class="flex flex-col gap-4">${allTags.map(t => `
+                    <a href="/tag/${encodeURIComponent(t.slug)}" class="block hover:opacity-80 transition-opacity">
+                        <span class="glass-chip inline-block px-2 py-0.5" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${t.name}</span>
+                        ${t.description ? `<p class="mt-1" style="color: var(--tag-description-color); font-size: var(--tag-description-size); line-height: inherit;">${escapeHtml(t.description)}</p>` : ''}
+                    </a>
+                `).join('')}</div>`
+                : '<p class="text-xs opacity-40">まだタグがありません。</p>';
+
+            listView.innerHTML = `
+                <h2 class="self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: var(--list-heading-bg-color); color: var(--list-heading-text-color);">tag</h2>
+                ${tagsHtml}
+            `;
         }
 
         function renderTitleRows() {
@@ -938,6 +954,10 @@
                 await renderTitleList();
                 return;
             }
+            if (isTagListRoute()) {
+                await renderTagList();
+                return;
+            }
             if (isSearchRoute()) {
                 renderSearchPage();
                 return;
@@ -1048,7 +1068,7 @@
         }
 
         function isHomeRoute() {
-            return !isListRoute() && !isAboutRoute() && !isSearchRoute() && !getTagSlug();
+            return !isListRoute() && !isTagListRoute() && !isAboutRoute() && !isSearchRoute() && !getTagSlug();
         }
 
         window.addEventListener('scroll', () => { if(isHomeRoute() && window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) renderArticles(1); });
