@@ -759,6 +759,7 @@
                     <div class="flex flex-col gap-2">
                         <input id="set-sns-x-url" type="text" placeholder="XのプロフィールURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
                         <input id="set-sns-instagram-url" type="text" placeholder="InstagramのプロフィールURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                        <input id="set-sns-website-url" type="text" placeholder="WebサイトのURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
                     </div>
                 </div>
 
@@ -2371,6 +2372,7 @@
             document.getElementById('set-about-content').value = data.about_content || '';
             document.getElementById('set-sns-x-url').value = data.sns_x_url || '';
             document.getElementById('set-sns-instagram-url').value = data.sns_instagram_url || '';
+            document.getElementById('set-sns-website-url').value = data.sns_website_url || '';
             document.getElementById('set-og-image').value = data.og_image || '';
             checkSetContrast();
         }
@@ -2421,6 +2423,7 @@
                 about_content: document.getElementById('set-about-content').value.trim(),
                 sns_x_url: document.getElementById('set-sns-x-url').value.trim(),
                 sns_instagram_url: document.getElementById('set-sns-instagram-url').value.trim(),
+                sns_website_url: document.getElementById('set-sns-website-url').value.trim(),
                 og_image: document.getElementById('set-og-image').value.trim()
             };
             const { error } = await sb.from('site_settings').update(payload).eq('id', 1);
