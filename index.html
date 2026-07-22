@@ -324,6 +324,10 @@
     </footer>
 
     <script>
+        // SNSシェアなどで使う正規のサイトURL。プレビューデプロイやvercel.appの旧リンクからアクセスしていても、
+        // シェアリンクは常にこの本番ドメインになるようにする(location.originだと今見ているホストがそのまま入ってしまうため)
+        const SITE_URL = 'https://fragments-of.space';
+
         // Supabase接続設定(anon keyは公開前提のクライアント用キー・読み取り専用で使用)
         const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpeXpsYXdtY3l5YmNoeHp5b3pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDI2MjQsImV4cCI6MjA5NTU3ODYyNH0.SZVwqWKkk31npqdiiG5m3HdkF4JnQ7SgEzThaFfZ4q4';
@@ -543,7 +547,7 @@
         }
 
         function articleShareUrl(id) {
-            return `${location.origin}/article/${id}`;
+            return `${SITE_URL}/article/${id}`;
         }
 
         function shareToInstagram(id) {
