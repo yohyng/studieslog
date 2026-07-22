@@ -134,6 +134,9 @@
 
         html {
             font-size: calc(var(--base-font-size) * var(--font-size-scale));
+            /* トグルを開いてページが長くなりスクロールバーが出現/消滅する瞬間に、
+               コンテンツの横位置がずれないよう常にスクロールバー分の余白を確保しておく */
+            scrollbar-gutter: stable;
         }
 
         body {
@@ -808,10 +811,10 @@
         function outlineArticleBulletHtml(article) {
             return `
                 <div class="outline-item">
-                    <div class="outline-toggle flex items-center gap-2 cursor-pointer py-1.5 opacity-80 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)">
-                        <svg class="outline-arrow" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; flex-shrink:0; opacity:0.6; transition: transform 0.2s ease;"><polyline points="9 6 15 12 9 18"/></svg>
-                        <span class="text-xs opacity-50 whitespace-nowrap">${escapeHtml(article.date)}</span>
-                        <span class="text-sm truncate">${escapeHtml(article.title)}</span>
+                    <div class="outline-toggle flex items-start gap-2 cursor-pointer py-1.5 opacity-80 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)">
+                        <svg class="outline-arrow" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; flex-shrink:0; margin-top:0.35em; opacity:0.6; transition: transform 0.2s ease;"><polyline points="9 6 15 12 9 18"/></svg>
+                        <span class="text-xs opacity-50 whitespace-nowrap" style="margin-top:0.15em;">${escapeHtml(article.date)}</span>
+                        <span class="text-sm">${escapeHtml(article.title)}</span>
                     </div>
                     <div class="outline-children hidden pl-6 pb-4" data-kind="article-body" data-article-id="${article.id}"></div>
                 </div>
