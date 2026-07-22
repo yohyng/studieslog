@@ -805,19 +805,80 @@
             } else {
                 document.getElementById('login-screen').classList.remove('hidden');
                 document.getElementById('app-screen').classList.add('hidden');
+                updateLoginLockUI();
             }
         }
 
+        // --- ログイン試行のロックアウト(総当たり対策の補助。Supabase Auth自体のレート制限に加えて、
+        // クライアント側でも連続失敗時に一時的にログインボタンを止める。localStorageベースなので
+        // 突破しようと思えばできるが、通りすがりの総当たりに対する簡易的な抑止として) ---
+        const LOGIN_MAX_ATTEMPTS = 5;
+        const LOGIN_BASE_LOCKOUT_SEC = 30;
+        const LOGIN_MAX_LOCKOUT_SEC = 900;
+        let loginLockoutTimer = null;
+
+        function getLoginLockState() {
+            return {
+                failCount: Number(localStorage.getItem('admin_login_fail_count') || '0'),
+                lockUntil: Number(localStorage.getItem('admin_login_lock_until') || '0'),
+                stage: Number(localStorage.getItem('admin_login_lockout_stage') || '0'),
+            };
+        }
+
+        function clearLoginLockState() {
+            localStorage.removeItem('admin_login_fail_count');
+            localStorage.removeItem('admin_login_lock_until');
+            localStorage.removeItem('admin_login_lockout_stage');
+        }
+
+        function registerLoginFailure() {
+            const state = getLoginLockState();
+            const failCount = state.failCount + 1;
+            if (failCount >= LOGIN_MAX_ATTEMPTS) {
+                const lockoutSec = Math.min(LOGIN_BASE_LOCKOUT_SEC * (2 ** state.stage), LOGIN_MAX_LOCKOUT_SEC);
+                localStorage.setItem('admin_login_fail_count', '0');
+                localStorage.setItem('admin_login_lock_until', String(Date.now() + lockoutSec * 1000));
+                localStorage.setItem('admin_login_lockout_stage', String(state.stage + 1));
+            } else {
+                localStorage.setItem('admin_login_fail_count', String(failCount));
+            }
+        }
+
+        function updateLoginLockUI() {
+            const { lockUntil } = getLoginLockState();
+            const remainingMs = lockUntil - Date.now();
+            const btn = document.querySelector('#login-screen button');
+            const el = document.getElementById('login-error');
+            if (remainingMs > 0) {
+                const remainingSec = Math.ceil(remainingMs / 1000);
+                btn.disabled = true;
+                btn.classList.add('opacity-40', 'cursor-not-allowed');
+                el.textContent = `試行回数が多いため、${remainingSec}秒後に再試行できます`;
+                el.classList.remove('hidden');
+                clearTimeout(loginLockoutTimer);
+                loginLockoutTimer = setTimeout(updateLoginLockUI, 1000);
+                return true;
+            }
+            btn.disabled = false;
+            btn.classList.remove('opacity-40', 'cursor-not-allowed');
+            return false;
+        }
+
         async function submitLogin() {
+            if (updateLoginLockUI()) return;
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-password').value;
             const { error } = await sb.auth.signInWithPassword({ email, password });
             if (error) {
+                registerLoginFailure();
                 const el = document.getElementById('login-error');
-                el.textContent = 'ログインに失敗しました: ' + error.message;
-                el.classList.remove('hidden');
+                if (!updateLoginLockUI()) {
+                    el.textContent = 'ログインに失敗しました: ' + error.message;
+                    el.classList.remove('hidden');
+                }
                 return;
             }
+            clearLoginLockState();
             showApp();
         }
 
