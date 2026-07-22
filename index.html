@@ -287,7 +287,7 @@
     <header class="w-full content-width mb-24 opacity-0 fade-in relative" style="animation-delay: 0.2s; isolation: isolate;">
         <div class="title-rect-wrap" id="title-rect-wrap" aria-hidden="true">
             <svg class="title-rect" id="title-rect" viewBox="0 0 210 205" preserveAspectRatio="none">
-                <polygon points="30,30 180,18 124,175 30,97" />
+                <polygon points="30,30 180,6 124,175 30,97" />
             </svg>
         </div>
         <h1 id="site-title" class="font-medium tracking-widest cursor-pointer inline-block relative z-10" onclick="goHome()">fragments</h1>
@@ -1129,7 +1129,7 @@
         // ページ読み込みのたびに台形の基準形を少しランダムにずらす
         function randomizeTitleShape() {
             const jitterAmount = titleShapeSettings.jitter;
-            const basePoints = [[30, 30], [180, 18], [124, 175], [30, 97]];
+            const basePoints = [[30, 30], [180, 6], [124, 175], [30, 97]];
             titleShapeBase = basePoints.map(([x, y]) => [
                 x + (Math.random() * 2 - 1) * jitterAmount,
                 y + (Math.random() * 2 - 1) * jitterAmount,
