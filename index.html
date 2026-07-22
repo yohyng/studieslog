@@ -280,11 +280,11 @@
                 <button onclick="toggleMenu()" class="opacity-50 hover:opacity-100 transition-opacity mb-10 text-lg leading-none" aria-label="閉じる">×</button>
                 <nav class="flex flex-col gap-3" style="font-size: var(--menu-font-size);">
                     <a href="/" class="opacity-80 hover:opacity-100 transition-opacity">Top</a>
-                    <a href="/about" class="opacity-80 hover:opacity-100 transition-opacity">About</a>
-                    <a href="/contact" class="opacity-80 hover:opacity-100 transition-opacity">Contact</a>
-                    <a href="/list" class="opacity-80 hover:opacity-100 transition-opacity">Article</a>
-                    <a href="/tags" class="opacity-80 hover:opacity-100 transition-opacity">Tag</a>
-                    <a href="/search" class="opacity-80 hover:opacity-100 transition-opacity">Search</a>
+                    <a href="/about" onclick="toggleMenu(); return goToSection('about', '/about');" class="opacity-80 hover:opacity-100 transition-opacity">About</a>
+                    <a href="/contact" onclick="toggleMenu(); return goToSection('contact', '/contact');" class="opacity-80 hover:opacity-100 transition-opacity">Contact</a>
+                    <a href="/list" onclick="toggleMenu(); return goToSection('article-list', '/list');" class="opacity-80 hover:opacity-100 transition-opacity">Article</a>
+                    <a href="/tags" onclick="toggleMenu(); return goToSection('tag-list', '/tags');" class="opacity-80 hover:opacity-100 transition-opacity">Tag</a>
+                    <a href="/search" onclick="toggleMenu(); return goToSection('search', '/search');" class="opacity-80 hover:opacity-100 transition-opacity">Search</a>
                     <button onclick="toggleMenu(); openSubscribeModal();" class="glass-chip self-start -ml-2.5 -mt-1.5 px-2.5 py-1 rounded-full hover:opacity-90 transition-opacity" style="background: color-mix(in srgb, var(--subscribe-bg-color) 55%, transparent); color: var(--subscribe-text-color); font-size: inherit; font-family: inherit;">Subscribe</button>
                 </nav>
             </div>
@@ -813,8 +813,8 @@
                 <div class="outline-item">
                     <div class="outline-toggle flex items-start gap-2 cursor-pointer py-1.5 opacity-80 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)">
                         <svg class="outline-arrow" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; flex-shrink:0; margin-top:0.35em; opacity:0.6; transition: transform 0.2s ease;"><polyline points="9 6 15 12 9 18"/></svg>
-                        <span class="text-xs opacity-50 whitespace-nowrap" style="margin-top:0.15em;">${escapeHtml(article.date)}</span>
                         <span class="text-sm">${escapeHtml(article.title)}</span>
+                        <span class="opacity-40 whitespace-nowrap" style="font-size: 0.65rem; margin-top:0.25em;">${escapeHtml(article.date)}</span>
                     </div>
                     <div class="outline-children hidden pl-6 pb-4" data-kind="article-body" data-article-id="${article.id}"></div>
                 </div>
@@ -865,6 +865,32 @@
                 : '<p class="text-xs opacity-40 py-2">見つかりませんでした。</p>';
         }
 
+        // Article/Tagの記事一覧は最初10件だけ表示し、それ以上は「さらに読み込む」ボタンで追加する。
+        // 区切り線はボタンと一緒に表示し、全件読み込み終わったら(=ボタンが不要になったら)一緒に消える
+        const OUTLINE_PAGE_SIZE = 10;
+
+        function renderOutlinePaginatedList(container, items, emptyMessage) {
+            if (items.length === 0) {
+                container.innerHTML = `<p class="text-xs opacity-40 py-2">${emptyMessage}</p>`;
+                return;
+            }
+            const shownCount = Number(container.dataset.shownCount || OUTLINE_PAGE_SIZE);
+            const visible = items.slice(0, shownCount);
+            const moreHtml = items.length > shownCount
+                ? `<hr class="my-2" style="border-color: color-mix(in srgb, currentColor 20%, transparent);"><button onclick="expandOutlineList(this)" class="text-xs opacity-30 hover:opacity-100 transition-opacity block">↓ さらに読み込む</button>`
+                : '';
+            container.innerHTML = visible.map(a => outlineArticleBulletHtml(a)).join('') + moreHtml;
+            container.dataset.shownCount = String(shownCount);
+            container._outlineItems = items;
+        }
+
+        function expandOutlineList(btnEl) {
+            const container = btnEl.parentElement;
+            const items = container._outlineItems || [];
+            container.dataset.shownCount = String(Number(container.dataset.shownCount || OUTLINE_PAGE_SIZE) + OUTLINE_PAGE_SIZE);
+            renderOutlinePaginatedList(container, items, '');
+        }
+
         // トグルの開閉と、子要素の遅延生成をまとめて担当する
         async function toggleOutlineItem(rowEl) {
             const item = rowEl.parentElement;
@@ -883,9 +909,7 @@
 
             const kind = children.dataset.kind;
             if (kind === 'article-list') {
-                children.innerHTML = articles.length > 0
-                    ? articles.map(a => outlineArticleBulletHtml(a)).join('')
-                    : '<p class="text-xs opacity-40 py-2">まだ記事がありません。</p>';
+                renderOutlinePaginatedList(children, articles, 'まだ記事がありません。');
             } else if (kind === 'article-body') {
                 const id = Number(children.dataset.articleId);
                 const article = articles.find(a => a.id === id);
@@ -901,9 +925,7 @@
             } else if (kind === 'tag-articles') {
                 const slug = children.dataset.tagSlug;
                 const matched = articles.filter(a => (a.tags || []).some(t => t.slug === slug));
-                children.innerHTML = matched.length > 0
-                    ? matched.map(a => outlineArticleBulletHtml(a)).join('')
-                    : '<p class="text-xs opacity-40 py-2">このタグの記事はまだありません。</p>';
+                renderOutlinePaginatedList(children, matched, 'このタグの記事はまだありません。');
             } else if (kind === 'about') {
                 children.innerHTML = aboutBodyHtml();
             } else if (kind === 'contact') {
@@ -926,6 +948,38 @@
                     ${outlineTopItemHtml('Search', 'search')}
                 </div>
             `;
+            // サイドバーからの遷移で#article-listのようなハッシュが付いていたら、該当セクションを
+            // 自動的に開いてスクロールする(サイドバーのgoToSectionからのクロスページ遷移用)
+            const hash = location.hash.replace('#', '');
+            if (hash) {
+                setTimeout(() => scrollToOutlineSection(hash), 50);
+            }
+        }
+
+        // パターンBのサイドバーから、ハブページ内の該当セクションへ直接ジャンプする(開いてスクロール)
+        function scrollToOutlineSection(kind) {
+            const view = document.getElementById('hub-view');
+            if (!view) return;
+            const childrenEl = view.querySelector(`.outline-children[data-kind="${kind}"]`);
+            if (!childrenEl) return;
+            const item = childrenEl.closest('.outline-item');
+            const row = item.querySelector(':scope > .outline-toggle');
+            if (childrenEl.classList.contains('hidden')) {
+                toggleOutlineItem(row);
+            }
+            item.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // パターンBの時だけ、サイドバーのリンクをハブページ内のスクロール移動に差し替える。
+        // パターンA(既定)の時は通常通り各ページへ遷移する
+        function goToSection(kind, fallbackHref) {
+            if (homepageLayout !== 'hub') return true;
+            if (location.pathname.replace(/\/$/, '') === '') {
+                scrollToOutlineSection(kind);
+            } else {
+                location.href = '/#' + kind;
+            }
+            return false;
         }
 
         function renderTitleRows() {
