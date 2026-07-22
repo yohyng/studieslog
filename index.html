@@ -276,6 +276,7 @@
                 <nav class="flex flex-col gap-3" style="font-size: var(--menu-font-size);">
                     <a href="/" class="opacity-80 hover:opacity-100 transition-opacity">Top</a>
                     <a href="/about" class="opacity-80 hover:opacity-100 transition-opacity">About</a>
+                    <a href="/contact" class="opacity-80 hover:opacity-100 transition-opacity">Contact</a>
                     <a href="/list" class="opacity-80 hover:opacity-100 transition-opacity">Article</a>
                     <a href="/tags" class="opacity-80 hover:opacity-100 transition-opacity">Tag</a>
                     <a href="/search" class="opacity-80 hover:opacity-100 transition-opacity">Search</a>
@@ -300,6 +301,8 @@
     <main id="title-list-view" class="hidden w-full content-width flex flex-col relative"></main>
 
     <main id="about-view" class="hidden w-full content-width relative"></main>
+
+    <main id="contact-view" class="hidden w-full content-width relative"></main>
 
     <main id="tag-view" class="hidden w-full content-width relative"></main>
 
@@ -694,6 +697,10 @@
             return location.pathname.replace(/\/$/, '') === '/about';
         }
 
+        function isContactRoute() {
+            return location.pathname.replace(/\/$/, '') === '/contact';
+        }
+
         function getTagSlug() {
             const m = location.pathname.match(/^\/tag\/([^/]+)\/?$/);
             return m ? decodeURIComponent(m[1]) : null;
@@ -708,6 +715,7 @@
             document.getElementById('article-list').classList.add('hidden');
             document.getElementById('title-list-view').classList.add('hidden');
             document.getElementById('about-view').classList.add('hidden');
+            document.getElementById('contact-view').classList.add('hidden');
             document.getElementById('tag-view').classList.add('hidden');
             document.getElementById('search-view').classList.add('hidden');
             document.getElementById('loading-indicator').classList.add('hidden');
@@ -789,19 +797,26 @@
         }
 
         // サイト運営者についてのアバウトページ
-        let aboutPageRenderedAt = 0;
-
         function renderAboutPage() {
             hideAllViews();
             const view = document.getElementById('about-view');
             view.classList.remove('hidden');
-            aboutPageRenderedAt = Date.now();
             const body = siteAboutContent
                 ? escapeHtml(siteAboutContent).replace(/\n/g, '<br>')
                 : '<p class="opacity-40">まだ内容がありません。</p>';
+            view.innerHTML = `<div class="text-sm opacity-90 fade-in" style="line-height: inherit;">${body}</div>`;
+        }
+
+        // プライバシーポリシー+お問い合わせページ
+        let contactPageRenderedAt = 0;
+
+        function renderContactPage() {
+            hideAllViews();
+            const view = document.getElementById('contact-view');
+            view.classList.remove('hidden');
+            contactPageRenderedAt = Date.now();
             view.innerHTML = `
-                <div class="text-sm opacity-90 fade-in" style="line-height: inherit;">${body}</div>
-                <div class="mt-20 pt-8 text-xs opacity-50 fade-in" style="border-top: 1px solid currentColor; line-height: 1.9;">
+                <div class="text-xs opacity-50 fade-in" style="line-height: 1.9;">
                     <h2 class="text-xs opacity-90 mb-3" style="letter-spacing: 0.05em;">プライバシーポリシー</h2>
                     <p>当サイトのニュースレター購読フォームでは、更新通知の送信のみを目的としてメールアドレスをお預かりしています。取得した情報を第三者に提供・販売することはありません。</p>
                     <p class="mt-3">メールの送信にはResend、データの保管にはSupabaseを利用しています。また、文字表示のためGoogle Fontsを読み込んでおり、その際にご利用のブラウザからGoogleのサーバーへ通信が発生します。</p>
@@ -958,6 +973,10 @@
                 renderAboutPage();
                 return;
             }
+            if (isContactRoute()) {
+                renderContactPage();
+                return;
+            }
             const tagSlug = getTagSlug();
             if (tagSlug) {
                 await renderTagPage(tagSlug);
@@ -1092,7 +1111,7 @@
 
             // 購読フォームと同じ簡易bot対策(ハニーポット+送信速度チェック)
             const honeypot = document.getElementById('inquiry-hp').value;
-            const tooFast = Date.now() - aboutPageRenderedAt < 1500;
+            const tooFast = Date.now() - contactPageRenderedAt < 1500;
             if (honeypot || tooFast) {
                 status.classList.remove('hidden');
                 status.textContent = '送信しました。ありがとうございます。';
@@ -1114,7 +1133,7 @@
         }
 
         function isHomeRoute() {
-            return !isListRoute() && !isTagListRoute() && !isAboutRoute() && !isSearchRoute() && !getTagSlug();
+            return !isListRoute() && !isTagListRoute() && !isAboutRoute() && !isContactRoute() && !isSearchRoute() && !getTagSlug();
         }
 
         window.addEventListener('scroll', () => { if(isHomeRoute() && window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) renderArticles(1); });
