@@ -743,7 +743,15 @@
             const body = siteAboutContent
                 ? escapeHtml(siteAboutContent).replace(/\n/g, '<br>')
                 : '<p class="opacity-40">まだ内容がありません。</p>';
-            view.innerHTML = `<div class="text-sm opacity-90 fade-in" style="line-height: inherit;">${body}</div>`;
+            view.innerHTML = `
+                <div class="text-sm opacity-90 fade-in" style="line-height: inherit;">${body}</div>
+                <div class="mt-20 pt-8 text-xs opacity-50 fade-in" style="border-top: 1px solid currentColor; line-height: 1.9;">
+                    <h2 class="text-xs opacity-90 mb-3" style="letter-spacing: 0.05em;">プライバシーポリシー</h2>
+                    <p>当サイトのニュースレター購読フォームでは、更新通知の送信のみを目的としてメールアドレスをお預かりしています。取得した情報を第三者に提供・販売することはありません。</p>
+                    <p class="mt-3">メールの送信にはResend、データの保管にはSupabaseを利用しています。また、文字表示のためGoogle Fontsを読み込んでおり、その際にご利用のブラウザからGoogleのサーバーへ通信が発生します。</p>
+                    <p class="mt-3">購読の解除は、配信されたメール内の「配信停止はこちら」リンクからいつでも行えます。解除された時点でメールアドレスは削除されます。取得情報の開示・削除等のご要望は、このページ経由でお問い合わせください。</p>
+                </div>
+            `;
         }
 
         // ハッシュタグ別の一覧ページ(タグ名・説明+該当記事)
