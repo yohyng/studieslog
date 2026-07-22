@@ -719,7 +719,7 @@
             return (div.textContent || '').trim();
         }
 
-        const TITLE_LIST_PAGE_SIZE = 6;
+        const TITLE_LIST_PAGE_SIZE = 10;
         let titleListCount = TITLE_LIST_PAGE_SIZE;
 
         // タイトルと日付だけを並べた記事一覧ページ
@@ -730,7 +730,7 @@
             titleListCount = TITLE_LIST_PAGE_SIZE;
 
             listView.innerHTML = `
-                <h2 class="self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: var(--list-heading-bg-color); color: var(--list-heading-text-color);">article list</h2>
+                <h2 class="glass-chip self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: color-mix(in srgb, var(--list-heading-bg-color) 55%, transparent); color: var(--list-heading-text-color);">article</h2>
                 <div id="title-rows-container" class="mb-4"></div>
                 <div class="text-center mb-16 flex flex-col gap-2">
                     <div id="title-rows-more" class="hidden">
@@ -761,7 +761,7 @@
                 : '<p class="text-xs opacity-40">まだタグがありません。</p>';
 
             listView.innerHTML = `
-                <h2 class="self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: var(--list-heading-bg-color); color: var(--list-heading-text-color);">tag</h2>
+                <h2 class="glass-chip self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: color-mix(in srgb, var(--list-heading-bg-color) 55%, transparent); color: var(--list-heading-text-color);">tag</h2>
                 ${tagsHtml}
             `;
         }
