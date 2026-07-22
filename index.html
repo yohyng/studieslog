@@ -813,12 +813,21 @@
                 : '<p class="opacity-40">まだ内容がありません。</p>';
             // 記事本文と同じ行間になるよう、article本文と同じ計算式で!important付きの行間を直接指定する
             const lineHeight = siteLineHeight * currentLineHeightScale();
+            const snsRow = (label, url, icon) => !url ? '' : `
+                <div class="flex items-center gap-3">
+                    <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="glass-icon shrink-0 opacity-70 hover:opacity-100 transition-opacity" title="${label}" aria-label="${label}">${icon}</a>
+                    <div class="min-w-0">
+                        <div class="opacity-50" style="font-size: 0.65rem;">${label}</div>
+                        <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="hover:opacity-80 transition-opacity block truncate" style="color: ${siteFootnoteColor}; font-size: 0.75rem;">${escapeHtml(url)}</a>
+                    </div>
+                </div>
+            `;
             const snsLinks = [
-                siteSnsXUrl ? `<a href="${escapeHtml(siteSnsXUrl)}" target="_blank" rel="noopener noreferrer" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="X" aria-label="X">${SHARE_ICONS.x}</a>` : '',
-                siteSnsInstagramUrl ? `<a href="${escapeHtml(siteSnsInstagramUrl)}" target="_blank" rel="noopener noreferrer" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="Instagram" aria-label="Instagram">${SHARE_ICONS.instagram}</a>` : '',
-                siteSnsWebsiteUrl ? `<a href="${escapeHtml(siteSnsWebsiteUrl)}" target="_blank" rel="noopener noreferrer" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="Webサイト" aria-label="Webサイト">${SHARE_ICONS.website}</a>` : '',
+                snsRow('X', siteSnsXUrl, SHARE_ICONS.x),
+                snsRow('Instagram', siteSnsInstagramUrl, SHARE_ICONS.instagram),
+                snsRow('Web', siteSnsWebsiteUrl, SHARE_ICONS.website),
             ].filter(Boolean).join('');
-            const snsHtml = snsLinks ? `<div class="flex items-center gap-3 mt-8 fade-in">${snsLinks}</div>` : '';
+            const snsHtml = snsLinks ? `<div class="flex flex-col gap-3 mt-8 fade-in max-w-sm">${snsLinks}</div>` : '';
             view.innerHTML = `<div class="text-sm opacity-90 fade-in" style="line-height: ${lineHeight} !important;">${body}</div>${snsHtml}`;
         }
 
