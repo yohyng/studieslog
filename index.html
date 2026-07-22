@@ -1126,10 +1126,15 @@
             randomizeTitleShape();
         }
 
-        // ページ読み込みのたびに台形の基準形を少しランダムにずらす
+        // 台形の基準形。ページ読み込みのたびにこの中から1つをランダムに選び、さらに少しジッターをかける
+        const TITLE_SHAPE_VARIANTS = [
+            [[30, 30], [180, 6], [124, 130], [30, 97]],
+            [[130, 20], [180, 38], [123, 185], [30, 94]],
+        ];
+
         function randomizeTitleShape() {
             const jitterAmount = titleShapeSettings.jitter;
-            const basePoints = [[30, 30], [180, 6], [124, 130], [30, 97]];
+            const basePoints = TITLE_SHAPE_VARIANTS[Math.floor(Math.random() * TITLE_SHAPE_VARIANTS.length)];
             titleShapeBase = basePoints.map(([x, y]) => [
                 x + (Math.random() * 2 - 1) * jitterAmount,
                 y + (Math.random() * 2 - 1) * jitterAmount,
