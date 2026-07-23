@@ -966,14 +966,33 @@
             }
         }
 
-        // ハブページ冒頭に常時表示する最新3記事。トグルを開かなくても最初の一手が見えるようにする
+        // ハブページ冒頭に常時表示する最新3記事。トグルを開かなくても本文の頭出し(約5行、下端はフェード)まで見え、
+        // 続きは記事ページへのリンクで読める(他の一覧項目と違いその場での本文展開はしない)
+        const LATEST_PREVIEW_LINES = 5;
+
+        function outlineLatestArticleHtml(article) {
+            const fontSize = (article.font != null ? article.font_size : siteFontSize) * currentFontSizeScale();
+            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
+            const maxHeight = fontSize * lineHeight * LATEST_PREVIEW_LINES;
+            return `
+                <div class="mb-4">
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-sm opacity-90">${escapeHtml(article.title)}</span>
+                        <span class="opacity-40 whitespace-nowrap" style="font-size: 0.65rem;">${escapeHtml(article.date)}</span>
+                    </div>
+                    <div class="article-snippet text-sm opacity-70 content-body mt-1" style="line-height: ${lineHeight} !important; max-height: ${maxHeight}px;">${applyFootnoteStyling(article.content, article.id)}</div>
+                    <a href="/article/${article.id}" class="text-xs opacity-40 hover:opacity-80 transition-opacity mt-1 inline-block">→ ページで開く</a>
+                </div>
+            `;
+        }
+
         function renderLatestArticlesHtml() {
             if (articles.length === 0) return '';
             const latest = articles.slice(0, 3);
             return `
                 <div class="mb-2">
                     <div class="opacity-50 text-xs mb-1.5" style="letter-spacing: 0.05em;">Latest</div>
-                    ${latest.map(a => outlineArticleBulletHtml(a)).join('')}
+                    ${latest.map(a => outlineLatestArticleHtml(a)).join('')}
                 </div>
                 <hr class="my-3" style="border-color: color-mix(in srgb, currentColor 20%, transparent);">
             `;
