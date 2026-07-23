@@ -72,15 +72,13 @@
 
         .content-width { max-width: var(--content-width); }
 
-        /* パターンB(ハブ型)のトップページのみ、PC/横幅広めのタブレットでは中央寄せをやめて左に寄せ、
-           Latestと残りのアウトライン(About/Article/Tag/Contact/Search)を2段組にする。
+        /* パターンB(ハブ型)のトップページのみ、PC/横幅広めのタブレットでは中央寄せは保ったまま
+           横幅を広げて、Latestと残りのアウトライン(About/Article/Tag/Contact/Search)を2段組にする。
            bodyのhub-homeクラスはrenderHubPage()が付け、hideAllViews()が他の画面に切り替わるたびに外す */
         @media (min-width: 1024px) {
             body.hub-home header,
             body.hub-home #hub-view {
-                align-self: flex-start;
                 max-width: min(900px, 90vw);
-                margin-left: max(4vw, 2rem);
             }
             body.hub-home .hub-grid {
                 display: grid;
