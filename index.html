@@ -982,18 +982,47 @@
         const LATEST_PREVIEW_LINES = 5;
 
         function outlineLatestArticleHtml(article) {
-            const fontSize = (article.font != null ? article.font_size : siteFontSize) * currentFontSizeScale();
             const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
-            const maxHeight = fontSize * lineHeight * LATEST_PREVIEW_LINES;
+            const maxHeight = latestSnippetMaxHeight(article);
             return `
-                <div class="mb-4">
+                <div class="mb-4" data-article-id="${article.id}">
                     <div class="text-sm opacity-90">${escapeHtml(article.title)}</div>
                     ${outlineBulletTagsHtml(article)}
                     <div class="opacity-40 mt-1" style="font-size: 0.65rem;">${escapeHtml(article.date)}</div>
                     <div class="article-snippet text-sm opacity-70 content-body mt-1" style="line-height: ${lineHeight} !important; max-height: ${maxHeight}px;">${applyFootnoteStyling(article.content, article.id)}</div>
-                    <a href="/article/${article.id}" class="text-xs opacity-40 hover:opacity-80 transition-opacity mt-1 inline-block">→ ページで開く</a>
+                    <div class="mt-1 text-center">
+                        <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity latest-open-btn" style="font-size: 0.65rem;" onclick="toggleLatestSnippet(this)">↓ 続きを読む</span>
+                        <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity latest-close-btn hidden" style="font-size: 0.65rem;" onclick="toggleLatestSnippet(this)">↑ 閉じる</span>
+                    </div>
                 </div>
             `;
+        }
+
+        function latestSnippetMaxHeight(article) {
+            const fontSize = (article.font != null ? article.font_size : siteFontSize) * currentFontSizeScale();
+            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
+            return fontSize * lineHeight * LATEST_PREVIEW_LINES;
+        }
+
+        // Latestの本文プレビューを、その場で全文展開/折りたたみする(記事ページへは飛ばない)
+        function toggleLatestSnippet(btnEl) {
+            const wrap = btnEl.closest('[data-article-id]');
+            const snippet = wrap.querySelector('.article-snippet');
+            const openBtn = wrap.querySelector('.latest-open-btn');
+            const closeBtn = wrap.querySelector('.latest-close-btn');
+            const isOpen = snippet.classList.contains('open-full');
+            if (isOpen) {
+                snippet.classList.remove('open-full');
+                const article = articles.find(a => a.id === Number(wrap.dataset.articleId));
+                if (article) snippet.style.maxHeight = latestSnippetMaxHeight(article) + 'px';
+                openBtn.classList.remove('hidden');
+                closeBtn.classList.add('hidden');
+            } else {
+                snippet.classList.add('open-full');
+                snippet.style.maxHeight = 'none';
+                openBtn.classList.add('hidden');
+                closeBtn.classList.remove('hidden');
+            }
         }
 
         function renderLatestArticlesHtml() {
