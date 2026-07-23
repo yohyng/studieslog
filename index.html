@@ -802,7 +802,7 @@
                     <div class="outline-toggle cursor-pointer py-2 opacity-90 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)" style="font-size: 1.05rem;">
                         <span>${label}</span>
                     </div>
-                    <div class="outline-children hidden pb-4" style="padding-left: 1.125rem;" data-kind="${kind}"></div>
+                    <div class="outline-children hidden pb-4" data-kind="${kind}"></div>
                 </div>
             `;
         }
@@ -814,7 +814,7 @@
                         <span class="text-sm">${escapeHtml(article.title)}</span>
                         <span class="opacity-40 whitespace-nowrap" style="font-size: 0.65rem; margin-top:0.25em;">${escapeHtml(article.date)}</span>
                     </div>
-                    <div class="outline-children hidden pb-4" style="padding-left: 1.125rem;" data-kind="article-body" data-article-id="${article.id}"></div>
+                    <div class="outline-children hidden pb-4" data-kind="article-body" data-article-id="${article.id}"></div>
                 </div>
             `;
         }
@@ -888,7 +888,7 @@
 
         function renderArticleCategoryList(container) {
             if (articles.length === 0) {
-                container.innerHTML = '<p class="text-xs opacity-40 py-2">まだ記事がありません。</p>';
+                container.innerHTML = '<p class="text-xs opacity-40 py-2" style="padding-left: 1.125rem;">まだ記事がありません。</p>';
                 return;
             }
             const filterHtml = ['', ...ARTICLE_CATEGORIES].map(cat => `
@@ -896,8 +896,10 @@
             `).join('<span class="opacity-30" style="margin: 0 0.4em;">/</span>');
 
             container.innerHTML = `
-                <div class="category-filter-row text-sm mb-4">${filterHtml}</div>
-                <div class="category-article-list">${articles.map(a => outlineArticleBulletHtml(a)).join('')}</div>
+                <div style="padding-left: 1.125rem;">
+                    <div class="category-filter-row text-sm mb-4">${filterHtml}</div>
+                    <div class="category-article-list">${articles.map(a => outlineArticleBulletHtml(a)).join('')}</div>
+                </div>
             `;
         }
 
@@ -947,9 +949,10 @@
                     const { data, error } = await sb.from('tags').select('*').order('name', { ascending: true });
                     hubTagsCache = (!error && data) ? data : [];
                 }
-                children.innerHTML = hubTagsCache.length > 0
+                const tagListHtml = hubTagsCache.length > 0
                     ? hubTagsCache.map(t => outlineTagBulletHtml(t)).join('')
                     : '<p class="text-xs opacity-40 py-2">まだタグがありません。</p>';
+                children.innerHTML = `<div style="padding-left: 1.125rem;">${tagListHtml}</div>`;
             } else if (kind === 'tag-articles') {
                 const slug = children.dataset.tagSlug;
                 const matched = articles.filter(a => (a.tags || []).some(t => t.slug === slug));
