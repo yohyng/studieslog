@@ -990,6 +990,7 @@
             if (articles.length === 0) return '';
             const latest = articles.slice(0, 3);
             return `
+                <hr class="my-3" style="border-color: color-mix(in srgb, currentColor 20%, transparent);">
                 <div class="mb-2">
                     <div class="opacity-50 text-xs mb-1.5" style="letter-spacing: 0.05em;">Latest</div>
                     ${latest.map(a => outlineLatestArticleHtml(a)).join('')}
