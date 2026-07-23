@@ -71,6 +71,23 @@
         }
 
         .content-width { max-width: var(--content-width); }
+
+        /* パターンB(ハブ型)のトップページのみ、PC/横幅広めのタブレットでは中央寄せをやめて左に寄せ、
+           Latestと残りのアウトライン(About/Article/Tag/Contact/Search)を2段組にする。
+           bodyのhub-homeクラスはrenderHubPage()が付け、hideAllViews()が他の画面に切り替わるたびに外す */
+        @media (min-width: 1024px) {
+            body.hub-home header,
+            body.hub-home #hub-view {
+                align-self: flex-start;
+                max-width: min(1080px, 94vw);
+            }
+            body.hub-home .hub-grid {
+                display: grid;
+                grid-template-columns: minmax(220px, 320px) 1fr;
+                gap: 4rem;
+                align-items: start;
+            }
+        }
         /* テスト機能: 表示設定で選ぶと、単色の背景の代わりに粒状ノイズ入りのグラデーション画像を使う(固定位置の背景専用div) */
         /* テスト機能: 表示設定で選ぶと、単色の背景色の代わりに使われる。ページと一緒にスクロールするようbodyに直接タイル表示する */
         body.gradient-gray {
@@ -736,6 +753,7 @@
             document.getElementById('tag-view').classList.add('hidden');
             document.getElementById('search-view').classList.add('hidden');
             document.getElementById('loading-indicator').classList.add('hidden');
+            document.body.classList.remove('hub-home');
         }
 
         function stripHtml(html) {
@@ -1040,16 +1058,21 @@
 
         function renderHubPage() {
             hideAllViews();
+            document.body.classList.add('hub-home');
             const view = document.getElementById('hub-view');
             view.classList.remove('hidden');
             view.innerHTML = `
-                <div class="fade-in">
-                    ${renderLatestArticlesHtml()}
-                    ${outlineTopItemHtml('About', 'about')}
-                    ${outlineTopItemHtml('Article', 'article-list')}
-                    ${outlineTopItemHtml('Tag', 'tag-list')}
-                    ${outlineTopItemHtml('Contact', 'contact')}
-                    ${outlineTopItemHtml('Search', 'search')}
+                <div class="fade-in hub-grid">
+                    <div class="hub-latest-col">
+                        ${renderLatestArticlesHtml()}
+                    </div>
+                    <div class="hub-outline-col">
+                        ${outlineTopItemHtml('About', 'about')}
+                        ${outlineTopItemHtml('Article', 'article-list')}
+                        ${outlineTopItemHtml('Tag', 'tag-list')}
+                        ${outlineTopItemHtml('Contact', 'contact')}
+                        ${outlineTopItemHtml('Search', 'search')}
+                    </div>
                 </div>
             `;
             // サイドバーからの遷移で#article-listのようなハッシュが付いていたら、該当セクションを
