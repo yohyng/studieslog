@@ -966,12 +966,26 @@
             }
         }
 
+        // ハブページ冒頭に常時表示する最新3記事。トグルを開かなくても最初の一手が見えるようにする
+        function renderLatestArticlesHtml() {
+            if (articles.length === 0) return '';
+            const latest = articles.slice(0, 3);
+            return `
+                <div class="mb-2">
+                    <div class="opacity-50 text-xs mb-1.5" style="letter-spacing: 0.05em;">Latest</div>
+                    ${latest.map(a => outlineArticleBulletHtml(a)).join('')}
+                </div>
+                <hr class="my-3" style="border-color: color-mix(in srgb, currentColor 20%, transparent);">
+            `;
+        }
+
         function renderHubPage() {
             hideAllViews();
             const view = document.getElementById('hub-view');
             view.classList.remove('hidden');
             view.innerHTML = `
                 <div class="fade-in">
+                    ${renderLatestArticlesHtml()}
                     ${outlineTopItemHtml('About', 'about')}
                     ${outlineTopItemHtml('Article', 'article-list')}
                     ${outlineTopItemHtml('Tag', 'tag-list')}
