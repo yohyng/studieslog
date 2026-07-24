@@ -879,13 +879,18 @@
 
         // タイトルと日付を横並び1行に。タグは表示せず、絞り込み用のdata-tagsとしてのみ持たせる
         // (カテゴリ・タグの絞り込みは一覧の上のフィルター行が担う)。長いタイトルは省略記号で切る
+        // カテゴリ名(左) / タイトル(中央、伸縮) / ハッシュタグ(右揃え)を1行に並べる。日付は出さない
         function outlineArticleBulletHtml(article) {
             const tagsAttr = (article.tags || []).map(t => t.slug).join(',');
+            const tagsHtml = (article.tags && article.tags.length > 0)
+                ? `<span class="flex gap-1.5 flex-shrink-0" style="margin-left: auto;">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="glass-chip px-1.5 py-0.5 hover:opacity-80 transition-opacity whitespace-nowrap" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${escapeHtml(t.name)}</a>`).join('')}</span>`
+                : '';
             return `
                 <div class="outline-item outline-article-row transition-opacity" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}">
-                    <div class="outline-toggle flex items-baseline justify-between gap-3 cursor-pointer py-2 opacity-80 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)">
+                    <div class="outline-toggle flex items-baseline gap-3 cursor-pointer py-2 opacity-80 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)">
+                        <span class="opacity-40 whitespace-nowrap flex-shrink-0" style="font-size: 0.65rem; min-width: 3.5em;">${escapeHtml(article.category || '')}</span>
                         <span class="text-sm truncate" style="min-width: 0;">${escapeHtml(article.title)}</span>
-                        <span class="opacity-40 whitespace-nowrap flex-shrink-0" style="font-size: 0.65rem;">${escapeHtml(article.date)}</span>
+                        ${tagsHtml}
                     </div>
                     <div class="outline-children hidden pb-4" data-kind="article-body" data-article-id="${article.id}"></div>
                 </div>
