@@ -86,8 +86,6 @@
             overflow: hidden;
             aspect-ratio: 1 / 1;
             padding: 1.25rem;
-            backdrop-filter: blur(14px) saturate(180%);
-            -webkit-backdrop-filter: blur(14px) saturate(180%);
             transition: opacity 0.3s ease;
         }
         .card-excerpt {
@@ -99,7 +97,7 @@
         }
         /* 枠線を引かず、文字組みだけで見えない枠を感じさせる。タイトルは両端揃えだが最後の行だけ右揃えにする
            (本文の方は最後の行まで均等に伸ばす。card-excerptの均等揃えと使い分ける) */
-        .card-title { text-align: justify; text-align-last: right; text-justify: inter-character; }
+        .card-title { text-align: justify; text-align-last: left; text-justify: inter-character; }
         /* 画像カードは本文が長いとタイトルごと枠の外(上)へ押し出されてしまうため、本文側だけ行数を制限する */
         .card-image-title .card-excerpt {
             display: -webkit-box;
