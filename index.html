@@ -318,6 +318,8 @@
         .search-highlight { background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); border-radius: 2px; padding: 0 0.1em; }
         /* パターンB(ハブ)のWorkFlowy風アウトライン */
         .outline-toggle { user-select: none; }
+        /* 記事一覧の項目間にうっすら区切り線を入れる(最初の項目の上と最後の項目の下には出さない) */
+        .outline-article-row + .outline-article-row { border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -880,7 +882,7 @@
             `;
         }
 
-        // タイトルに付いているタグを、記事ページ本文と同じ見た目のチップで並べる小さいタグ行
+        // タイトルに付いているタグを、記事ページ本文と同じ見た目のチップで並べる小さいタグ行(Latestで使用)
         function outlineBulletTagsHtml(article) {
             if (!article.tags || article.tags.length === 0) return '';
             return `
@@ -890,13 +892,15 @@
             `;
         }
 
+        // タイトルと日付を横並び1行に。タグは表示せず、絞り込み用のdata-tagsとしてのみ持たせる
+        // (カテゴリ・タグの絞り込みは一覧の上のフィルター行が担う)。長いタイトルは省略記号で切る
         function outlineArticleBulletHtml(article) {
+            const tagsAttr = (article.tags || []).map(t => t.slug).join(',');
             return `
-                <div class="outline-item transition-opacity" data-category="${escapeHtml(article.category || '')}">
-                    <div class="outline-toggle cursor-pointer py-1.5 opacity-80 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)">
-                        <div class="text-sm">${escapeHtml(article.title)}</div>
-                        ${outlineBulletTagsHtml(article)}
-                        <div class="opacity-40 mt-1" style="font-size: 0.65rem;">${escapeHtml(article.date)}</div>
+                <div class="outline-item outline-article-row transition-opacity" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}">
+                    <div class="outline-toggle flex items-baseline justify-between gap-3 cursor-pointer py-2 opacity-80 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)">
+                        <span class="text-sm truncate" style="min-width: 0;">${escapeHtml(article.title)}</span>
+                        <span class="opacity-40 whitespace-nowrap flex-shrink-0" style="font-size: 0.65rem;">${escapeHtml(article.date)}</span>
                     </div>
                     <div class="outline-children hidden pb-4" data-kind="article-body" data-article-id="${article.id}"></div>
                 </div>
@@ -970,21 +974,52 @@
         // 一覧性を保ったまま絞り込める見せ方の参考: 一覧は隠さず色の濃淡だけで焦点を変える
         const ARTICLE_CATEGORIES = ['エッセイ', 'ノート', '試論'];
 
+        // カテゴリ(1つだけ選べるジャンル)とタグ(複数選べる横串)は別軸なので、両方の絞り込み条件を
+        // 掛け合わせて(AND)判定する。状態はrenderArticleCategoryList()のたびにリセットする
+        let outlineActiveCategory = '';
+        let outlineActiveTags = new Set();
+
         function renderArticleCategoryList(container) {
             if (articles.length === 0) {
                 container.innerHTML = '<p class="text-xs opacity-40 py-2" style="padding-left: 1.125rem;">まだ記事がありません。</p>';
                 return;
             }
-            const filterHtml = ['', ...ARTICLE_CATEGORIES].map(cat => `
+            outlineActiveCategory = '';
+            outlineActiveTags = new Set();
+
+            // ピン留めされた記事(目安3件程度)を先頭に、それ以外は元の日付順のまま並べる
+            const sorted = [...articles].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+
+            const categoryFilterHtml = ['', ...ARTICLE_CATEGORIES].map(cat => `
                 <span class="category-filter-item cursor-pointer transition-opacity hover:opacity-100 ${cat === '' ? 'opacity-90' : 'opacity-50'}" data-category="${escapeHtml(cat)}" onclick="filterArticleCategory(this)">${escapeHtml(cat || 'All')}</span>
             `).join('<span class="opacity-30" style="margin: 0 0.4em;">/</span>');
 
+            const allTags = [...new Map(articles.flatMap(a => a.tags || []).map(t => [t.slug, t])).values()]
+                .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+            const tagFilterHtml = allTags.length > 0 ? `
+                <div class="tag-filter-row flex flex-wrap gap-2 mb-4">
+                    <span class="tag-filter-item glass-chip cursor-pointer px-2 py-0.5 opacity-90 hover:opacity-100 transition-opacity" data-tag="" onclick="filterArticleTag(this)" style="font-size: var(--tag-font-size); font-family: var(--tag-font);">All</span>
+                    ${allTags.map(t => `<span class="tag-filter-item glass-chip cursor-pointer px-2 py-0.5 opacity-50 hover:opacity-100 transition-opacity" data-tag="${escapeHtml(t.slug)}" onclick="filterArticleTag(this)" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${escapeHtml(t.name)}</span>`).join('')}
+                </div>
+            ` : '';
+
             container.innerHTML = `
                 <div style="padding-left: 1.125rem;">
-                    <div class="category-filter-row text-sm mb-4">${filterHtml}</div>
-                    <div class="category-article-list">${articles.map(a => outlineArticleBulletHtml(a)).join('')}</div>
+                    <div class="category-filter-row text-sm mb-4">${categoryFilterHtml}</div>
+                    ${tagFilterHtml}
+                    <div class="category-article-list">${sorted.map(a => outlineArticleBulletHtml(a)).join('')}</div>
                 </div>
             `;
+        }
+
+        // カテゴリ・タグどちらの状態も踏まえて、一覧全体の絞り込み表示(不透明度)を再計算する
+        function applyOutlineArticleFilters(wrapEl) {
+            wrapEl.querySelectorAll('.category-article-list > .outline-item[data-category]').forEach(item => {
+                const categoryMatch = !outlineActiveCategory || item.dataset.category === outlineActiveCategory;
+                const itemTags = (item.dataset.tags || '').split(',').filter(Boolean);
+                const tagMatch = outlineActiveTags.size === 0 || itemTags.some(slug => outlineActiveTags.has(slug));
+                item.style.opacity = (categoryMatch && tagMatch) ? '' : '0.25';
+            });
         }
 
         function filterArticleCategory(el) {
@@ -993,12 +1028,30 @@
                 btn.classList.toggle('opacity-90', btn === el);
                 btn.classList.toggle('opacity-50', btn !== el);
             });
-            const value = el.dataset.category;
-            const list = row.nextElementSibling;
-            list.querySelectorAll(':scope > .outline-item[data-category]').forEach(item => {
-                const match = !value || item.dataset.category === value;
-                item.style.opacity = match ? '' : '0.25';
+            outlineActiveCategory = el.dataset.category;
+            applyOutlineArticleFilters(row.parentElement);
+        }
+
+        // タグは複数選択可(横串の性質上、絞り込みも積み重ねられるようにする)。「All」だけは選択解除の特別扱い
+        function filterArticleTag(el) {
+            const row = el.closest('.tag-filter-row');
+            const value = el.dataset.tag;
+            if (value === '') {
+                outlineActiveTags.clear();
+            } else if (outlineActiveTags.has(value)) {
+                outlineActiveTags.delete(value);
+            } else {
+                outlineActiveTags.add(value);
+            }
+            const allBtn = row.querySelector('.tag-filter-item[data-tag=""]');
+            allBtn.classList.toggle('opacity-90', outlineActiveTags.size === 0);
+            allBtn.classList.toggle('opacity-50', outlineActiveTags.size > 0);
+            row.querySelectorAll('.tag-filter-item[data-tag]:not([data-tag=""])').forEach(btn => {
+                const active = outlineActiveTags.has(btn.dataset.tag);
+                btn.classList.toggle('opacity-90', active);
+                btn.classList.toggle('opacity-50', !active);
             });
+            applyOutlineArticleFilters(row.parentElement);
         }
 
         function expandOutlineList(btnEl) {

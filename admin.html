@@ -117,6 +117,10 @@
                         <option value="ノート">ノート</option>
                         <option value="試論">試論</option>
                     </select>
+                    <label class="flex items-center gap-2 mt-3 text-sm text-white/70 cursor-pointer w-fit">
+                        <input id="edit-pinned" type="checkbox" class="accent-white/80">
+                        ピン留め(パターンBのArticle一覧の上部に固定表示。目安として3件程度まで推奨)
+                    </label>
                 </div>
 
                 <label class="tw-hide text-xs text-white/50 block mb-1">本文</label>
@@ -1225,6 +1229,7 @@
             document.getElementById('edit-date').value = todayString();
             document.getElementById('edit-title').value = '';
             document.getElementById('edit-category').value = '';
+            document.getElementById('edit-pinned').checked = false;
             document.getElementById('edit-content').innerHTML = '<p></p>';
             updateCharCount();
             document.getElementById('delete-btn').classList.add('hidden');
@@ -1383,6 +1388,7 @@
             document.getElementById('edit-date').value = article.date;
             document.getElementById('edit-title').value = article.title;
             document.getElementById('edit-category').value = article.category || '';
+            document.getElementById('edit-pinned').checked = !!article.pinned;
             document.getElementById('edit-content').innerHTML = article.content;
             updateCharCount();
             document.getElementById('delete-btn').classList.remove('hidden');
@@ -1455,8 +1461,9 @@
 
             const useOverride = document.getElementById('edit-override-typography').checked;
             const category = document.getElementById('edit-category').value;
+            const pinned = document.getElementById('edit-pinned').checked;
             const payload = {
-                date, title, content, status, category,
+                date, title, content, status, category, pinned,
                 scheduled_at: status === 'scheduled' ? scheduledAt : null,
                 font: useOverride ? document.getElementById('edit-font').value : null,
                 font_size: useOverride ? Number(document.getElementById('edit-font-size').value) : null,

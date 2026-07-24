@@ -27,6 +27,9 @@ alter table public.articles add column if not exists scheduled_at timestamptz;
 -- ジャンルとしてのカテゴリ(1記事につき1つ、任意)。タグ(複数付けられる横串)とは別の分類軸
 alter table public.articles add column if not exists category text not null default '';
 
+-- パターンBのArticle一覧の上部に固定表示するためのピン留め(目安3件程度、件数上限は特に強制しない)
+alter table public.articles add column if not exists pinned boolean not null default false;
+
 alter table public.articles enable row level security;
 
 -- 閲覧は誰でも可能(公開ブログのため)。下書きは常に隠すが、
