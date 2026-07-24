@@ -88,6 +88,9 @@
             padding: 0.75rem;
             border: 1px solid color-mix(in srgb, white 15%, transparent);
             transition: opacity 0.3s ease, background 0.2s ease, border-color 0.2s ease;
+            /* カード自身の実際の幅を基準にタイトル・本文の文字サイズを決める(コンテナクエリ)。
+               列数が変わって1枚あたりの幅が変わっても、体感の文字サイズが極端に変わらないようにする */
+            container-type: inline-size;
         }
         /* 画像なしのカードは、タップ(マウスのクリック中も含む)している間だけ色を変えて触れたことを知らせる */
         .article-card:not(.article-card-image):active,
@@ -96,7 +99,7 @@
             border-color: color-mix(in srgb, white 35%, transparent);
         }
         .card-excerpt {
-            font-size: 0.9rem;
+            font-size: calc(clamp(0.7rem, 4cqi, 0.95rem) * var(--card-font-scale, 1));
             line-height: 1.6;
             text-align: justify;
             text-align-last: justify;
@@ -104,7 +107,12 @@
         }
         /* 枠線を引かず、文字組みだけで見えない枠を感じさせる。タイトルは両端揃えだが最後の行だけ右揃えにする
            (本文の方は最後の行まで均等に伸ばす。card-excerptの均等揃えと使い分ける) */
-        .card-title { text-align: justify; text-align-last: left; text-justify: inter-character; }
+        .card-title {
+            font-size: calc(clamp(0.8rem, 4.5cqi, 1.1rem) * var(--card-font-scale, 1));
+            text-align: justify;
+            text-align-last: left;
+            text-justify: inter-character;
+        }
         /* 画像ありのカードは、画像をカード枠いっぱいに敷き詰め、全体に黒の半透明を重ねて、
            その上にタイトル・本文を(文字カードと同じ並びで)乗せて読みやすくする */
         .article-card-image { padding: 0; position: relative; }
@@ -133,8 +141,9 @@
            画像本来の色が見えるようにする(カード内のリンク色が変わるアクションではなく、ここでフィードバックする) */
         .article-card-image:active .card-thumb-full,
         .article-card-image.card-tapped .card-thumb-full { filter: grayscale(0); }
+        /* タップ時は真っさらな色に戻すのではなく、薄く暗さを残して白文字の可読性を保つ */
         .article-card-image:active::before,
-        .article-card-image.card-tapped::before { opacity: 0; }
+        .article-card-image.card-tapped::before { opacity: 0.4; }
         .article-card-image .card-title {
             position: relative;
             z-index: 2;
@@ -173,8 +182,19 @@
            bodyのcard-homeクラスはrenderCardPage()が付け、hideAllViews()が外す(既存の仕組みを流用) */
         #card-fixed-footer-bar { display: none; }
         body.card-home #card-fixed-footer-bar { display: block; }
-        body.card-home #hamburger-btn { top: auto; bottom: 0.25rem; right: 1.5rem; }
+        body.card-home #hamburger-btn {
+            top: auto;
+            bottom: 0.25rem;
+            right: 1.5rem;
+            border: none;
+            background: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            box-shadow: none !important;
+        }
+        #card-filter-toggle { display: none; }
         body.card-home #card-filter-toggle {
+            display: inline-flex;
             position: fixed;
             left: 1.5rem;
             bottom: 0.25rem;
@@ -420,8 +440,25 @@
     <!-- パターンCだけ: ハンバーガーメニュー(右、CSSで移動)を乗せる固定フッター -->
     <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 2rem; background: color-mix(in srgb, var(--bg-color) 70%, transparent); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%); border-top: 1px solid color-mix(in srgb, white 15%, transparent);"></div>
 
-    <!-- デバッグ用: パターンA/B/C切り替えボタン(比較検討用の一時的なもの。不要になったら削除してください) -->
-    <button id="debug-layout-btn" onclick="cycleDebugLayout()" class="fixed top-6 left-6 z-40 glass-chip px-2.5 py-1 text-xs opacity-80 hover:opacity-100 transition-opacity" style="background: color-mix(in srgb, var(--bg-color) 45%, transparent);" title="表示パターンを切り替え(デバッグ用)">A</button>
+    <!-- パターンCだけ: Filter。.fade-inの中(transformを持つ祖先)に置くとposition:fixedが効かなくなるため、
+         他の固定UIと同じくbody直下に常設し、中身(カテゴリ/タグ行)だけrenderCardPage()が差し替える -->
+    <button id="card-filter-toggle" onclick="toggleCardFilterPanel(this)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer hover:opacity-90 transition-opacity" style="border: 1px solid color-mix(in srgb, white 15%, transparent);">
+        <span>Filter</span>
+        <span id="card-filter-dot" class="hidden" style="width: 5px; height: 5px; border-radius: 9999px; background: currentColor;"></span>
+    </button>
+    <div id="card-filter-panel" class="hidden"></div>
+
+    <!-- デバッグ用: パターンA/B/C切り替え+パターンCの文字サイズ調整(比較検討用の一時的なもの。不要になったら削除してください) -->
+    <button id="debug-layout-btn" onclick="toggleDebugPanel()" class="fixed top-6 z-40 glass-chip px-2.5 py-1 text-xs opacity-80 hover:opacity-100 transition-opacity" style="left: 50%; transform: translateX(-50%); background: color-mix(in srgb, var(--bg-color) 45%, transparent);" title="表示パターンを切り替え(デバッグ用)">A</button>
+    <div id="debug-panel" class="hidden fixed top-16 z-40 glass-chip p-4 text-xs" style="left: 50%; transform: translateX(-50%); width: min(90vw, 280px); background: color-mix(in srgb, var(--bg-color) 88%, transparent);">
+        <div class="flex gap-2 mb-4">
+            <span class="debug-layout-option cursor-pointer px-2 py-1 border rounded" data-layout="timeline" onclick="setDebugLayout('timeline')" style="border-color: color-mix(in srgb, white 20%, transparent);">A</span>
+            <span class="debug-layout-option cursor-pointer px-2 py-1 border rounded" data-layout="hub" onclick="setDebugLayout('hub')" style="border-color: color-mix(in srgb, white 20%, transparent);">B</span>
+            <span class="debug-layout-option cursor-pointer px-2 py-1 border rounded" data-layout="card" onclick="setDebugLayout('card')" style="border-color: color-mix(in srgb, white 20%, transparent);">C</span>
+        </div>
+        <label class="block opacity-70 mb-1">パターンCのカード文字サイズ</label>
+        <input id="debug-card-font-scale" type="range" min="0.7" max="1.4" step="0.05" value="1" class="w-full" oninput="updateDebugCardFontScale(this.value)">
+    </div>
 
     <div id="menu-overlay" class="fixed inset-0 z-50 pointer-events-none">
         <div id="menu-catcher" class="absolute inset-0 pointer-events-none opacity-0" onclick="toggleMenu()"></div>
@@ -556,18 +593,45 @@
             }
             const btn = document.getElementById('debug-layout-btn');
             if (btn) btn.textContent = DEBUG_LAYOUT_LABELS[homepageLayout] || 'A';
+            updateDebugLayoutOptionHighlight();
+
+            const savedScale = localStorage.getItem('debugCardFontScale');
+            if (savedScale) {
+                document.documentElement.style.setProperty('--card-font-scale', savedScale);
+                const slider = document.getElementById('debug-card-font-scale');
+                if (slider) slider.value = savedScale;
+            }
         }
 
-        async function cycleDebugLayout() {
-            const next = DEBUG_LAYOUT_CYCLE[(DEBUG_LAYOUT_CYCLE.indexOf(homepageLayout) + 1) % DEBUG_LAYOUT_CYCLE.length];
+        function updateDebugLayoutOptionHighlight() {
+            document.querySelectorAll('.debug-layout-option').forEach(el => {
+                el.classList.toggle('opacity-100', el.dataset.layout === homepageLayout);
+                el.classList.toggle('opacity-50', el.dataset.layout !== homepageLayout);
+            });
+        }
+
+        function toggleDebugPanel() {
+            document.getElementById('debug-panel').classList.toggle('hidden');
+        }
+
+        // デバッグ用パネルからA/B/Cを直接選ぶ(サイクルではなく指名式)。DBのhomepage_layout設定は変更せず、
+        // localStorageへの一時的な上書きに留める
+        async function setDebugLayout(next) {
             homepageLayout = next;
             localStorage.setItem('debugHomepageLayout', next);
             document.getElementById('debug-layout-btn').textContent = DEBUG_LAYOUT_LABELS[next];
+            updateDebugLayoutOptionHighlight();
             if (location.pathname.replace(/\/$/, '') !== '') {
                 location.href = '/';
                 return;
             }
             await loadArticles();
+        }
+
+        // パターンCのカード内文字サイズを一時的に調整するデバッグ用スライダー
+        function updateDebugCardFontScale(value) {
+            document.documentElement.style.setProperty('--card-font-scale', value);
+            localStorage.setItem('debugCardFontScale', value);
         }
 
         async function applySiteSettingsInner() {
@@ -1359,14 +1423,14 @@
                 return `
                     <a href="/article/${article.id}" class="article-card article-card-image" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleCardTap(event, this)">
                         <img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" class="card-thumb-full">
-                        <div class="card-title" style="font-size: 0.95rem;">${escapeHtml(article.title)}</div>
+                        <div class="card-title">${escapeHtml(article.title)}</div>
                         ${excerptText ? `<div class="card-excerpt opacity-90">${excerptText}</div>` : ''}
                     </a>
                 `;
             }
             return `
                 <a href="/article/${article.id}" class="article-card" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleCardTap(event, this)">
-                    <div class="card-title opacity-90" style="font-size: 0.95rem;">${escapeHtml(article.title)}</div>
+                    <div class="card-title opacity-90">${escapeHtml(article.title)}</div>
                     ${excerptText ? `<div class="card-excerpt opacity-60 mt-6">${excerptText}</div>` : ''}
                 </a>
             `;
@@ -1402,16 +1466,12 @@
                 </div>
             ` : '';
 
+            document.getElementById('card-filter-panel').innerHTML = `
+                <div class="category-filter-row text-sm mb-4">${categoryFilterHtml}</div>
+                ${tagFilterHtml}
+            `;
             view.innerHTML = `
                 <div class="fade-in">
-                    <button id="card-filter-toggle" onclick="toggleCardFilterPanel(this)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer hover:opacity-90 transition-opacity mb-6" style="border: 1px solid color-mix(in srgb, white 15%, transparent);">
-                        <span>Filter</span>
-                        <span id="card-filter-dot" class="hidden" style="width: 5px; height: 5px; border-radius: 9999px; background: currentColor;"></span>
-                    </button>
-                    <div id="card-filter-panel" class="hidden mb-6">
-                        <div class="category-filter-row text-sm mb-4">${categoryFilterHtml}</div>
-                        ${tagFilterHtml}
-                    </div>
                     <div class="card-grid">${articles.map(a => articleCardHtml(a)).join('')}</div>
                 </div>
             `;
