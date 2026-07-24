@@ -90,7 +90,7 @@
             transition: opacity 0.3s ease;
         }
         .card-excerpt {
-            font-size: 0.7rem;
+            font-size: 0.8rem;
             line-height: 1.6;
             text-align: justify;
             text-align-last: justify;
@@ -99,8 +99,8 @@
         /* 枠線を引かず、文字組みだけで見えない枠を感じさせる。タイトルは両端揃えだが最後の行だけ右揃えにする
            (本文の方は最後の行まで均等に伸ばす。card-excerptの均等揃えと使い分ける) */
         .card-title { text-align: justify; text-align-last: left; text-justify: inter-character; }
-        /* 画像ありのカードは、画像をカード枠いっぱいに敷き詰め、その上に他のカードと同じ位置
-           (カードのpaddingぶん内側)にタイトルだけを重ねて表示する */
+        /* 画像ありのカードは、画像をカード枠いっぱいに敷き詰め、全体に黒の半透明を重ねて、
+           その上にタイトル・本文を(文字カードと同じ並びで)乗せて読みやすくする */
         .article-card-image { padding: 0; position: relative; }
         .article-card-image .card-thumb-full {
             position: absolute;
@@ -110,16 +110,29 @@
             object-fit: cover;
             filter: grayscale(1);
             transition: filter 0.3s ease;
+            z-index: 0;
         }
         @media (hover: hover) {
             .article-card-image:hover .card-thumb-full { filter: grayscale(0); }
         }
+        .article-card-image::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 1;
+        }
         .article-card-image .card-title {
             position: relative;
-            z-index: 1;
-            padding: 0.75rem;
+            z-index: 2;
+            padding: 0.75rem 0.75rem 0 0.75rem;
             color: #fff;
-            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent 70%);
+        }
+        .article-card-image .card-excerpt {
+            position: relative;
+            z-index: 2;
+            padding: 0 0.75rem 0.75rem 0.75rem;
+            color: #fff;
         }
 
         /* テスト機能: 表示設定で選ぶと、単色の背景の代わりに粒状ノイズ入りのグラデーション画像を使う(固定位置の背景専用div) */
@@ -1267,13 +1280,14 @@
                 return `
                     <a href="/article/${article.id}" class="article-card article-card-image" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}">
                         <img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" class="card-thumb-full">
-                        <div class="card-title" style="font-size: 0.75rem;">${escapeHtml(article.title)}</div>
+                        <div class="card-title" style="font-size: 0.85rem;">${escapeHtml(article.title)}</div>
+                        ${excerptText ? `<div class="card-excerpt opacity-90 mt-3">${excerptText}</div>` : ''}
                     </a>
                 `;
             }
             return `
                 <a href="/article/${article.id}" class="article-card" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}">
-                    <div class="card-title opacity-90" style="font-size: 0.75rem;">${escapeHtml(article.title)}</div>
+                    <div class="card-title opacity-90" style="font-size: 0.85rem;">${escapeHtml(article.title)}</div>
                     ${excerptText ? `<div class="card-excerpt opacity-60 mt-5">${excerptText}</div>` : ''}
                 </a>
             `;
@@ -1310,7 +1324,7 @@
 
             view.innerHTML = `
                 <div class="fade-in">
-                    <button id="card-filter-toggle" onclick="toggleCardFilterPanel(this)" class="glass-chip inline-flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer hover:opacity-90 transition-opacity mb-6" style="background: color-mix(in srgb, var(--bg-color) 45%, transparent);">
+                    <button id="card-filter-toggle" onclick="toggleCardFilterPanel(this)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer hover:opacity-90 transition-opacity mb-6" style="border: 1px solid color-mix(in srgb, white 15%, transparent);">
                         <span>Filter</span>
                         <span id="card-filter-dot" class="hidden" style="width: 5px; height: 5px; border-radius: 9999px; background: currentColor;"></span>
                     </button>
