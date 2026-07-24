@@ -112,7 +112,7 @@
         /* 本文中に画像があるカードは、余白なしで1:1に画像を敷き詰める(文字カードとは別の見せ方) */
         .article-card-image { padding: 0; position: relative; }
         .article-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; filter: grayscale(1); transition: filter 0.3s ease; }
-        /* タイトルは普段隠しておき、マウスはホバーで、タッチは1回目のタップ(.show-title付与)で見せる */
+        /* タイトルは常に見せておき、マウスのホバー時だけ画像のグレースケールを解除する */
         .card-image-title {
             position: absolute;
             inset: 0;
@@ -122,16 +122,11 @@
             padding: 1rem;
             color: #fff;
             background: linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent 60%);
-            opacity: 0;
-            transition: opacity 0.2s ease;
             pointer-events: none;
         }
         @media (hover: hover) {
-            .article-card-image:hover .card-image-title { opacity: 1; }
             .article-card-image:hover img { filter: grayscale(0); }
         }
-        .article-card-image.show-title .card-image-title { opacity: 1; }
-        .article-card-image.show-title img { filter: grayscale(0); }
 
         /* テスト機能: 表示設定で選ぶと、単色の背景の代わりに粒状ノイズ入りのグラデーション画像を使う(固定位置の背景専用div) */
         /* テスト機能: 表示設定で選ぶと、単色の背景色の代わりに使われる。ページと一緒にスクロールするようbodyに直接タイル表示する */
@@ -1242,12 +1237,9 @@
             const imageUrl = getFirstImageUrl(article.content);
             if (imageUrl) {
                 return `
-                    <a href="/article/${article.id}" class="article-card article-card-image" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleImageCardClick(event, this)">
+                    <a href="/article/${article.id}" class="article-card article-card-image" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}">
                         <img src="${escapeHtml(imageUrl)}" alt="" loading="lazy">
-                        <div class="card-image-title">
-                            <div class="opacity-40" style="font-size: 0.6rem;">${escapeHtml(article.date)}</div>
-                            <div class="opacity-90 mt-1" style="font-size: 0.75rem;">${escapeHtml(article.title)}</div>
-                        </div>
+                        <div class="card-image-title" style="font-size: 0.75rem;">${escapeHtml(article.title)}</div>
                     </a>
                 `;
             }
@@ -1258,8 +1250,7 @@
                 : '';
             return `
                 <a href="/article/${article.id}" class="article-card" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}">
-                    <div class="opacity-40" style="font-size: 0.6rem;">${escapeHtml(article.date)}</div>
-                    <div class="opacity-90 mt-2" style="font-size: 0.75rem;">${escapeHtml(article.title)}</div>
+                    <div class="opacity-90" style="font-size: 0.75rem;">${escapeHtml(article.title)}</div>
                     ${excerptHtml}
                 </a>
             `;
@@ -1363,22 +1354,6 @@
                 btn.classList.toggle('opacity-50', !active);
             });
             applyCardFilters();
-        }
-
-        // 画像だけのカードはタイトルを隠しているので、マウスならホバーで見える(CSS側で処理)。
-        // タッチ環境はホバーが効かないため、1回目のタップでタイトルを見せるだけに留め、
-        // 2回目のタップで記事ページへ遷移させる
-        function handleImageCardClick(evt, linkEl) {
-            if (window.matchMedia('(hover: hover)').matches) return true;
-            if (!linkEl.classList.contains('show-title')) {
-                evt.preventDefault();
-                document.querySelectorAll('.article-card-image.show-title').forEach(el => {
-                    if (el !== linkEl) el.classList.remove('show-title');
-                });
-                linkEl.classList.add('show-title');
-                return false;
-            }
-            return true;
         }
 
         function renderTitleRows() {
