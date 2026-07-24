@@ -120,7 +120,10 @@
         }
         /* 画像ありのカードは、画像をカード枠いっぱいに敷き詰め、全体に黒の半透明を重ねて、
            その上にタイトル・本文を(文字カードと同じ並びで)乗せて読みやすくする */
-        .article-card-image { padding: 0; position: relative; }
+        /* paddingは画像なしカードと同じ0.75remにしておく(コンテナクエリの基準になる
+           コンテントボックスの幅を画像なしカードと揃えて、本文の文字サイズが一致するようにするため)。
+           画像・オーバーレイはposition:absolute; inset:0;で、paddingの値に関わらずカード全体を覆う */
+        .article-card-image { padding: 0.75rem; position: relative; }
         .article-card-image .card-thumb-full {
             position: absolute;
             inset: 0;
@@ -153,7 +156,6 @@
         .article-card-image .card-title {
             position: relative;
             z-index: 2;
-            padding: 0.75rem 0.75rem 0 0.75rem;
             color: #fff;
         }
         /* 画像ありのカードは、本文をタイトルの下ではなくカード最下部に固定し、3行までに切り詰める */
