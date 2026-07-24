@@ -108,7 +108,7 @@
         .card-excerpt { font-size: 0.7rem; line-height: 1.6; }
         /* 本文中に画像があるカードは、余白なしで1:1に画像を敷き詰める(文字カードとは別の見せ方) */
         .article-card-image { padding: 0; position: relative; }
-        .article-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; filter: grayscale(1); }
+        .article-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; filter: grayscale(1); transition: filter 0.3s ease; }
         /* タイトルは普段隠しておき、マウスはホバーで、タッチは1回目のタップ(.show-title付与)で見せる */
         .card-image-title {
             position: absolute;
@@ -125,8 +125,10 @@
         }
         @media (hover: hover) {
             .article-card-image:hover .card-image-title { opacity: 1; }
+            .article-card-image:hover img { filter: grayscale(0); }
         }
         .article-card-image.show-title .card-image-title { opacity: 1; }
+        .article-card-image.show-title img { filter: grayscale(0); }
 
         /* テスト機能: 表示設定で選ぶと、単色の背景の代わりに粒状ノイズ入りのグラデーション画像を使う(固定位置の背景専用div) */
         /* テスト機能: 表示設定で選ぶと、単色の背景色の代わりに使われる。ページと一緒にスクロールするようbodyに直接タイル表示する */
