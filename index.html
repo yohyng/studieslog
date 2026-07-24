@@ -135,6 +135,36 @@
             color: #fff;
         }
 
+        /* パターンCだけ、Filterボタンとハンバーガーメニューを固定フッターの左右に寄せる。
+           bodyのcard-homeクラスはrenderCardPage()が付け、hideAllViews()が外す(既存の仕組みを流用) */
+        #card-fixed-footer-bar { display: none; }
+        body.card-home #card-fixed-footer-bar { display: block; }
+        body.card-home #hamburger-btn { top: auto; bottom: 0.875rem; right: 1.5rem; }
+        body.card-home #card-filter-toggle {
+            position: fixed;
+            left: 1.5rem;
+            bottom: 0.875rem;
+            z-index: 40;
+            margin-bottom: 0;
+        }
+        body.card-home #card-filter-panel {
+            position: fixed;
+            left: 1.5rem;
+            bottom: 4.5rem;
+            z-index: 40;
+            max-width: min(90vw, 380px);
+            max-height: 60vh;
+            overflow-y: auto;
+            padding: 1rem;
+            background: color-mix(in srgb, var(--bg-color) 88%, transparent);
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            border: 1px solid color-mix(in srgb, white 15%, transparent);
+            margin-bottom: 0;
+        }
+        /* 固定フッターに隠れないよう、カード一覧の下に余白を足す */
+        body.card-home #card-view { padding-bottom: 5rem; }
+
         /* テスト機能: 表示設定で選ぶと、単色の背景の代わりに粒状ノイズ入りのグラデーション画像を使う(固定位置の背景専用div) */
         /* テスト機能: 表示設定で選ぶと、単色の背景色の代わりに使われる。ページと一緒にスクロールするようbodyに直接タイル表示する */
         body.gradient-gray {
@@ -347,6 +377,14 @@
             <line x1="3" y1="17" x2="21" y2="17" />
         </svg>
     </button>
+
+    <!-- パターンCだけ: スクロールすると出てくる、タイトルだけの固定ヘッダー -->
+    <div id="card-sticky-header" class="hidden fixed top-0 left-0 right-0 z-30 text-center py-3 cursor-pointer" style="background: color-mix(in srgb, var(--bg-color) 85%, transparent); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%); border-bottom: 1px solid color-mix(in srgb, white 15%, transparent);" onclick="goHome()">
+        <span id="card-sticky-title-text" class="font-medium tracking-widest"></span>
+    </div>
+
+    <!-- パターンCだけ: Filter(左)・ハンバーガーメニュー(右、CSSで移動)を乗せる固定フッター -->
+    <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 3.5rem; background: color-mix(in srgb, var(--bg-color) 70%, transparent); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%); border-top: 1px solid color-mix(in srgb, white 15%, transparent);"></div>
 
     <!-- デバッグ用: パターンA/B/C切り替えボタン(比較検討用の一時的なもの。不要になったら削除してください) -->
     <button id="debug-layout-btn" onclick="cycleDebugLayout()" class="fixed top-6 left-6 z-40 glass-chip px-2.5 py-1 text-xs opacity-80 hover:opacity-100 transition-opacity" style="background: color-mix(in srgb, var(--bg-color) 45%, transparent);" title="表示パターンを切り替え(デバッグ用)">A</button>
@@ -846,6 +884,7 @@
             document.getElementById('search-view').classList.add('hidden');
             document.getElementById('loading-indicator').classList.add('hidden');
             document.body.classList.remove('card-home');
+            document.getElementById('card-sticky-header').classList.add('hidden');
         }
 
         function stripHtml(html) {
@@ -1307,6 +1346,7 @@
         function renderCardPage() {
             hideAllViews();
             document.body.classList.add('card-home');
+            updateCardStickyTitle();
             cardActiveCategory = '';
             cardActiveTags = new Set();
             const view = document.getElementById('card-view');
@@ -1814,6 +1854,34 @@
         }
         window.addEventListener('scroll', updateScrollProgress, { passive: true });
         window.addEventListener('resize', updateScrollProgress);
+
+        // パターンCだけ: サイトタイトルの表示(文字・フォント・色)をそのまま複製して、
+        // スクロール中に出てくる固定ヘッダーに反映する
+        function updateCardStickyTitle() {
+            const src = document.getElementById('site-title');
+            const dst = document.getElementById('card-sticky-title-text');
+            if (!src || !dst) return;
+            dst.textContent = src.textContent;
+            dst.style.fontFamily = src.style.fontFamily;
+            dst.style.fontSize = src.style.fontSize;
+            dst.style.color = src.style.color;
+        }
+
+        // パターンCのカードグリッドを見ている間だけ、本来のヘッダーを過ぎてスクロールしたら
+        // タイトルだけの固定ヘッダーを出す
+        function handleCardStickyScroll() {
+            const stickyHeader = document.getElementById('card-sticky-header');
+            const cardView = document.getElementById('card-view');
+            const isCardHome = homepageLayout === 'card' && !cardView.classList.contains('hidden');
+            if (!isCardHome) {
+                stickyHeader.classList.add('hidden');
+                return;
+            }
+            const headerEl = document.querySelector('header');
+            const threshold = headerEl ? headerEl.getBoundingClientRect().bottom + window.scrollY : 200;
+            stickyHeader.classList.toggle('hidden', window.scrollY <= threshold);
+        }
+        window.addEventListener('scroll', handleCardStickyScroll, { passive: true });
 
         // 実験的機能: キーボードショートカット(/で検索、j/kで記事送り)
         function navigateArticles(direction) {
