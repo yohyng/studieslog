@@ -520,7 +520,6 @@
                     <a href="/" class="opacity-80 hover:opacity-100 transition-opacity">Top</a>
                     <a href="/about" onclick="toggleMenu(); return goToSection('about', '/about');" class="opacity-80 hover:opacity-100 transition-opacity">About</a>
                     <a href="/contact" onclick="toggleMenu(); return goToSection('contact', '/contact');" class="opacity-80 hover:opacity-100 transition-opacity">Contact</a>
-                    <a href="/list" onclick="toggleMenu(); return goToSection('article-list', '/list');" class="opacity-80 hover:opacity-100 transition-opacity">Article</a>
                     <a href="/tags" onclick="toggleMenu(); return goToSection('tag-list', '/tags');" class="opacity-80 hover:opacity-100 transition-opacity">Tag</a>
                     <a href="/search" onclick="toggleMenu(); return goToSection('search', '/search');" class="opacity-80 hover:opacity-100 transition-opacity">Search</a>
                     <button onclick="toggleMenu(); openSubscribeModal();" class="glass-chip self-start -ml-2.5 -mt-1.5 px-2.5 py-1 rounded-full hover:opacity-90 transition-opacity" style="background: color-mix(in srgb, var(--subscribe-bg-color) 55%, transparent); color: var(--subscribe-text-color); font-size: inherit; font-family: inherit;">Subscribe</button>
@@ -1787,9 +1786,7 @@
                 await renderTagPage(tagSlug);
                 return;
             }
-            // パターンB(ハブ型トップ)では"/"がナビゲーション+タグ一覧のハブに、"/list"が本文プレビュー付きの
-            // 時系列フィード(パターンAの"/"相当)になる。パターンA(既定)は今まで通り"/"がフィード、"/list"がタイトル一覧。
-            // パターンC(カード型トップ)は"/"がカードグリッドになり、"/list"はパターンA同様タイトル一覧のまま
+            // パターンA/Bは廃止しパターンC固定にしたため、"/"は常にカードグリッド
             if (homepageLayout === 'hub' && location.pathname.replace(/\/$/, '') === '') {
                 await renderHubPage();
                 return;
@@ -1798,8 +1795,10 @@
                 renderCardPage();
                 return;
             }
-            if (isListRoute() && homepageLayout !== 'hub') {
-                await renderTitleList();
+            // サイドバーの「Article」(タイトルだけの一覧)も廃止した。renderTitleList()自体は残すが、
+            // "/list"に来た場合はトップにリダイレクトして到達不可にする
+            if (isListRoute()) {
+                location.href = '/';
                 return;
             }
             if (isTagListRoute()) {
