@@ -90,7 +90,8 @@
             transition: opacity 0.3s ease, background 0.2s ease, border-color 0.2s ease;
         }
         /* 画像なしのカードは、タップ(マウスのクリック中も含む)している間だけ色を変えて触れたことを知らせる */
-        .article-card:not(.article-card-image):active {
+        .article-card:not(.article-card-image):active,
+        .article-card:not(.article-card-image).card-tapped {
             background: color-mix(in srgb, white 12%, transparent);
             border-color: color-mix(in srgb, white 35%, transparent);
         }
@@ -130,8 +131,10 @@
         }
         /* 画像ありのカードは、タップ(マウスのクリック中も含む)している間だけ暗い半透明が消えて、
            画像本来の色が見えるようにする(カード内のリンク色が変わるアクションではなく、ここでフィードバックする) */
-        .article-card-image:active .card-thumb-full { filter: grayscale(0); }
-        .article-card-image:active::before { opacity: 0; }
+        .article-card-image:active .card-thumb-full,
+        .article-card-image.card-tapped .card-thumb-full { filter: grayscale(0); }
+        .article-card-image:active::before,
+        .article-card-image.card-tapped::before { opacity: 0; }
         .article-card-image .card-title {
             position: relative;
             z-index: 2;
@@ -166,11 +169,33 @@
             pointer-events: auto;
         }
 
-        /* パターンCだけ、ハンバーガーメニューを固定フッターの右側に寄せる(Filterは通常の位置のまま)。
+        /* パターンCだけ、Filterボタンとハンバーガーメニューを固定フッターの左右に寄せる。
            bodyのcard-homeクラスはrenderCardPage()が付け、hideAllViews()が外す(既存の仕組みを流用) */
         #card-fixed-footer-bar { display: none; }
         body.card-home #card-fixed-footer-bar { display: block; }
         body.card-home #hamburger-btn { top: auto; bottom: 0.25rem; right: 1.5rem; }
+        body.card-home #card-filter-toggle {
+            position: fixed;
+            left: 1.5rem;
+            bottom: 0.25rem;
+            z-index: 40;
+            margin-bottom: 0;
+        }
+        body.card-home #card-filter-panel {
+            position: fixed;
+            left: 1.5rem;
+            bottom: 3rem;
+            z-index: 40;
+            max-width: min(90vw, 380px);
+            max-height: 60vh;
+            overflow-y: auto;
+            padding: 1rem;
+            background: color-mix(in srgb, var(--bg-color) 88%, transparent);
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            border: 1px solid color-mix(in srgb, white 15%, transparent);
+            margin-bottom: 0;
+        }
         /* 固定フッターに隠れないよう、カード一覧の下に余白を足す */
         body.card-home #card-view { padding-bottom: 3rem; }
 
@@ -389,7 +414,7 @@
 
     <!-- パターンCだけ: スクロールすると出てくる、タイトルだけの固定ヘッダー(背景なし、左上に小さく) -->
     <div id="card-sticky-header" class="fixed top-0 left-0 z-30 py-3 px-6 cursor-pointer" onclick="goHome()">
-        <span id="card-sticky-title-text" class="font-medium tracking-widest" style="font-size: 0.8rem;"></span>
+        <span id="card-sticky-title-text" class="font-medium tracking-widest" style="font-size: 1rem;"></span>
     </div>
 
     <!-- パターンCだけ: ハンバーガーメニュー(右、CSSで移動)を乗せる固定フッター -->
@@ -1332,7 +1357,7 @@
 
             if (imageUrl) {
                 return `
-                    <a href="/article/${article.id}" class="article-card article-card-image" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}">
+                    <a href="/article/${article.id}" class="article-card article-card-image" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleCardTap(event, this)">
                         <img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" class="card-thumb-full">
                         <div class="card-title" style="font-size: 0.95rem;">${escapeHtml(article.title)}</div>
                         ${excerptText ? `<div class="card-excerpt opacity-90">${excerptText}</div>` : ''}
@@ -1340,7 +1365,7 @@
                 `;
             }
             return `
-                <a href="/article/${article.id}" class="article-card" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}">
+                <a href="/article/${article.id}" class="article-card" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleCardTap(event, this)">
                     <div class="card-title opacity-90" style="font-size: 0.95rem;">${escapeHtml(article.title)}</div>
                     ${excerptText ? `<div class="card-excerpt opacity-60 mt-6">${excerptText}</div>` : ''}
                 </a>
@@ -1446,6 +1471,22 @@
                 btn.classList.toggle('opacity-50', !active);
             });
             applyCardFilters();
+        }
+
+        // マウス(ホバーできる環境)は1回のクリックでそのまま記事へ。タッチ環境はホバーが効かないため、
+        // 1回目のタップで反応(画像なしは色が変わる、画像ありは元の色に戻る)だけを見せて、
+        // 2回目のタップで記事ページへ遷移させる
+        function handleCardTap(evt, linkEl) {
+            if (window.matchMedia('(hover: hover)').matches) return true;
+            if (!linkEl.classList.contains('card-tapped')) {
+                evt.preventDefault();
+                document.querySelectorAll('.article-card.card-tapped').forEach(el => {
+                    if (el !== linkEl) el.classList.remove('card-tapped');
+                });
+                linkEl.classList.add('card-tapped');
+                return false;
+            }
+            return true;
         }
 
         function renderTitleRows() {
