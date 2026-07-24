@@ -87,7 +87,13 @@
             body.card-home header {
                 max-width: min(1700px, 97vw);
             }
+            /* 最下段の区切り線(footer)もカード一覧と同じ幅に揃える */
+            body.card-home footer {
+                max-width: min(1700px, 97vw);
+            }
         }
+        /* パターンCでは「更新をメールで受け取る」は一旦非表示にする */
+        body.card-home #subscribe-cta { display: none; }
         /* 5列並ぶだけの幅がある画面では、auto-fillに任せず列数を5に固定する。
            そうしないと、単に#card-viewの幅を広げただけでは6列目が湧いてカードが小さいままになってしまう */
         @media (min-width: 1400px) {
@@ -643,7 +649,7 @@
         <span class="opacity-30">深層を探索中...</span>
     </div>
 
-    <div class="w-full content-width mt-24 text-center">
+    <div id="subscribe-cta" class="w-full content-width mt-24 text-center">
         <button onclick="openSubscribeModal()" class="glass-chip px-4 py-2 text-xs rounded hover:opacity-70 transition-opacity" style="background: color-mix(in srgb, var(--bg-color) 45%, transparent);">✉️ 更新をメールで受け取る</button>
     </div>
 
