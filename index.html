@@ -72,21 +72,6 @@
 
         .content-width { max-width: var(--content-width); }
 
-        /* パターンB(ハブ型)のトップページのみ、PC/横幅広めのタブレットでは中央寄せは保ったまま
-           横幅を広げて、Latestと残りのアウトライン(About/Article/Tag/Contact/Search)を2段組にする。
-           bodyのhub-homeクラスはrenderHubPage()が付け、hideAllViews()が他の画面に切り替わるたびに外す */
-        @media (min-width: 1024px) {
-            body.hub-home header,
-            body.hub-home #hub-view {
-                max-width: min(900px, 90vw);
-            }
-            body.hub-home .hub-grid {
-                display: grid;
-                grid-template-columns: minmax(200px, 260px) minmax(320px, 460px);
-                gap: 3rem;
-                align-items: start;
-            }
-        }
 
         /* パターンC(カード型)のグリッドは auto-fill で列数が自然に変わるので、メディアクエリなしで
            そのままレスポンシブになる。デスクトップだけ#card-view自体の横幅を広げて、並ぶ列数を増やす */
@@ -809,7 +794,6 @@
             document.getElementById('tag-view').classList.add('hidden');
             document.getElementById('search-view').classList.add('hidden');
             document.getElementById('loading-indicator').classList.add('hidden');
-            document.body.classList.remove('hub-home');
             document.body.classList.remove('card-home');
         }
 
@@ -1166,21 +1150,16 @@
 
         function renderHubPage() {
             hideAllViews();
-            document.body.classList.add('hub-home');
             const view = document.getElementById('hub-view');
             view.classList.remove('hidden');
             view.innerHTML = `
-                <div class="fade-in hub-grid">
-                    <div class="hub-latest-col">
-                        ${renderLatestArticlesHtml()}
-                    </div>
-                    <div class="hub-outline-col">
-                        ${outlineTopItemHtml('About', 'about')}
-                        ${outlineTopItemHtml('Article', 'article-list')}
-                        ${outlineTopItemHtml('Tag', 'tag-list')}
-                        ${outlineTopItemHtml('Contact', 'contact')}
-                        ${outlineTopItemHtml('Search', 'search')}
-                    </div>
+                <div class="fade-in">
+                    ${renderLatestArticlesHtml()}
+                    ${outlineTopItemHtml('About', 'about')}
+                    ${outlineTopItemHtml('Article', 'article-list')}
+                    ${outlineTopItemHtml('Tag', 'tag-list')}
+                    ${outlineTopItemHtml('Contact', 'contact')}
+                    ${outlineTopItemHtml('Search', 'search')}
                 </div>
             `;
             // サイドバーからの遷移で#article-listのようなハッシュが付いていたら、該当セクションを
