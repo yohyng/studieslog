@@ -86,15 +86,27 @@
             overflow: hidden;
             aspect-ratio: 1 / 1;
             padding: 1.25rem;
-            background: color-mix(in srgb, var(--bg-color) 35%, transparent);
             backdrop-filter: blur(14px) saturate(180%);
             -webkit-backdrop-filter: blur(14px) saturate(180%);
-            transition: opacity 0.3s ease, background 0.2s ease;
+            transition: opacity 0.3s ease;
         }
-        .article-card:hover { background: color-mix(in srgb, var(--bg-color) 55%, transparent); }
-        .card-excerpt { font-size: 0.7rem; line-height: 1.6; }
-        /* 枠線を引かず、タイトル・本文の両端を揃えた均等組(両端揃え)で、文字組み自体に見えない枠を感じさせる */
-        .card-justify { text-align: justify; text-align-last: justify; text-justify: inter-character; }
+        .card-excerpt {
+            font-size: 0.7rem;
+            line-height: 1.6;
+            text-align: justify;
+            text-align-last: justify;
+            text-justify: inter-character;
+        }
+        /* 枠線を引かず、文字組みだけで見えない枠を感じさせる。タイトルは両端揃えだが最後の行だけ右揃えにする
+           (本文の方は最後の行まで均等に伸ばす。card-excerptの均等揃えと使い分ける) */
+        .card-title { text-align: justify; text-align-last: right; text-justify: inter-character; }
+        /* 画像カードは本文が長いとタイトルごと枠の外(上)へ押し出されてしまうため、本文側だけ行数を制限する */
+        .card-image-title .card-excerpt {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
         /* 本文中に画像があるカードは、余白なしで1:1に画像を敷き詰める(文字カードとは別の見せ方) */
         .article-card-image { padding: 0; position: relative; }
         .article-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; filter: grayscale(1); transition: filter 0.3s ease; }
@@ -1231,16 +1243,16 @@
                     <a href="/article/${article.id}" class="article-card article-card-image" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}">
                         <img src="${escapeHtml(imageUrl)}" alt="" loading="lazy">
                         <div class="card-image-title">
-                            <div class="card-justify" style="font-size: 0.75rem;">${escapeHtml(article.title)}</div>
-                            ${excerptText ? `<div class="card-justify card-excerpt opacity-80 mt-2">${excerptText}</div>` : ''}
+                            <div class="card-title" style="font-size: 0.75rem;">${escapeHtml(article.title)}</div>
+                            ${excerptText ? `<div class="card-excerpt opacity-80 mt-3">${excerptText}</div>` : ''}
                         </div>
                     </a>
                 `;
             }
             return `
                 <a href="/article/${article.id}" class="article-card" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}">
-                    <div class="card-justify opacity-90" style="font-size: 0.75rem;">${escapeHtml(article.title)}</div>
-                    ${excerptText ? `<div class="card-justify card-excerpt opacity-60 mt-3">${excerptText}</div>` : ''}
+                    <div class="card-title opacity-90" style="font-size: 0.75rem;">${escapeHtml(article.title)}</div>
+                    ${excerptText ? `<div class="card-excerpt opacity-60 mt-5">${excerptText}</div>` : ''}
                 </a>
             `;
         }
