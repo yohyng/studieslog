@@ -79,10 +79,10 @@
            (揃えないと、header側だけ細い列のまま中央寄せされ、カード一覧より内側に見えてしまう) */
         @media (min-width: 1024px) {
             body.card-home #card-view {
-                max-width: min(1800px, 99vw);
+                max-width: min(1700px, 97vw);
             }
             body.card-home header {
-                max-width: min(1800px, 99vw);
+                max-width: min(1700px, 97vw);
             }
         }
         /* 5列並ぶだけの幅がある画面では、auto-fillに任せず列数を5に固定する。
@@ -92,8 +92,16 @@
                 grid-template-columns: repeat(5, 1fr);
             }
         }
-        /* パターンCだけ、タイトル(header)とカード一覧の間の余白を詰める(他パターンのmb-40は変えない) */
-        body.card-home header { margin-bottom: 4rem; }
+        /* パターンCだけ、ページ最上部からタイトルまでの余白と、タイトルからカード一覧までの余白を
+           揃え(どちらも5rem)、タイトル+台形アイコンがその間で均等な位置に来るようにする。
+           bodyのpy-24(6rem)のうち上側だけ3remに詰め、headerの元々のpt-8(2rem)と合わせて上5remにする */
+        /* Tailwind(CDN)のpy-24クラスと同じ詳細度(クラス1つ)なので、後から読み込まれるTailwindの
+           スタイルに負けないよう!importantを付ける(過去に同じ理由でハンバーガーボタンの背景が
+           上書きできなかったことがあったため、同じ轍を踏まないための予防策) */
+        body.card-home { padding-top: 3rem !important; }
+        body.card-home header { margin-bottom: 5rem; }
+        /* パターンCだけ、サブタイトルは非表示にする */
+        body.card-home #site-subtitle { display: none; }
         .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.75rem; }
         .article-card {
             display: block;
