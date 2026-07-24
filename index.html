@@ -87,7 +87,12 @@
             aspect-ratio: 1 / 1;
             padding: 0.75rem;
             border: 1px solid color-mix(in srgb, white 15%, transparent);
-            transition: opacity 0.3s ease;
+            transition: opacity 0.3s ease, background 0.2s ease, border-color 0.2s ease;
+        }
+        /* 画像なしのカードは、タップ(マウスのクリック中も含む)している間だけ色を変えて触れたことを知らせる */
+        .article-card:not(.article-card-image):active {
+            background: color-mix(in srgb, white 12%, transparent);
+            border-color: color-mix(in srgb, white 35%, transparent);
         }
         .card-excerpt {
             font-size: 0.9rem;
@@ -121,7 +126,12 @@
             inset: 0;
             background: rgba(0, 0, 0, 0.6);
             z-index: 1;
+            transition: opacity 0.2s ease;
         }
+        /* 画像ありのカードは、タップ(マウスのクリック中も含む)している間だけ暗い半透明が消えて、
+           画像本来の色が見えるようにする(カード内のリンク色が変わるアクションではなく、ここでフィードバックする) */
+        .article-card-image:active .card-thumb-full { filter: grayscale(0); }
+        .article-card-image:active::before { opacity: 0; }
         .article-card-image .card-title {
             position: relative;
             z-index: 2;
@@ -140,6 +150,20 @@
             -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
+        }
+
+        /* スクロール追従のタイトルヘッダーは、display:none切り替えではなくopacity+ズレで
+           滑らかに出現/消滅させる。表示中はcard-sticky-header-visibleクラスが付く */
+        #card-sticky-header {
+            opacity: 0;
+            transform: translateY(-6px);
+            pointer-events: none;
+            transition: opacity 0.35s ease, transform 0.35s ease;
+        }
+        #card-sticky-header.card-sticky-header-visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
         }
 
         /* パターンCだけ、ハンバーガーメニューを固定フッターの右側に寄せる(Filterは通常の位置のまま)。
@@ -364,7 +388,7 @@
     </button>
 
     <!-- パターンCだけ: スクロールすると出てくる、タイトルだけの固定ヘッダー(背景なし、左上に小さく) -->
-    <div id="card-sticky-header" class="hidden fixed top-0 left-0 z-30 py-3 px-6 cursor-pointer" onclick="goHome()">
+    <div id="card-sticky-header" class="fixed top-0 left-0 z-30 py-3 px-6 cursor-pointer" onclick="goHome()">
         <span id="card-sticky-title-text" class="font-medium tracking-widest" style="font-size: 0.8rem;"></span>
     </div>
 
@@ -869,7 +893,7 @@
             document.getElementById('search-view').classList.add('hidden');
             document.getElementById('loading-indicator').classList.add('hidden');
             document.body.classList.remove('card-home');
-            document.getElementById('card-sticky-header').classList.add('hidden');
+            document.getElementById('card-sticky-header').classList.remove('card-sticky-header-visible');
         }
 
         function stripHtml(html) {
@@ -1859,12 +1883,12 @@
             const cardView = document.getElementById('card-view');
             const isCardHome = homepageLayout === 'card' && !cardView.classList.contains('hidden');
             if (!isCardHome) {
-                stickyHeader.classList.add('hidden');
+                stickyHeader.classList.remove('card-sticky-header-visible');
                 return;
             }
             const headerEl = document.querySelector('header');
             const threshold = headerEl ? headerEl.getBoundingClientRect().bottom + window.scrollY : 200;
-            stickyHeader.classList.toggle('hidden', window.scrollY <= threshold);
+            stickyHeader.classList.toggle('card-sticky-header-visible', window.scrollY > threshold);
         }
         window.addEventListener('scroll', handleCardStickyScroll, { passive: true });
 
