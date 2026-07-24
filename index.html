@@ -79,16 +79,26 @@
            (揃えないと、header側だけ細い列のまま中央寄せされ、カード一覧より内側に見えてしまう) */
         @media (min-width: 1024px) {
             body.card-home #card-view {
-                max-width: min(1400px, 94vw);
+                max-width: min(1800px, 99vw);
             }
             body.card-home header {
-                max-width: min(1400px, 94vw);
+                max-width: min(1800px, 99vw);
             }
         }
+        /* 5列並ぶだけの幅がある画面では、auto-fillに任せず列数を5に固定する。
+           そうしないと、単に#card-viewの幅を広げただけでは6列目が湧いてカードが小さいままになってしまう */
+        @media (min-width: 1400px) {
+            body.card-home .card-grid {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+        /* パターンCだけ、タイトル(header)とカード一覧の間の余白を詰める(他パターンのmb-40は変えない) */
+        body.card-home header { margin-bottom: 4rem; }
         .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.75rem; }
         .article-card {
             display: block;
             overflow: hidden;
+            position: relative;
             aspect-ratio: 1 / 1;
             padding: 0.75rem;
             border: 1px solid color-mix(in srgb, white 15%, transparent);
@@ -96,6 +106,18 @@
             /* カード自身の実際の幅を基準にタイトル・本文の文字サイズを決める(コンテナクエリ)。
                列数が変わって1枚あたりの幅が変わっても、体感の文字サイズが極端に変わらないようにする */
             container-type: inline-size;
+        }
+        /* 画像なしカードも、本文はタイトルの下から続けて流すのではなく、画像ありカードと同じように
+           カード最下部に固定して7行までに切り詰める */
+        .article-card:not(.article-card-image) .card-excerpt {
+            position: absolute;
+            left: 0.75rem;
+            right: 0.75rem;
+            bottom: 0.75rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 7;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
         /* 画像なしのカードは、タップ(マウスのクリック中も含む)している間だけ色を変えて触れたことを知らせる */
         .article-card:not(.article-card-image):active,
@@ -1539,8 +1561,8 @@
             }
             return `
                 <a href="/article/${article.id}" class="article-card" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleCardTap(event, this)">
-                    <div class="card-title opacity-90">${escapeHtml(article.title)}</div>
-                    ${excerptText ? `<div class="card-excerpt mt-6">${excerptText}</div>` : ''}
+                    <div class="card-title">${escapeHtml(article.title)}</div>
+                    ${excerptText ? `<div class="card-excerpt">${excerptText}</div>` : ''}
                 </a>
             `;
         }
