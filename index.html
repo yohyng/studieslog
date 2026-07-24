@@ -339,6 +339,9 @@
         </svg>
     </button>
 
+    <!-- デバッグ用: パターンA/B/C切り替えボタン(比較検討用の一時的なもの。不要になったら削除してください) -->
+    <button id="debug-layout-btn" onclick="cycleDebugLayout()" class="fixed top-6 left-6 z-40 glass-chip px-2.5 py-1 text-xs opacity-80 hover:opacity-100 transition-opacity" style="background: color-mix(in srgb, var(--bg-color) 45%, transparent);" title="表示パターンを切り替え(デバッグ用)">A</button>
+
     <div id="menu-overlay" class="fixed inset-0 z-50 pointer-events-none">
         <div id="menu-catcher" class="absolute inset-0 pointer-events-none opacity-0" onclick="toggleMenu()"></div>
         <div id="menu-panel" class="absolute top-0 right-0 h-full w-36 max-w-[55vw] pointer-events-auto transform translate-x-full transition-transform duration-300 ease-out">
@@ -458,6 +461,32 @@
             } finally {
                 document.body.classList.add('ready');
             }
+        }
+
+        // デバッグ用: パターンA/B/Cを手早く切り替えて見比べるための一時的な仕組み。
+        // localStorageに上書き保存するだけで、DBのhomepage_layout設定自体は変更しない
+        const DEBUG_LAYOUT_CYCLE = ['timeline', 'hub', 'card'];
+        const DEBUG_LAYOUT_LABELS = { timeline: 'A', hub: 'B', card: 'C' };
+
+        function initDebugLayoutButton() {
+            const override = localStorage.getItem('debugHomepageLayout');
+            if (override && DEBUG_LAYOUT_CYCLE.includes(override)) {
+                homepageLayout = override;
+            }
+            const btn = document.getElementById('debug-layout-btn');
+            if (btn) btn.textContent = DEBUG_LAYOUT_LABELS[homepageLayout] || 'A';
+        }
+
+        async function cycleDebugLayout() {
+            const next = DEBUG_LAYOUT_CYCLE[(DEBUG_LAYOUT_CYCLE.indexOf(homepageLayout) + 1) % DEBUG_LAYOUT_CYCLE.length];
+            homepageLayout = next;
+            localStorage.setItem('debugHomepageLayout', next);
+            document.getElementById('debug-layout-btn').textContent = DEBUG_LAYOUT_LABELS[next];
+            if (location.pathname.replace(/\/$/, '') !== '') {
+                location.href = '/';
+                return;
+            }
+            await loadArticles();
         }
 
         async function applySiteSettingsInner() {
@@ -1893,6 +1922,7 @@
 
         (async () => {
             await applySiteSettings();
+            initDebugLayoutButton();
             await loadArticles();
         })();
     </script>
