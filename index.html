@@ -102,9 +102,12 @@
             aspect-ratio: 1 / 1;
             border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
             padding: 1.25rem;
+            background: color-mix(in srgb, var(--bg-color) 35%, transparent);
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
             transition: opacity 0.3s ease, border-color 0.2s ease, background 0.2s ease;
         }
-        .article-card:hover { border-color: color-mix(in srgb, currentColor 35%, transparent); background: color-mix(in srgb, currentColor 4%, transparent); }
+        .article-card:hover { border-color: color-mix(in srgb, currentColor 35%, transparent); background: color-mix(in srgb, var(--bg-color) 55%, transparent); }
         .card-excerpt { font-size: 0.7rem; line-height: 1.6; }
         /* 本文中に画像があるカードは、余白なしで1:1に画像を敷き詰める(文字カードとは別の見せ方) */
         .article-card-image { padding: 0; position: relative; }
