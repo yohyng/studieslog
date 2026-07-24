@@ -74,13 +74,18 @@
 
 
         /* パターンC(カード型)のグリッドは auto-fill で列数が自然に変わるので、メディアクエリなしで
-           そのままレスポンシブになる。デスクトップだけ#card-view自体の横幅を広げて、並ぶ列数を増やす */
+           そのままレスポンシブになる。デスクトップだけ#card-view自体の横幅を広げて、並ぶ列数を増やす。
+           タイトル(header)も同じ幅に揃えることで、カード一覧の左端とタイトルの左端が一致するようにする
+           (揃えないと、header側だけ細い列のまま中央寄せされ、カード一覧より内側に見えてしまう) */
         @media (min-width: 1024px) {
             body.card-home #card-view {
-                max-width: min(1200px, 92vw);
+                max-width: min(1400px, 94vw);
+            }
+            body.card-home header {
+                max-width: min(1400px, 94vw);
             }
         }
-        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.75rem; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.75rem; }
         .article-card {
             display: block;
             overflow: hidden;
@@ -98,13 +103,21 @@
             background: color-mix(in srgb, white 12%, transparent);
             border-color: color-mix(in srgb, white 35%, transparent);
         }
+        /* マウスでホバーできる環境では、画像なしカードもホバーだけで軽く反応させる(タップ環境はhoverが
+           擬似的に残り続けてしまうため対象外にし、:active/.card-tappedだけで反応させる) */
+        @media (hover: hover) {
+            .article-card:not(.article-card-image):hover {
+                background: color-mix(in srgb, white 7%, transparent);
+                border-color: color-mix(in srgb, white 25%, transparent);
+            }
+        }
         .card-excerpt {
             /* clampで上下限を切ると、カード幅によって文字量の見え方が変わってしまうため、
                あえて上限・下限を設けずcqiだけに比例させ、カードの大きさに関わらず
                文字量(密度)が常に一定に見えるようにする */
             font-size: calc(4cqi * var(--card-font-scale, 1));
             font-family: var(--debug-card-excerpt-font, inherit);
-            color: #fff;
+            color: color-mix(in srgb, white 95%, transparent);
             line-height: 1.6;
             text-align: justify;
             text-align-last: justify;
