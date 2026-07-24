@@ -391,15 +391,14 @@
                 <h2 class="text-sm font-medium mb-1">表示設定</h2>
                 <p class="text-xs text-white/40 mb-8">公開ページ全体の見た目のデフォルトです。保存すると全ての訪問者に反映されます。</p>
 
-                <!-- サイト構成(パターンA/B) -->
+                <!-- サイト構成: パターンA(時系列フィード)/B(ハブ型)は廃止し、パターンC(カード型)に統一した。
+                     フロント側のコード自体は残っているが到達不可にしているため、選択肢もパターンCのみにしてある -->
                 <div class="mb-6 pb-6 border-b border-white/10">
                     <label class="text-xs text-white/50 block mb-2">サイト構成</label>
                     <select id="set-homepage-layout" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
-                        <option value="timeline">パターンA: トップが時系列フィード(今まで通り)</option>
-                        <option value="hub">パターンB: トップがナビゲーション+タグ一覧のハブ、フィードはArticleページへ</option>
                         <option value="card">パターンC: トップがカード型グリッド、カテゴリでフィルター</option>
                     </select>
-                    <p class="text-xs text-white/30 mt-2">パターンBにすると、本文プレビュー付きの記事フィードは「/list」(サイドバーのArticle)に移動します。</p>
+                    <p class="text-xs text-white/30 mt-2">パターンCに統一したため、現在はこの構成のみ選べます。</p>
                 </div>
 
                 <!-- パターンC(カード型)のカード内文字設定 -->

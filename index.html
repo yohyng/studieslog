@@ -616,7 +616,9 @@
         let siteSnsXUrl = '';
         let siteSnsInstagramUrl = '';
         let siteSnsWebsiteUrl = '';
-        let homepageLayout = 'timeline'; // 'timeline'(パターンA・既定) / 'hub'(パターンB) / 'card'(パターンC)
+        // パターンA(timeline)/B(hub)は廃止し、パターンC(card)に統一した。関連コードはまだ残しているが、
+        // このフラグを常に'card'にすることでルーティング上は到達不可にしている(DBのhomepage_layoutの値は無視する)
+        let homepageLayout = 'card';
 
         const listContainer = document.getElementById('article-list');
         let displayedCount = 0;
@@ -721,7 +723,7 @@
             siteSnsXUrl = data.sns_x_url || '';
             siteSnsInstagramUrl = data.sns_instagram_url || '';
             siteSnsWebsiteUrl = data.sns_website_url || '';
-            homepageLayout = data.homepage_layout || 'timeline';
+            // パターンA/Bは廃止しパターンC固定にしたため、DBのhomepage_layout設定は読まない
             // パターンC(カード型)の文字サイズ・フォント・文字色(管理画面の表示設定で調整できる)
             document.documentElement.style.setProperty('--card-font-scale', data.card_font_scale || 1);
             if (data.card_title_font) document.documentElement.style.setProperty('--card-title-font', data.card_title_font);
