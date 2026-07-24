@@ -99,7 +99,10 @@
             border-color: color-mix(in srgb, white 35%, transparent);
         }
         .card-excerpt {
-            font-size: calc(clamp(0.7rem, 4cqi, 0.95rem) * var(--card-font-scale, 1));
+            /* clampで上下限を切ると、カード幅によって文字量の見え方が変わってしまうため、
+               あえて上限・下限を設けずcqiだけに比例させ、カードの大きさに関わらず
+               文字量(密度)が常に一定に見えるようにする */
+            font-size: calc(4cqi * var(--card-font-scale, 1));
             line-height: 1.6;
             text-align: justify;
             text-align-last: justify;
@@ -108,7 +111,7 @@
         /* 枠線を引かず、文字組みだけで見えない枠を感じさせる。タイトルは両端揃えだが最後の行だけ右揃えにする
            (本文の方は最後の行まで均等に伸ばす。card-excerptの均等揃えと使い分ける) */
         .card-title {
-            font-size: calc(clamp(0.8rem, 4.5cqi, 1.1rem) * var(--card-font-scale, 1));
+            font-size: calc(4.5cqi * var(--card-font-scale, 1));
             text-align: justify;
             text-align-last: left;
             text-justify: inter-character;
