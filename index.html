@@ -103,6 +103,7 @@
                あえて上限・下限を設けずcqiだけに比例させ、カードの大きさに関わらず
                文字量(密度)が常に一定に見えるようにする */
             font-size: calc(4cqi * var(--card-font-scale, 1));
+            font-family: var(--debug-card-excerpt-font, inherit);
             line-height: 1.6;
             text-align: justify;
             text-align-last: justify;
@@ -112,6 +113,7 @@
            (本文の方は最後の行まで均等に伸ばす。card-excerptの均等揃えと使い分ける) */
         .card-title {
             font-size: calc(4.5cqi * var(--card-font-scale, 1));
+            font-family: var(--debug-card-title-font, inherit);
             text-align: justify;
             text-align-last: left;
             text-justify: inter-character;
@@ -461,7 +463,73 @@
             <span class="debug-layout-option cursor-pointer px-2 py-1 border rounded" data-layout="card" onclick="setDebugLayout('card')" style="border-color: color-mix(in srgb, white 20%, transparent);">C</span>
         </div>
         <label class="block opacity-70 mb-1">パターンCのカード文字サイズ</label>
-        <input id="debug-card-font-scale" type="range" min="0.7" max="1.4" step="0.05" value="1" class="w-full" oninput="updateDebugCardFontScale(this.value)">
+        <input id="debug-card-font-scale" type="range" min="0.7" max="1.4" step="0.05" value="1" class="w-full mb-4" oninput="updateDebugCardFontScale(this.value)">
+
+        <label class="block opacity-70 mb-1">パターンCのタイトルフォント</label>
+        <select id="debug-card-title-font" class="w-full bg-transparent text-xs rounded px-2 py-1 mb-4" style="border: 1px solid color-mix(in srgb, white 20%, transparent); color: var(--text-color-solid);" onchange="updateDebugCardFont('title', this.value)">
+            <option value="">サイトの設定に従う</option>
+            <optgroup label="明朝体">
+                <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+            </optgroup>
+            <optgroup label="ゴシック体">
+                <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+            </optgroup>
+            <optgroup label="丸ゴシック体">
+                <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+            </optgroup>
+            <optgroup label="手書き風">
+                <option value="'Klee One', cursive">Klee One</option>
+            </optgroup>
+            <optgroup label="カリグラフィー風">
+                <option value="'New Tegomin', serif">New Tegomin</option>
+                <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+            </optgroup>
+        </select>
+
+        <label class="block opacity-70 mb-1">パターンCの本文フォント</label>
+        <select id="debug-card-excerpt-font" class="w-full bg-transparent text-xs rounded px-2 py-1" style="border: 1px solid color-mix(in srgb, white 20%, transparent); color: var(--text-color-solid);" onchange="updateDebugCardFont('excerpt', this.value)">
+            <option value="">サイトの設定に従う</option>
+            <optgroup label="明朝体">
+                <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+            </optgroup>
+            <optgroup label="ゴシック体">
+                <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+            </optgroup>
+            <optgroup label="丸ゴシック体">
+                <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+            </optgroup>
+            <optgroup label="手書き風">
+                <option value="'Klee One', cursive">Klee One</option>
+            </optgroup>
+            <optgroup label="カリグラフィー風">
+                <option value="'New Tegomin', serif">New Tegomin</option>
+                <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+            </optgroup>
+        </select>
     </div>
 
     <div id="menu-overlay" class="fixed inset-0 z-50 pointer-events-none">
@@ -605,6 +673,15 @@
                 const slider = document.getElementById('debug-card-font-scale');
                 if (slider) slider.value = savedScale;
             }
+
+            ['title', 'excerpt'].forEach(kind => {
+                const savedFont = localStorage.getItem('debugCardFont_' + kind);
+                if (savedFont) {
+                    document.documentElement.style.setProperty('--debug-card-' + kind + '-font', savedFont);
+                    const select = document.getElementById('debug-card-' + kind + '-font');
+                    if (select) select.value = savedFont;
+                }
+            });
         }
 
         function updateDebugLayoutOptionHighlight() {
@@ -636,6 +713,19 @@
         function updateDebugCardFontScale(value) {
             document.documentElement.style.setProperty('--card-font-scale', value);
             localStorage.setItem('debugCardFontScale', value);
+        }
+
+        // パターンCのカードのタイトル/本文フォントを一時的に切り替えるデバッグ用セレクト。
+        // 空欄(サイトの設定に従う)を選んだ場合はCSS変数を外し、通常通りサイト本文フォントを継承させる
+        function updateDebugCardFont(kind, value) {
+            const prop = '--debug-card-' + kind + '-font';
+            if (value) {
+                document.documentElement.style.setProperty(prop, value);
+                localStorage.setItem('debugCardFont_' + kind, value);
+            } else {
+                document.documentElement.style.removeProperty(prop);
+                localStorage.removeItem('debugCardFont_' + kind);
+            }
         }
 
         async function applySiteSettingsInner() {
