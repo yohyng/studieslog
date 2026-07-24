@@ -118,6 +118,10 @@ create table if not exists public.site_settings (
   subscribe_bg_color text not null default '#ffffff',
   subscribe_text_color text not null default '#6b7278',
   homepage_layout text not null default 'timeline',
+  card_font_scale numeric not null default 1,
+  card_title_font text not null default '',
+  card_excerpt_font text not null default '',
+  card_text_color text not null default '',
   updated_at timestamptz not null default now(),
   constraint site_settings_singleton check (id = 1)
 );
@@ -164,6 +168,12 @@ alter table public.site_settings add column if not exists digest_text_color text
 alter table public.site_settings add column if not exists subscribe_bg_color text not null default '#ffffff';
 alter table public.site_settings add column if not exists subscribe_text_color text not null default '#6b7278';
 alter table public.site_settings add column if not exists homepage_layout text not null default 'timeline';
+
+-- パターンC(カード型)のカード内文字サイズ・フォント・文字色。空文字/1は「サイトの本文設定に従う」を意味する
+alter table public.site_settings add column if not exists card_font_scale numeric not null default 1;
+alter table public.site_settings add column if not exists card_title_font text not null default '';
+alter table public.site_settings add column if not exists card_excerpt_font text not null default '';
+alter table public.site_settings add column if not exists card_text_color text not null default '';
 
 insert into public.site_settings (id) values (1)
 on conflict (id) do nothing;

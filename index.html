@@ -139,7 +139,7 @@
                文字量(密度)が常に一定に見えるようにする */
             font-size: calc(4cqi * var(--card-font-scale, 1));
             font-family: var(--debug-card-excerpt-font, inherit);
-            color: color-mix(in srgb, white 95%, transparent);
+            color: var(--debug-card-text-color, color-mix(in srgb, white 95%, transparent));
             line-height: 1.6;
             text-align: justify;
             text-align-last: justify;
@@ -150,6 +150,7 @@
         .card-title {
             font-size: calc(4.5cqi * var(--card-font-scale, 1));
             font-family: var(--debug-card-title-font, inherit);
+            color: var(--debug-card-text-color, color-mix(in srgb, white 95%, transparent));
             text-align: justify;
             text-align-last: left;
             text-justify: inter-character;
@@ -192,7 +193,6 @@
         .article-card-image .card-title {
             position: relative;
             z-index: 2;
-            color: #fff;
         }
         /* 画像ありのカードは、本文をタイトルの下ではなくカード最下部に固定し、3行までに切り詰める */
         .article-card-image .card-excerpt {
@@ -567,6 +567,12 @@
                 <option value="'Yuji Syuku', serif">Yuji Syuku</option>
             </optgroup>
         </select>
+
+        <label class="block opacity-70 mb-1 mt-4">パターンCの文字色(タイトル・本文共通)</label>
+        <input id="debug-card-text-color" type="color" value="#ffffff" class="w-full mb-4" style="height: 1.75rem; background: transparent; border: 1px solid color-mix(in srgb, white 20%, transparent); border-radius: 0.25rem; padding: 2px;" oninput="updateDebugCardTextColor(this.value)">
+
+        <button id="debug-save-btn" onclick="saveDebugCardSettings()" class="w-full py-1.5 text-xs cursor-pointer hover:opacity-90 transition-opacity" style="border: 1px solid color-mix(in srgb, white 25%, transparent); background: color-mix(in srgb, white 10%, transparent);">保存(本番に反映)</button>
+        <p class="opacity-50 mt-2" style="font-size: 0.65rem; line-height: 1.5;">この端末での一時的な確認だけでなく、サイト全体の設定として保存します。管理画面にログイン済みのブラウザでのみ保存できます。</p>
     </div>
 
     <div id="menu-overlay" class="fixed inset-0 z-50 pointer-events-none">
@@ -704,10 +710,26 @@
             if (btn) btn.textContent = DEBUG_LAYOUT_LABELS[homepageLayout] || 'A';
             updateDebugLayoutOptionHighlight();
 
+            // 先にサイト全体の設定(DBの値。applySiteSettingsInner()がここまでにCSS変数へ反映済み)を
+            // コントロール類の初期表示に反映し、その後localStorageの一時的な上書きがあれば重ねて適用する
+            const rootStyle = document.documentElement.style;
+            const siteScale = rootStyle.getPropertyValue('--card-font-scale');
+            const slider = document.getElementById('debug-card-font-scale');
+            if (slider && siteScale) slider.value = siteScale;
+
+            ['title', 'excerpt'].forEach(kind => {
+                const siteFont = rootStyle.getPropertyValue('--debug-card-' + kind + '-font');
+                const select = document.getElementById('debug-card-' + kind + '-font');
+                if (select && siteFont) select.value = siteFont.trim();
+            });
+
+            const siteTextColor = rootStyle.getPropertyValue('--debug-card-text-color');
+            const colorInput = document.getElementById('debug-card-text-color');
+            if (colorInput && siteTextColor) colorInput.value = rgbStringToHex(siteTextColor.trim()) || siteTextColor.trim();
+
             const savedScale = localStorage.getItem('debugCardFontScale');
             if (savedScale) {
                 document.documentElement.style.setProperty('--card-font-scale', savedScale);
-                const slider = document.getElementById('debug-card-font-scale');
                 if (slider) slider.value = savedScale;
             }
 
@@ -719,6 +741,25 @@
                     if (select) select.value = savedFont;
                 }
             });
+
+            const savedTextColor = localStorage.getItem('debugCardTextColor');
+            if (savedTextColor) {
+                document.documentElement.style.setProperty('--debug-card-text-color', savedTextColor);
+                if (colorInput) colorInput.value = savedTextColor;
+            }
+        }
+
+        // <input type="color">はhex(#rrggbb)しか受け付けないため、DB由来のrgb()/color-mix()の
+        // 計算結果をhexへ変換する。変換できない場合はnullを返し、呼び出し側でフォールバックさせる
+        function rgbStringToHex(value) {
+            const probe = document.createElement('div');
+            probe.style.color = value;
+            document.body.appendChild(probe);
+            const rgb = getComputedStyle(probe).color;
+            document.body.removeChild(probe);
+            const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+            if (!m) return null;
+            return '#' + m.slice(1, 4).map(n => (+n).toString(16).padStart(2, '0')).join('');
         }
 
         function updateDebugLayoutOptionHighlight() {
@@ -762,6 +803,57 @@
             } else {
                 document.documentElement.style.removeProperty(prop);
                 localStorage.removeItem('debugCardFont_' + kind);
+            }
+        }
+
+        // パターンCのカードの文字色(タイトル・本文共通)を一時的に切り替えるデバッグ用カラーピッカー
+        function updateDebugCardTextColor(value) {
+            document.documentElement.style.setProperty('--debug-card-text-color', value);
+            localStorage.setItem('debugCardTextColor', value);
+        }
+
+        // デバッグパネルで確認した文字サイズ・フォント・文字色を、この端末だけのものではなく
+        // サイト全体の本番設定(site_settings)として保存する。RLSにより更新は認証済みユーザーのみ
+        // 許可されているため、管理画面(admin.html)に同じブラウザでログイン済みの場合のみ成功する。
+        // 通常の閲覧用クライアント(sb)はここでは使わず、セッション永続化を許可した別クライアントで
+        // 既存のログインセッション(あれば)だけを読みに行く
+        let sbAuthClient = null;
+        function getSbAuthClient() {
+            if (!sbAuthClient) {
+                sbAuthClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+            return sbAuthClient;
+        }
+
+        async function saveDebugCardSettings() {
+            const btn = document.getElementById('debug-save-btn');
+            const original = btn.textContent;
+            btn.textContent = '保存中…';
+            btn.disabled = true;
+            try {
+                const client = getSbAuthClient();
+                const { data: { session } } = await client.auth.getSession();
+                if (!session) {
+                    showToast('管理画面にログインしてから保存してください');
+                    return;
+                }
+                const rootStyle = document.documentElement.style;
+                const payload = {
+                    card_font_scale: parseFloat(document.getElementById('debug-card-font-scale').value) || 1,
+                    card_title_font: rootStyle.getPropertyValue('--debug-card-title-font').trim(),
+                    card_excerpt_font: rootStyle.getPropertyValue('--debug-card-excerpt-font').trim(),
+                    card_text_color: document.getElementById('debug-card-text-color').value
+                };
+                const { error } = await client.from('site_settings').update(payload).eq('id', 1);
+                if (error) {
+                    console.error(error);
+                    showToast('保存に失敗しました');
+                    return;
+                }
+                showToast('サイト全体の設定として保存しました');
+            } finally {
+                btn.textContent = original;
+                btn.disabled = false;
             }
         }
 
@@ -857,6 +949,13 @@
             siteSnsInstagramUrl = data.sns_instagram_url || '';
             siteSnsWebsiteUrl = data.sns_website_url || '';
             homepageLayout = data.homepage_layout || 'timeline';
+            // パターンC(カード型)の文字サイズ・フォント・文字色。デバッグパネルの「保存」で
+            // ここ(site_settings)に書き込まれた値が本番の既定値になる。localStorageの一時的な
+            // 上書きはこの後initDebugLayoutButton()で重ねて適用されるため、ここでは素直にDBの値を反映するだけでよい
+            document.documentElement.style.setProperty('--card-font-scale', data.card_font_scale || 1);
+            if (data.card_title_font) document.documentElement.style.setProperty('--debug-card-title-font', data.card_title_font);
+            if (data.card_excerpt_font) document.documentElement.style.setProperty('--debug-card-excerpt-font', data.card_excerpt_font);
+            if (data.card_text_color) document.documentElement.style.setProperty('--debug-card-text-color', data.card_text_color);
             const footerTitle = data.site_title || document.getElementById('site-title').textContent;
             document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} ${footerTitle}`;
         }
