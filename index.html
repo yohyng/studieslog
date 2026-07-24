@@ -74,10 +74,13 @@
 
 
         /* パターンC(カード型)のグリッドは auto-fill で列数が自然に変わるので、メディアクエリなしで
-           そのままレスポンシブになる。デスクトップだけ#card-view自体の横幅を広げて、並ぶ列数を増やす。
+           そのままレスポンシブになる。ある程度の幅があれば#card-view自体の横幅を広げて、並ぶ列数を増やす。
            タイトル(header)も同じ幅に揃えることで、カード一覧の左端とタイトルの左端が一致するようにする
-           (揃えないと、header側だけ細い列のまま中央寄せされ、カード一覧より内側に見えてしまう) */
-        @media (min-width: 1024px) {
+           (揃えないと、header側だけ細い列のまま中央寄せされ、カード一覧より内側に見えてしまう)。
+           以前は min-width:1024px からしか広げていなかったため、672px(他パターンと共通のcontent-width)〜
+           1023pxのウィンドウ幅では#card-viewが672px固定のままになり、auto-fillが2列にしかならず
+           カードが大きくなりすぎていた。700pxからvwベースで広げることでこの帯を解消する */
+        @media (min-width: 700px) {
             body.card-home #card-view {
                 max-width: min(1700px, 97vw);
             }
@@ -93,16 +96,16 @@
             }
         }
         /* パターンCだけ、ページ最上部からタイトルまでの余白と、タイトルからカード一覧までの余白を
-           揃え(どちらも5rem)、タイトル+台形アイコンがその間で均等な位置に来るようにする。
-           bodyのpy-24(6rem)のうち上側だけ3remに詰め、headerの元々のpt-8(2rem)と合わせて上5remにする */
+           揃え(どちらも6rem)、タイトル+台形アイコンがその間で均等な位置に来るようにする。
+           bodyのpy-24(6rem)のうち上側だけ4remに詰め、headerの元々のpt-8(2rem)と合わせて上6remにする */
         /* Tailwind(CDN)のpy-24クラスと同じ詳細度(クラス1つ)なので、後から読み込まれるTailwindの
            スタイルに負けないよう!importantを付ける(過去に同じ理由でハンバーガーボタンの背景が
            上書きできなかったことがあったため、同じ轍を踏まないための予防策) */
-        body.card-home { padding-top: 3rem !important; }
-        body.card-home header { margin-bottom: 5rem; }
+        body.card-home { padding-top: 4rem !important; }
+        body.card-home header { margin-bottom: 6rem; }
         /* パターンCだけ、サブタイトルは非表示にする */
         body.card-home #site-subtitle { display: none; }
-        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.75rem; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
         .article-card {
             display: block;
             overflow: hidden;
