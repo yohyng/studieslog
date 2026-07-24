@@ -155,8 +155,8 @@
                あえて上限・下限を設けずcqiだけに比例させ、カードの大きさに関わらず
                文字量(密度)が常に一定に見えるようにする */
             font-size: calc(4cqi * var(--card-font-scale, 1));
-            font-family: var(--debug-card-excerpt-font, inherit);
-            color: var(--debug-card-text-color, color-mix(in srgb, white 95%, transparent));
+            font-family: var(--card-excerpt-font, inherit);
+            color: var(--card-text-color, color-mix(in srgb, white 95%, transparent));
             line-height: 1.6;
             text-align: justify;
             text-align-last: justify;
@@ -166,8 +166,8 @@
            (本文の方は最後の行まで均等に伸ばす。card-excerptの均等揃えと使い分ける) */
         .card-title {
             font-size: calc(4.5cqi * var(--card-font-scale, 1));
-            font-family: var(--debug-card-title-font, inherit);
-            color: var(--debug-card-text-color, color-mix(in srgb, white 95%, transparent));
+            font-family: var(--card-title-font, inherit);
+            color: var(--card-text-color, color-mix(in srgb, white 95%, transparent));
             text-align: justify;
             text-align-last: left;
             text-justify: inter-character;
@@ -508,89 +508,6 @@
     </button>
     <div id="card-filter-panel" class="hidden"></div>
 
-    <!-- デバッグ用: パターンA/B/C切り替え+パターンCの文字サイズ調整(比較検討用の一時的なもの。不要になったら削除してください) -->
-    <button id="debug-layout-btn" onclick="toggleDebugPanel()" class="fixed top-6 z-40 glass-chip px-2.5 py-1 text-xs opacity-80 hover:opacity-100 transition-opacity" style="left: 50%; transform: translateX(-50%); background: color-mix(in srgb, var(--bg-color) 45%, transparent);" title="表示パターンを切り替え(デバッグ用)">A</button>
-    <div id="debug-panel" class="hidden fixed top-16 z-40 glass-chip p-4 text-xs" style="left: 50%; transform: translateX(-50%); width: min(90vw, 280px); background: color-mix(in srgb, var(--bg-color) 88%, transparent);">
-        <div class="flex gap-2 mb-4">
-            <span class="debug-layout-option cursor-pointer px-2 py-1 border rounded" data-layout="timeline" onclick="setDebugLayout('timeline')" style="border-color: color-mix(in srgb, white 20%, transparent);">A</span>
-            <span class="debug-layout-option cursor-pointer px-2 py-1 border rounded" data-layout="hub" onclick="setDebugLayout('hub')" style="border-color: color-mix(in srgb, white 20%, transparent);">B</span>
-            <span class="debug-layout-option cursor-pointer px-2 py-1 border rounded" data-layout="card" onclick="setDebugLayout('card')" style="border-color: color-mix(in srgb, white 20%, transparent);">C</span>
-        </div>
-        <label class="block opacity-70 mb-1">パターンCのカード文字サイズ</label>
-        <input id="debug-card-font-scale" type="range" min="0.7" max="1.4" step="0.05" value="1" class="w-full mb-4" oninput="updateDebugCardFontScale(this.value)">
-
-        <label class="block opacity-70 mb-1">パターンCのタイトルフォント</label>
-        <select id="debug-card-title-font" class="w-full bg-transparent text-xs rounded px-2 py-1 mb-4" style="border: 1px solid color-mix(in srgb, white 20%, transparent); color: var(--text-color-solid);" onchange="updateDebugCardFont('title', this.value)">
-            <option value="">サイトの設定に従う</option>
-            <optgroup label="明朝体">
-                <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
-                <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
-                <option value="'Noto Serif JP', serif">Noto Serif JP</option>
-                <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
-                <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
-                <option value="'Kaisei Decol', serif">Kaisei Decol</option>
-                <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
-            </optgroup>
-            <optgroup label="ゴシック体">
-                <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
-                <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
-                <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
-                <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
-                <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
-                <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
-            </optgroup>
-            <optgroup label="丸ゴシック体">
-                <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
-                <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
-            </optgroup>
-            <optgroup label="手書き風">
-                <option value="'Klee One', cursive">Klee One</option>
-            </optgroup>
-            <optgroup label="カリグラフィー風">
-                <option value="'New Tegomin', serif">New Tegomin</option>
-                <option value="'Yuji Syuku', serif">Yuji Syuku</option>
-            </optgroup>
-        </select>
-
-        <label class="block opacity-70 mb-1">パターンCの本文フォント</label>
-        <select id="debug-card-excerpt-font" class="w-full bg-transparent text-xs rounded px-2 py-1" style="border: 1px solid color-mix(in srgb, white 20%, transparent); color: var(--text-color-solid);" onchange="updateDebugCardFont('excerpt', this.value)">
-            <option value="">サイトの設定に従う</option>
-            <optgroup label="明朝体">
-                <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
-                <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
-                <option value="'Noto Serif JP', serif">Noto Serif JP</option>
-                <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
-                <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
-                <option value="'Kaisei Decol', serif">Kaisei Decol</option>
-                <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
-            </optgroup>
-            <optgroup label="ゴシック体">
-                <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
-                <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
-                <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
-                <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
-                <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
-                <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
-            </optgroup>
-            <optgroup label="丸ゴシック体">
-                <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
-                <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
-            </optgroup>
-            <optgroup label="手書き風">
-                <option value="'Klee One', cursive">Klee One</option>
-            </optgroup>
-            <optgroup label="カリグラフィー風">
-                <option value="'New Tegomin', serif">New Tegomin</option>
-                <option value="'Yuji Syuku', serif">Yuji Syuku</option>
-            </optgroup>
-        </select>
-
-        <label class="block opacity-70 mb-1 mt-4">パターンCの文字色(タイトル・本文共通)</label>
-        <input id="debug-card-text-color" type="color" value="#ffffff" class="w-full mb-4" style="height: 1.75rem; background: transparent; border: 1px solid color-mix(in srgb, white 20%, transparent); border-radius: 0.25rem; padding: 2px;" oninput="updateDebugCardTextColor(this.value)">
-
-        <button id="debug-save-btn" onclick="saveDebugCardSettings()" class="w-full py-1.5 text-xs cursor-pointer hover:opacity-90 transition-opacity" style="border: 1px solid color-mix(in srgb, white 25%, transparent); background: color-mix(in srgb, white 10%, transparent);">保存(本番に反映)</button>
-        <p class="opacity-50 mt-2" style="font-size: 0.65rem; line-height: 1.5;">この端末での一時的な確認だけでなく、サイト全体の設定として保存します。管理画面にログイン済みのブラウザでのみ保存できます。</p>
-    </div>
 
     <div id="menu-overlay" class="fixed inset-0 z-50 pointer-events-none">
         <div id="menu-catcher" class="absolute inset-0 pointer-events-none opacity-0" onclick="toggleMenu()"></div>
@@ -713,167 +630,6 @@
             }
         }
 
-        // デバッグ用: パターンA/B/Cを手早く切り替えて見比べるための一時的な仕組み。
-        // localStorageに上書き保存するだけで、DBのhomepage_layout設定自体は変更しない
-        const DEBUG_LAYOUT_CYCLE = ['timeline', 'hub', 'card'];
-        const DEBUG_LAYOUT_LABELS = { timeline: 'A', hub: 'B', card: 'C' };
-
-        function initDebugLayoutButton() {
-            const override = localStorage.getItem('debugHomepageLayout');
-            if (override && DEBUG_LAYOUT_CYCLE.includes(override)) {
-                homepageLayout = override;
-            }
-            const btn = document.getElementById('debug-layout-btn');
-            if (btn) btn.textContent = DEBUG_LAYOUT_LABELS[homepageLayout] || 'A';
-            updateDebugLayoutOptionHighlight();
-
-            // 先にサイト全体の設定(DBの値。applySiteSettingsInner()がここまでにCSS変数へ反映済み)を
-            // コントロール類の初期表示に反映し、その後localStorageの一時的な上書きがあれば重ねて適用する
-            const rootStyle = document.documentElement.style;
-            const siteScale = rootStyle.getPropertyValue('--card-font-scale');
-            const slider = document.getElementById('debug-card-font-scale');
-            if (slider && siteScale) slider.value = siteScale;
-
-            ['title', 'excerpt'].forEach(kind => {
-                const siteFont = rootStyle.getPropertyValue('--debug-card-' + kind + '-font');
-                const select = document.getElementById('debug-card-' + kind + '-font');
-                if (select && siteFont) select.value = siteFont.trim();
-            });
-
-            const siteTextColor = rootStyle.getPropertyValue('--debug-card-text-color');
-            const colorInput = document.getElementById('debug-card-text-color');
-            if (colorInput && siteTextColor) colorInput.value = rgbStringToHex(siteTextColor.trim()) || siteTextColor.trim();
-
-            const savedScale = localStorage.getItem('debugCardFontScale');
-            if (savedScale) {
-                document.documentElement.style.setProperty('--card-font-scale', savedScale);
-                if (slider) slider.value = savedScale;
-            }
-
-            ['title', 'excerpt'].forEach(kind => {
-                const savedFont = localStorage.getItem('debugCardFont_' + kind);
-                if (savedFont) {
-                    document.documentElement.style.setProperty('--debug-card-' + kind + '-font', savedFont);
-                    const select = document.getElementById('debug-card-' + kind + '-font');
-                    if (select) select.value = savedFont;
-                }
-            });
-
-            const savedTextColor = localStorage.getItem('debugCardTextColor');
-            if (savedTextColor) {
-                document.documentElement.style.setProperty('--debug-card-text-color', savedTextColor);
-                if (colorInput) colorInput.value = savedTextColor;
-            }
-        }
-
-        // <input type="color">はhex(#rrggbb)しか受け付けないため、DB由来のrgb()/color-mix()の
-        // 計算結果をhexへ変換する。変換できない場合はnullを返し、呼び出し側でフォールバックさせる
-        function rgbStringToHex(value) {
-            const probe = document.createElement('div');
-            probe.style.color = value;
-            document.body.appendChild(probe);
-            const rgb = getComputedStyle(probe).color;
-            document.body.removeChild(probe);
-            const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-            if (!m) return null;
-            return '#' + m.slice(1, 4).map(n => (+n).toString(16).padStart(2, '0')).join('');
-        }
-
-        function updateDebugLayoutOptionHighlight() {
-            document.querySelectorAll('.debug-layout-option').forEach(el => {
-                el.classList.toggle('opacity-100', el.dataset.layout === homepageLayout);
-                el.classList.toggle('opacity-50', el.dataset.layout !== homepageLayout);
-            });
-        }
-
-        function toggleDebugPanel() {
-            document.getElementById('debug-panel').classList.toggle('hidden');
-        }
-
-        // デバッグ用パネルからA/B/Cを直接選ぶ(サイクルではなく指名式)。DBのhomepage_layout設定は変更せず、
-        // localStorageへの一時的な上書きに留める
-        async function setDebugLayout(next) {
-            homepageLayout = next;
-            localStorage.setItem('debugHomepageLayout', next);
-            document.getElementById('debug-layout-btn').textContent = DEBUG_LAYOUT_LABELS[next];
-            updateDebugLayoutOptionHighlight();
-            if (location.pathname.replace(/\/$/, '') !== '') {
-                location.href = '/';
-                return;
-            }
-            await loadArticles();
-        }
-
-        // パターンCのカード内文字サイズを一時的に調整するデバッグ用スライダー
-        function updateDebugCardFontScale(value) {
-            document.documentElement.style.setProperty('--card-font-scale', value);
-            localStorage.setItem('debugCardFontScale', value);
-        }
-
-        // パターンCのカードのタイトル/本文フォントを一時的に切り替えるデバッグ用セレクト。
-        // 空欄(サイトの設定に従う)を選んだ場合はCSS変数を外し、通常通りサイト本文フォントを継承させる
-        function updateDebugCardFont(kind, value) {
-            const prop = '--debug-card-' + kind + '-font';
-            if (value) {
-                document.documentElement.style.setProperty(prop, value);
-                localStorage.setItem('debugCardFont_' + kind, value);
-            } else {
-                document.documentElement.style.removeProperty(prop);
-                localStorage.removeItem('debugCardFont_' + kind);
-            }
-        }
-
-        // パターンCのカードの文字色(タイトル・本文共通)を一時的に切り替えるデバッグ用カラーピッカー
-        function updateDebugCardTextColor(value) {
-            document.documentElement.style.setProperty('--debug-card-text-color', value);
-            localStorage.setItem('debugCardTextColor', value);
-        }
-
-        // デバッグパネルで確認した文字サイズ・フォント・文字色を、この端末だけのものではなく
-        // サイト全体の本番設定(site_settings)として保存する。RLSにより更新は認証済みユーザーのみ
-        // 許可されているため、管理画面(admin.html)に同じブラウザでログイン済みの場合のみ成功する。
-        // 通常の閲覧用クライアント(sb)はここでは使わず、セッション永続化を許可した別クライアントで
-        // 既存のログインセッション(あれば)だけを読みに行く
-        let sbAuthClient = null;
-        function getSbAuthClient() {
-            if (!sbAuthClient) {
-                sbAuthClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            }
-            return sbAuthClient;
-        }
-
-        async function saveDebugCardSettings() {
-            const btn = document.getElementById('debug-save-btn');
-            const original = btn.textContent;
-            btn.textContent = '保存中…';
-            btn.disabled = true;
-            try {
-                const client = getSbAuthClient();
-                const { data: { session } } = await client.auth.getSession();
-                if (!session) {
-                    showToast('管理画面にログインしてから保存してください');
-                    return;
-                }
-                const rootStyle = document.documentElement.style;
-                const payload = {
-                    card_font_scale: parseFloat(document.getElementById('debug-card-font-scale').value) || 1,
-                    card_title_font: rootStyle.getPropertyValue('--debug-card-title-font').trim(),
-                    card_excerpt_font: rootStyle.getPropertyValue('--debug-card-excerpt-font').trim(),
-                    card_text_color: document.getElementById('debug-card-text-color').value
-                };
-                const { error } = await client.from('site_settings').update(payload).eq('id', 1);
-                if (error) {
-                    console.error(error);
-                    showToast('保存に失敗しました');
-                    return;
-                }
-                showToast('サイト全体の設定として保存しました');
-            } finally {
-                btn.textContent = original;
-                btn.disabled = false;
-            }
-        }
-
         async function applySiteSettingsInner() {
             const { data, error } = await sb.from('site_settings').select('*').eq('id', 1).single();
             if (error || !data) {
@@ -966,13 +722,11 @@
             siteSnsInstagramUrl = data.sns_instagram_url || '';
             siteSnsWebsiteUrl = data.sns_website_url || '';
             homepageLayout = data.homepage_layout || 'timeline';
-            // パターンC(カード型)の文字サイズ・フォント・文字色。デバッグパネルの「保存」で
-            // ここ(site_settings)に書き込まれた値が本番の既定値になる。localStorageの一時的な
-            // 上書きはこの後initDebugLayoutButton()で重ねて適用されるため、ここでは素直にDBの値を反映するだけでよい
+            // パターンC(カード型)の文字サイズ・フォント・文字色(管理画面の表示設定で調整できる)
             document.documentElement.style.setProperty('--card-font-scale', data.card_font_scale || 1);
-            if (data.card_title_font) document.documentElement.style.setProperty('--debug-card-title-font', data.card_title_font);
-            if (data.card_excerpt_font) document.documentElement.style.setProperty('--debug-card-excerpt-font', data.card_excerpt_font);
-            if (data.card_text_color) document.documentElement.style.setProperty('--debug-card-text-color', data.card_text_color);
+            if (data.card_title_font) document.documentElement.style.setProperty('--card-title-font', data.card_title_font);
+            if (data.card_excerpt_font) document.documentElement.style.setProperty('--card-excerpt-font', data.card_excerpt_font);
+            if (data.card_text_color) document.documentElement.style.setProperty('--card-text-color', data.card_text_color);
             const footerTitle = data.site_title || document.getElementById('site-title').textContent;
             document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} ${footerTitle}`;
         }
@@ -2360,7 +2114,6 @@
 
         (async () => {
             await applySiteSettings();
-            initDebugLayoutButton();
             await loadArticles();
         })();
     </script>

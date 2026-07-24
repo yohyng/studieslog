@@ -402,6 +402,84 @@
                     <p class="text-xs text-white/30 mt-2">パターンBにすると、本文プレビュー付きの記事フィードは「/list」(サイドバーのArticle)に移動します。</p>
                 </div>
 
+                <!-- パターンC(カード型)のカード内文字設定 -->
+                <div class="mb-6 pb-6 border-b border-white/10">
+                    <label class="text-xs text-white/50 block mb-2">パターンCのカード文字設定</label>
+                    <div class="flex justify-between text-xs text-white/50 mb-1">
+                        <span>文字サイズ</span><span id="card-font-scale-value"></span>
+                    </div>
+                    <input type="range" id="set-card-font-scale" min="0.7" max="1.4" step="0.05" class="w-full mb-4" oninput="document.getElementById('card-font-scale-value').textContent = this.value">
+
+                    <label class="text-xs text-white/50 block mb-1">タイトルフォント</label>
+                    <select id="set-card-title-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30">
+                        <option value="">本文と同じフォント</option>
+                        <optgroup label="明朝体">
+                            <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                            <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                            <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                            <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                            <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                            <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                            <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                        </optgroup>
+                        <optgroup label="ゴシック体">
+                            <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                            <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                            <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                            <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                            <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                            <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                        </optgroup>
+                        <optgroup label="丸ゴシック体">
+                            <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                            <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                        </optgroup>
+                        <optgroup label="手書き風">
+                            <option value="'Klee One', cursive">Klee One</option>
+                        </optgroup>
+                        <optgroup label="カリグラフィー風">
+                            <option value="'New Tegomin', serif">New Tegomin</option>
+                            <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                        </optgroup>
+                    </select>
+
+                    <label class="text-xs text-white/50 block mb-1">本文フォント</label>
+                    <select id="set-card-excerpt-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30">
+                        <option value="">本文と同じフォント</option>
+                        <optgroup label="明朝体">
+                            <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                            <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                            <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                            <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                            <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                            <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                            <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                        </optgroup>
+                        <optgroup label="ゴシック体">
+                            <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                            <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                            <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                            <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                            <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                            <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                        </optgroup>
+                        <optgroup label="丸ゴシック体">
+                            <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                            <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                        </optgroup>
+                        <optgroup label="手書き風">
+                            <option value="'Klee One', cursive">Klee One</option>
+                        </optgroup>
+                        <optgroup label="カリグラフィー風">
+                            <option value="'New Tegomin', serif">New Tegomin</option>
+                            <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                        </optgroup>
+                    </select>
+
+                    <label class="text-xs text-white/50 block mb-1">文字色(タイトル・本文共通)</label>
+                    <input type="color" id="set-card-text-color" class="w-full h-9 bg-white/5 rounded border border-white/10">
+                </div>
+
                 <!-- タイトル -->
                 <div class="mb-6 pb-6 border-b border-white/10">
                     <label class="text-xs text-white/50 block mb-2">ページタイトル(ブラウザのタブに表示される名前)</label>
@@ -2335,6 +2413,12 @@
                 return;
             }
             document.getElementById('set-homepage-layout').value = data.homepage_layout || 'timeline';
+            const cardFontScale = data.card_font_scale || 1;
+            document.getElementById('set-card-font-scale').value = cardFontScale;
+            document.getElementById('card-font-scale-value').textContent = cardFontScale;
+            document.getElementById('set-card-title-font').value = data.card_title_font || '';
+            document.getElementById('set-card-excerpt-font').value = data.card_excerpt_font || '';
+            document.getElementById('set-card-text-color').value = data.card_text_color || '#ffffff';
             document.getElementById('set-page-title').value = data.page_title || '';
             document.getElementById('set-site-title').value = data.site_title || '';
             document.getElementById('set-site-title-font').value = data.site_title_font || '';
@@ -2409,6 +2493,10 @@
         async function saveSiteSettings() {
             const payload = {
                 homepage_layout: document.getElementById('set-homepage-layout').value,
+                card_font_scale: parseFloat(document.getElementById('set-card-font-scale').value) || 1,
+                card_title_font: document.getElementById('set-card-title-font').value,
+                card_excerpt_font: document.getElementById('set-card-excerpt-font').value,
+                card_text_color: document.getElementById('set-card-text-color').value,
                 page_title: document.getElementById('set-page-title').value.trim(),
                 site_title: document.getElementById('set-site-title').value.trim(),
                 site_title_font: document.getElementById('set-site-title-font').value,
