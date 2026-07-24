@@ -1296,22 +1296,41 @@
 
             view.innerHTML = `
                 <div class="fade-in">
-                    <div class="category-filter-row text-sm mb-4">${categoryFilterHtml}</div>
-                    ${tagFilterHtml}
+                    <button id="card-filter-toggle" onclick="toggleCardFilterPanel(this)" class="glass-chip inline-flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer hover:opacity-90 transition-opacity mb-6" style="background: color-mix(in srgb, var(--bg-color) 45%, transparent);">
+                        <span>Filter</span>
+                        <span id="card-filter-dot" class="hidden" style="width: 5px; height: 5px; border-radius: 9999px; background: currentColor;"></span>
+                    </button>
+                    <div id="card-filter-panel" class="hidden mb-6">
+                        <div class="category-filter-row text-sm mb-4">${categoryFilterHtml}</div>
+                        ${tagFilterHtml}
+                    </div>
                     <div class="card-grid">${articles.map(a => articleCardHtml(a)).join('')}</div>
                 </div>
             `;
         }
 
+        // フィルターボタンを開閉する。カテゴリ/タグどちらかが選ばれている間は、パネルを閉じても
+        // ボタンに小さいドットを出して「絞り込み中」であることが分かるようにする
+        function toggleCardFilterPanel(btn) {
+            document.getElementById('card-filter-panel').classList.toggle('hidden');
+        }
+
+        function updateCardFilterIndicator() {
+            const dot = document.getElementById('card-filter-dot');
+            if (!dot) return;
+            dot.classList.toggle('hidden', !cardActiveCategory && cardActiveTags.size === 0);
+        }
+
         // カテゴリ・タグどちらの状態も踏まえて、全カードの絞り込み表示(不透明度)を再計算する
-        function applyCardFilters(container) {
-            const grid = container.querySelector('.card-grid');
+        function applyCardFilters() {
+            const grid = document.querySelector('#card-view .card-grid');
             grid.querySelectorAll(':scope > .article-card').forEach(card => {
                 const categoryMatch = !cardActiveCategory || card.dataset.category === cardActiveCategory;
                 const cardTags = (card.dataset.tags || '').split(',').filter(Boolean);
                 const tagMatch = cardActiveTags.size === 0 || cardTags.some(slug => cardActiveTags.has(slug));
                 card.style.opacity = (categoryMatch && tagMatch) ? '' : '0.25';
             });
+            updateCardFilterIndicator();
         }
 
         function filterCardCategory(el) {
@@ -1321,7 +1340,7 @@
                 btn.classList.toggle('opacity-50', btn !== el);
             });
             cardActiveCategory = el.dataset.category;
-            applyCardFilters(row.parentElement);
+            applyCardFilters();
         }
 
         // タグは複数選択可(横串の性質上、絞り込みも積み重ねられるようにする)。「All」だけは選択解除の特別扱い
@@ -1343,7 +1362,7 @@
                 btn.classList.toggle('opacity-90', active);
                 btn.classList.toggle('opacity-50', !active);
             });
-            applyCardFilters(row.parentElement);
+            applyCardFilters();
         }
 
         // 画像だけのカードはタイトルを隠しているので、マウスならホバーで見える(CSS側で処理)。
