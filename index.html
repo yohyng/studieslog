@@ -114,9 +114,9 @@
             position: absolute;
             inset: 0;
             display: flex;
-            align-items: flex-end;
+            flex-direction: column;
+            justify-content: flex-end;
             padding: 1rem;
-            font-size: 0.75rem;
             color: #fff;
             background: linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent 60%);
             opacity: 0;
@@ -1177,52 +1177,83 @@
             return m ? m[1] : null;
         }
 
+        // カード自体にはハッシュタグを出さず(一覧の情報量を抑える)、タグは絞り込み用のdata-tagsとしてのみ持たせる。
+        // 絞り込みは一番上のカテゴリ行+タグ行(renderCardPage)が担う
         function articleCardHtml(article) {
+            const tagsAttr = (article.tags || []).map(t => t.slug).join(',');
             const imageUrl = getFirstImageUrl(article.content);
             if (imageUrl) {
                 return `
-                    <a href="/article/${article.id}" class="article-card article-card-image" data-category="${escapeHtml(article.category || '')}" onclick="return handleImageCardClick(event, this)">
+                    <a href="/article/${article.id}" class="article-card article-card-image" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleImageCardClick(event, this)">
                         <img src="${escapeHtml(imageUrl)}" alt="" loading="lazy">
-                        <div class="card-image-title">${escapeHtml(article.title)}</div>
+                        <div class="card-image-title">
+                            <div class="opacity-40" style="font-size: 0.6rem;">${escapeHtml(article.date)}</div>
+                            <div class="opacity-90 mt-1" style="font-size: 0.75rem;">${escapeHtml(article.title)}</div>
+                        </div>
                     </a>
                 `;
             }
-            const tagsHtml = (article.tags && article.tags.length > 0)
-                ? `<div class="flex flex-wrap gap-1.5 mt-3">${article.tags.map(t => `<span class="glass-chip inline-block px-1.5 py-0.5" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${escapeHtml(t.name)}</span>`).join('')}</div>`
-                : '';
             const plainText = stripHtml(article.content);
             const excerpt = plainText.slice(0, CARD_EXCERPT_LENGTH);
             const excerptHtml = excerpt
                 ? `<div class="card-excerpt opacity-60 mt-3">${escapeHtml(excerpt)}${plainText.length > CARD_EXCERPT_LENGTH ? '…' : ''}</div>`
                 : '';
             return `
-                <a href="/article/${article.id}" class="article-card" data-category="${escapeHtml(article.category || '')}">
-                    <div class="opacity-40" style="font-size: 0.65rem;">${escapeHtml(article.date)}</div>
-                    <div class="text-sm mt-2 opacity-90">${escapeHtml(article.title)}</div>
-                    ${tagsHtml}
+                <a href="/article/${article.id}" class="article-card" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}">
+                    <div class="opacity-40" style="font-size: 0.6rem;">${escapeHtml(article.date)}</div>
+                    <div class="opacity-90 mt-2" style="font-size: 0.75rem;">${escapeHtml(article.title)}</div>
                     ${excerptHtml}
                 </a>
             `;
         }
 
+        // カテゴリ(1つだけ選べるジャンル)とタグ(複数選べる横串)は別軸なので、両方の絞り込み条件を
+        // 掛け合わせて(AND)判定する。状態はrenderCardPage()のたびにリセットする
+        let cardActiveCategory = '';
+        let cardActiveTags = new Set();
+
         function renderCardPage() {
             hideAllViews();
             document.body.classList.add('card-home');
+            cardActiveCategory = '';
+            cardActiveTags = new Set();
             const view = document.getElementById('card-view');
             view.classList.remove('hidden');
             if (articles.length === 0) {
                 view.innerHTML = '<p class="text-xs opacity-40 py-2">まだ記事がありません。</p>';
                 return;
             }
-            const filterHtml = ['', ...ARTICLE_CATEGORIES].map(cat => `
+            const categoryFilterHtml = ['', ...ARTICLE_CATEGORIES].map(cat => `
                 <span class="category-filter-item cursor-pointer transition-opacity hover:opacity-100 ${cat === '' ? 'opacity-90' : 'opacity-50'}" data-category="${escapeHtml(cat)}" onclick="filterCardCategory(this)">${escapeHtml(cat || 'All')}</span>
             `).join('<span class="opacity-30" style="margin: 0 0.4em;">/</span>');
+
+            const allTags = [...new Map(articles.flatMap(a => a.tags || []).map(t => [t.slug, t])).values()]
+                .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+            const tagFilterHtml = allTags.length > 0 ? `
+                <div class="tag-filter-row flex flex-wrap gap-2 mb-8">
+                    <span class="tag-filter-item glass-chip cursor-pointer px-2 py-0.5 opacity-90 hover:opacity-100 transition-opacity" data-tag="" onclick="filterCardTag(this)" style="font-size: var(--tag-font-size); font-family: var(--tag-font);">All</span>
+                    ${allTags.map(t => `<span class="tag-filter-item glass-chip cursor-pointer px-2 py-0.5 opacity-50 hover:opacity-100 transition-opacity" data-tag="${escapeHtml(t.slug)}" onclick="filterCardTag(this)" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${escapeHtml(t.name)}</span>`).join('')}
+                </div>
+            ` : '';
+
             view.innerHTML = `
                 <div class="fade-in">
-                    <div class="category-filter-row text-sm mb-8">${filterHtml}</div>
+                    <div class="category-filter-row text-sm mb-4">${categoryFilterHtml}</div>
+                    ${tagFilterHtml}
                     <div class="card-grid">${articles.map(a => articleCardHtml(a)).join('')}</div>
                 </div>
             `;
+        }
+
+        // カテゴリ・タグどちらの状態も踏まえて、全カードの絞り込み表示(不透明度)を再計算する
+        function applyCardFilters(container) {
+            const grid = container.querySelector('.card-grid');
+            grid.querySelectorAll(':scope > .article-card').forEach(card => {
+                const categoryMatch = !cardActiveCategory || card.dataset.category === cardActiveCategory;
+                const cardTags = (card.dataset.tags || '').split(',').filter(Boolean);
+                const tagMatch = cardActiveTags.size === 0 || cardTags.some(slug => cardActiveTags.has(slug));
+                card.style.opacity = (categoryMatch && tagMatch) ? '' : '0.25';
+            });
         }
 
         function filterCardCategory(el) {
@@ -1231,12 +1262,30 @@
                 btn.classList.toggle('opacity-90', btn === el);
                 btn.classList.toggle('opacity-50', btn !== el);
             });
-            const value = el.dataset.category;
-            const grid = row.nextElementSibling;
-            grid.querySelectorAll(':scope > .article-card').forEach(card => {
-                const match = !value || card.dataset.category === value;
-                card.style.opacity = match ? '' : '0.25';
+            cardActiveCategory = el.dataset.category;
+            applyCardFilters(row.parentElement);
+        }
+
+        // タグは複数選択可(横串の性質上、絞り込みも積み重ねられるようにする)。「All」だけは選択解除の特別扱い
+        function filterCardTag(el) {
+            const row = el.closest('.tag-filter-row');
+            const value = el.dataset.tag;
+            if (value === '') {
+                cardActiveTags.clear();
+            } else if (cardActiveTags.has(value)) {
+                cardActiveTags.delete(value);
+            } else {
+                cardActiveTags.add(value);
+            }
+            const allBtn = row.querySelector('.tag-filter-item[data-tag=""]');
+            allBtn.classList.toggle('opacity-90', cardActiveTags.size === 0);
+            allBtn.classList.toggle('opacity-50', cardActiveTags.size > 0);
+            row.querySelectorAll('.tag-filter-item[data-tag]:not([data-tag=""])').forEach(btn => {
+                const active = cardActiveTags.has(btn.dataset.tag);
+                btn.classList.toggle('opacity-90', active);
+                btn.classList.toggle('opacity-50', !active);
             });
+            applyCardFilters(row.parentElement);
         }
 
         // 画像だけのカードはタイトルを隠しているので、マウスならホバーで見える(CSS側で処理)。
