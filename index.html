@@ -87,6 +87,24 @@
                 align-items: start;
             }
         }
+
+        /* パターンC(カード型)のグリッドは auto-fill で列数が自然に変わるので、メディアクエリなしで
+           そのままレスポンシブになる。デスクトップだけ#card-view自体の横幅を広げて、並ぶ列数を増やす */
+        @media (min-width: 1024px) {
+            body.card-home #card-view {
+                max-width: min(1200px, 92vw);
+            }
+        }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.5rem; }
+        .article-card {
+            display: block;
+            border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+            border-radius: 8px;
+            padding: 1.25rem;
+            transition: opacity 0.3s ease, border-color 0.2s ease, background 0.2s ease;
+        }
+        .article-card:hover { border-color: color-mix(in srgb, currentColor 35%, transparent); background: color-mix(in srgb, currentColor 4%, transparent); }
+
         /* テスト機能: 表示設定で選ぶと、単色の背景の代わりに粒状ノイズ入りのグラデーション画像を使う(固定位置の背景専用div) */
         /* テスト機能: 表示設定で選ぶと、単色の背景色の代わりに使われる。ページと一緒にスクロールするようbodyに直接タイル表示する */
         body.gradient-gray {
@@ -332,6 +350,8 @@
 
     <main id="hub-view" class="hidden w-full content-width relative"></main>
 
+    <main id="card-view" class="hidden w-full content-width relative"></main>
+
     <main id="title-list-view" class="hidden w-full content-width flex flex-col relative"></main>
 
     <main id="about-view" class="hidden w-full content-width relative"></main>
@@ -403,7 +423,7 @@
         let siteSnsXUrl = '';
         let siteSnsInstagramUrl = '';
         let siteSnsWebsiteUrl = '';
-        let homepageLayout = 'timeline'; // 'timeline'(パターンA・既定) or 'hub'(パターンB)
+        let homepageLayout = 'timeline'; // 'timeline'(パターンA・既定) / 'hub'(パターンB) / 'card'(パターンC)
 
         const listContainer = document.getElementById('article-list');
         let displayedCount = 0;
@@ -757,6 +777,7 @@
         function hideAllViews() {
             document.getElementById('article-list').classList.add('hidden');
             document.getElementById('hub-view').classList.add('hidden');
+            document.getElementById('card-view').classList.add('hidden');
             document.getElementById('title-list-view').classList.add('hidden');
             document.getElementById('about-view').classList.add('hidden');
             document.getElementById('contact-view').classList.add('hidden');
@@ -764,6 +785,7 @@
             document.getElementById('search-view').classList.add('hidden');
             document.getElementById('loading-indicator').classList.add('hidden');
             document.body.classList.remove('hub-home');
+            document.body.classList.remove('card-home');
         }
 
         function stripHtml(html) {
@@ -1119,6 +1141,58 @@
             return false;
         }
 
+        // パターンC(カード型トップ)。断片性を強調する見せ方として、記事を1枚1枚のカードにして
+        // グリッドで一覧できるようにする。パターンBのArticleブランチと同じ考え方(tystudio.fr/works/を参考にした、
+        // 「隠す・並べ替えるのではなく、該当しないものを薄くする」フィルター)をここでも踏襲し、一覧性を保つ。
+        // カードは本文プレビューを持たず、タイトル・日付・タグだけを見せて、読むかどうかはクリックして
+        // 記事ページ(/article/:id)に飛んでから判断してもらう形にする(パターンA/Bの「その場で読む」とは役割を分ける)
+        function articleCardHtml(article) {
+            const tagsHtml = (article.tags && article.tags.length > 0)
+                ? `<div class="flex flex-wrap gap-1.5 mt-3">${article.tags.map(t => `<span class="glass-chip inline-block px-1.5 py-0.5" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${escapeHtml(t.name)}</span>`).join('')}</div>`
+                : '';
+            return `
+                <a href="/article/${article.id}" class="article-card" data-category="${escapeHtml(article.category || '')}">
+                    <div class="opacity-40" style="font-size: 0.65rem;">${escapeHtml(article.date)}</div>
+                    <div class="text-sm mt-2 opacity-90">${escapeHtml(article.title)}</div>
+                    ${tagsHtml}
+                </a>
+            `;
+        }
+
+        function renderCardPage() {
+            hideAllViews();
+            document.body.classList.add('card-home');
+            const view = document.getElementById('card-view');
+            view.classList.remove('hidden');
+            if (articles.length === 0) {
+                view.innerHTML = '<p class="text-xs opacity-40 py-2">まだ記事がありません。</p>';
+                return;
+            }
+            const filterHtml = ['', ...ARTICLE_CATEGORIES].map(cat => `
+                <span class="category-filter-item cursor-pointer transition-opacity hover:opacity-100 ${cat === '' ? 'opacity-90' : 'opacity-50'}" data-category="${escapeHtml(cat)}" onclick="filterCardCategory(this)">${escapeHtml(cat || 'All')}</span>
+            `).join('<span class="opacity-30" style="margin: 0 0.4em;">/</span>');
+            view.innerHTML = `
+                <div class="fade-in">
+                    <div class="category-filter-row text-sm mb-8">${filterHtml}</div>
+                    <div class="card-grid">${articles.map(a => articleCardHtml(a)).join('')}</div>
+                </div>
+            `;
+        }
+
+        function filterCardCategory(el) {
+            const row = el.closest('.category-filter-row');
+            row.querySelectorAll('.category-filter-item').forEach(btn => {
+                btn.classList.toggle('opacity-90', btn === el);
+                btn.classList.toggle('opacity-50', btn !== el);
+            });
+            const value = el.dataset.category;
+            const grid = row.nextElementSibling;
+            grid.querySelectorAll(':scope > .article-card').forEach(card => {
+                const match = !value || card.dataset.category === value;
+                card.style.opacity = match ? '' : '0.25';
+            });
+        }
+
         function renderTitleRows() {
             const container = document.getElementById('title-rows-container');
             container.innerHTML = articles.slice(0, titleListCount).map(a => `
@@ -1355,9 +1429,14 @@
                 return;
             }
             // パターンB(ハブ型トップ)では"/"がナビゲーション+タグ一覧のハブに、"/list"が本文プレビュー付きの
-            // 時系列フィード(パターンAの"/"相当)になる。パターンA(既定)は今まで通り"/"がフィード、"/list"がタイトル一覧
+            // 時系列フィード(パターンAの"/"相当)になる。パターンA(既定)は今まで通り"/"がフィード、"/list"がタイトル一覧。
+            // パターンC(カード型トップ)は"/"がカードグリッドになり、"/list"はパターンA同様タイトル一覧のまま
             if (homepageLayout === 'hub' && location.pathname.replace(/\/$/, '') === '') {
                 await renderHubPage();
+                return;
+            }
+            if (homepageLayout === 'card' && location.pathname.replace(/\/$/, '') === '') {
+                renderCardPage();
                 return;
             }
             if (isListRoute() && homepageLayout !== 'hub') {
@@ -1513,6 +1592,8 @@
         function isHomeRoute() {
             // パターンBでは本文プレビュー付きフィードは"/"ではなく"/list"に出るため、判定を入れ替える
             if (homepageLayout === 'hub') return isListRoute();
+            // パターンCの"/"はカードグリッドで#article-listを使わないため、無限スクロール判定からは除外する
+            if (homepageLayout === 'card' && location.pathname.replace(/\/$/, '') === '') return false;
             return !isListRoute() && !isTagListRoute() && !isAboutRoute() && !isContactRoute() && !isSearchRoute() && !getTagSlug();
         }
 
