@@ -104,6 +104,7 @@
                文字量(密度)が常に一定に見えるようにする */
             font-size: calc(4cqi * var(--card-font-scale, 1));
             font-family: var(--debug-card-excerpt-font, inherit);
+            color: #fff;
             line-height: 1.6;
             text-align: justify;
             text-align-last: justify;
@@ -165,7 +166,6 @@
             left: 0.75rem;
             right: 0.75rem;
             bottom: 0.75rem;
-            color: #fff;
             display: -webkit-box;
             -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
@@ -1520,14 +1520,14 @@
                     <a href="/article/${article.id}" class="article-card article-card-image" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleCardTap(event, this)">
                         <img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" class="card-thumb-full">
                         <div class="card-title">${escapeHtml(article.title)}</div>
-                        ${excerptText ? `<div class="card-excerpt opacity-90">${excerptText}</div>` : ''}
+                        ${excerptText ? `<div class="card-excerpt">${excerptText}</div>` : ''}
                     </a>
                 `;
             }
             return `
                 <a href="/article/${article.id}" class="article-card" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleCardTap(event, this)">
                     <div class="card-title opacity-90">${escapeHtml(article.title)}</div>
-                    ${excerptText ? `<div class="card-excerpt opacity-60 mt-6">${excerptText}</div>` : ''}
+                    ${excerptText ? `<div class="card-excerpt mt-6">${excerptText}</div>` : ''}
                 </a>
             `;
         }
