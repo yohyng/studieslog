@@ -129,27 +129,27 @@
             object-fit: cover;
             filter: grayscale(1);
             opacity: 0.5;
-            transition: filter 0.3s ease;
+            transition: filter 0.3s ease, opacity 0.3s ease;
             z-index: 0;
         }
         @media (hover: hover) {
-            .article-card-image:hover .card-thumb-full { filter: grayscale(0); }
+            .article-card-image:hover .card-thumb-full { filter: grayscale(0); opacity: 1; }
         }
         .article-card-image::before {
             content: '';
             position: absolute;
             inset: 0;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.4);
             z-index: 1;
             transition: opacity 0.2s ease;
         }
-        /* 画像ありのカードは、タップ(マウスのクリック中も含む)している間だけ暗い半透明が消えて、
-           画像本来の色が見えるようにする(カード内のリンク色が変わるアクションではなく、ここでフィードバックする) */
+        /* 画像ありのカードは、タップ(マウスのクリック中も含む)している間だけ、色つき・半透明なしの
+           元の画像がそのまま見えるようにする(カード内のリンク色が変わるアクションではなく、ここでフィードバックする) */
         .article-card-image:active .card-thumb-full,
-        .article-card-image.card-tapped .card-thumb-full { filter: grayscale(0); }
-        /* タップ時は真っさらな色に戻すのではなく、薄く暗さを残して白文字の可読性を保つ */
+        .article-card-image.card-tapped .card-thumb-full { filter: grayscale(0); opacity: 1; }
+        /* タップ時も黒のオーバーレイ自体は消さず、画像が元の色になっても文字が読めるようにする */
         .article-card-image:active::before,
-        .article-card-image.card-tapped::before { opacity: 0.4; }
+        .article-card-image.card-tapped::before { opacity: 0.7; }
         .article-card-image .card-title {
             position: relative;
             z-index: 2;
@@ -448,9 +448,9 @@
 
     <!-- パターンCだけ: Filter。.fade-inの中(transformを持つ祖先)に置くとposition:fixedが効かなくなるため、
          他の固定UIと同じくbody直下に常設し、中身(カテゴリ/タグ行)だけrenderCardPage()が差し替える -->
-    <button id="card-filter-toggle" onclick="toggleCardFilterPanel(this)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer hover:opacity-90 transition-opacity" style="border: 1px solid color-mix(in srgb, white 15%, transparent);">
+    <button id="card-filter-toggle" onclick="toggleCardFilterPanel(this)" class="inline-flex items-center gap-1 px-2 py-0.5 cursor-pointer hover:opacity-90 transition-opacity" style="font-size: 0.7rem;">
         <span>Filter</span>
-        <span id="card-filter-dot" class="hidden" style="width: 5px; height: 5px; border-radius: 9999px; background: currentColor;"></span>
+        <span id="card-filter-dot" class="hidden" style="width: 4px; height: 4px; border-radius: 9999px; background: currentColor;"></span>
     </button>
     <div id="card-filter-panel" class="hidden"></div>
 
