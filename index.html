@@ -954,7 +954,7 @@
             const relatedHtml = relatedGroups.length > 0
                 ? `<div id="related-${article.id}" class="hidden related-section text-left mt-8 pb-8">${relatedGroups.map(g => `
                     <div class="mb-8">
-                        <div class="text-xs opacity-40 mb-3"><span class="glass-chip tag-chip inline-block px-2 py-0.5" style="background: #ffffff; color: #6b7278;">#${escapeHtml(g.tag.name)}</span>についての関連記事</div>
+                        <div class="text-xs mb-3"><span class="glass-chip tag-chip inline-block px-2 py-0.5" style="background: #ffffff; color: #6b7278;">#${escapeHtml(g.tag.name)}</span><span class="opacity-40">についての関連記事</span></div>
                         <div class="related-articles-grid" onclick="event.stopPropagation()">${g.articles.map(a => articleCardHtml(a)).join('')}</div>
                     </div>
                 `).join('')}</div>`
