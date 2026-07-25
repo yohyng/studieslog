@@ -1805,8 +1805,8 @@
             if (currentLocale === 'en') {
                 return `
                     <div class="opacity-90 fade-in" style="font-size: 0.68rem; line-height: 1.9;">
-                        <h2 class="opacity-90 mb-3" style="letter-spacing: 0.05em;">Contact</h2>
-                        <form onsubmit="return submitInquiry(event)" class="flex flex-col gap-3 max-w-sm">
+                        <h2 class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">Contact</h2>
+                        <form onsubmit="return submitInquiry(event)" class="flex flex-col gap-3">
                             <input id="inquiry-email" type="email" required placeholder="you@example.com" class="bg-transparent border-b px-2 py-1.5 focus:outline-none" style="font-size: 0.72rem; border-color: color-mix(in srgb, currentColor 30%, transparent);">
                             <textarea id="inquiry-message" required rows="4" placeholder="Your message" class="bg-transparent border px-2 py-1.5 focus:outline-none resize-none" style="font-size: 0.72rem; border-color: color-mix(in srgb, currentColor 30%, transparent);"></textarea>
                             <input id="inquiry-hp" type="text" name="url" tabindex="-1" autocomplete="off" aria-hidden="true" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;">
@@ -1824,8 +1824,8 @@
             }
             return `
                 <div class="opacity-90 fade-in" style="font-size: 0.68rem; line-height: 1.9;">
-                    <h2 class="opacity-90 mb-3" style="letter-spacing: 0.05em;">お問い合わせ</h2>
-                    <form onsubmit="return submitInquiry(event)" class="flex flex-col gap-3 max-w-sm">
+                    <h2 class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">Contact</h2>
+                    <form onsubmit="return submitInquiry(event)" class="flex flex-col gap-3">
                         <input id="inquiry-email" type="email" required placeholder="you@example.com" class="bg-transparent border-b px-2 py-1.5 focus:outline-none" style="font-size: 0.72rem; border-color: color-mix(in srgb, currentColor 30%, transparent);">
                         <textarea id="inquiry-message" required rows="4" placeholder="お問い合わせ内容" class="bg-transparent border px-2 py-1.5 focus:outline-none resize-none" style="font-size: 0.72rem; border-color: color-mix(in srgb, currentColor 30%, transparent);"></textarea>
                         <input id="inquiry-hp" type="text" name="url" tabindex="-1" autocomplete="off" aria-hidden="true" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;">
