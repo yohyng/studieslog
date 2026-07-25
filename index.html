@@ -1789,6 +1789,11 @@
                 header.style.paddingLeft = headerPad ? headerPad + 'px' : '';
                 header.style.paddingRight = headerPad ? headerPad + 'px' : '';
             }
+            // 台形アイコンはposition:absolute+left:0で置かれており、絶対配置の基準はheaderのpadding boxの
+            // 内側(=paddingが始まる前の位置)なので、headerにpaddingを入れてもタイトルのようには動かない。
+            // 同じ量だけleftをずらして、タイトルと一緒にカードの左端へ追従させる
+            const shapeWrap = document.getElementById('title-rect-wrap');
+            if (shapeWrap) shapeWrap.style.left = headerPad ? headerPad + 'px' : '';
         }
 
         let layoutCardGridsRaf = null;
