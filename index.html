@@ -142,7 +142,7 @@
            (単体記事ページのように後に何も続かない場合は区切り線が浮いて見えるため出さない) */
         .related-section:not(:last-child) { border-bottom: 0.5px solid var(--divider-color); }
         /* 記事下部のSNSシェアアイコンはすりガラス背景を無くし、白い丸線のみのフラット表示にする */
-        .glass-icon.share-icon-flat { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; border-color: color-mix(in srgb, white 60%, transparent); }
+        .glass-icon.share-icon-flat { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; border-color: var(--divider-color); }
         .article-card {
             display: block;
             overflow: hidden;
@@ -1767,10 +1767,10 @@
             const lineHeight = siteLineHeight * currentLineHeightScale();
             const snsRow = (label, url, icon) => !url ? '' : `
                 <div class="flex items-center gap-3">
-                    <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="glass-icon shrink-0 opacity-70 hover:opacity-100 transition-opacity" title="${label}" aria-label="${label}">${icon}</a>
+                    <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="glass-icon share-icon-flat shrink-0 opacity-70 hover:opacity-100 transition-opacity" title="${label}" aria-label="${label}">${icon}</a>
                     <div class="min-w-0">
                         <div class="opacity-50" style="font-size: 0.65rem;">${label}</div>
-                        <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="hover:opacity-80 transition-opacity block truncate" style="color: ${siteFootnoteColor}; font-size: 0.75rem;">${escapeHtml(url)}</a>
+                        <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="hover:opacity-80 transition-opacity block truncate" style="color: var(--text-color-solid); font-size: 0.75rem;">${escapeHtml(url)}</a>
                     </div>
                 </div>
             `;
@@ -1780,7 +1780,8 @@
                 snsRow('Web', siteSnsWebsiteUrl, SHARE_ICONS.website),
             ].filter(Boolean).join('');
             const snsHtml = snsLinks ? `<div class="flex flex-col gap-3 mt-8 fade-in max-w-sm">${snsLinks}</div>` : '';
-            return `<div class="text-sm opacity-90 fade-in" style="line-height: ${lineHeight} !important;">${body}</div>${snsHtml}`;
+            const heading = `<h2 class="self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: transparent; border: 1px solid #ffffff; color: #ffffff;">about</h2>`;
+            return `${heading}<div class="text-sm opacity-90 fade-in" style="line-height: ${lineHeight} !important;">${body}</div>${snsHtml}`;
         }
 
         function renderAboutPage() {
