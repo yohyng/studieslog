@@ -566,7 +566,7 @@
             <!-- 閉じる(×)ボタンは、フッター左下のハンバーガーメニューの真上に来るよう固定配置にする
                  (ハンバーガーがX字に変わったように見せるため)。menu-panel自体がposition:absoluteの
                  スライド元なので、このボタンもabsoluteにしておけばパネルと一緒にスライドする -->
-            <button onclick="toggleMenu()" class="absolute z-10 opacity-50 hover:opacity-100 transition-opacity text-lg leading-none" style="left: 1.5rem; bottom: 2.25rem;" aria-label="閉じる">×</button>
+            <button onclick="toggleMenu()" class="absolute z-10 opacity-50 hover:opacity-100 transition-opacity text-lg leading-none" style="left: 1.5rem; bottom: 2rem;" aria-label="閉じる">×</button>
             <div class="h-full p-5" style="background: color-mix(in srgb, var(--bg-color) 5%, transparent); backdrop-filter: blur(10px) saturate(190%); -webkit-backdrop-filter: blur(10px) saturate(190%); color: var(--text-color); border-right: 1px solid color-mix(in srgb, currentColor 30%, transparent); box-shadow: inset -1px 0 0 color-mix(in srgb, white 25%, transparent), 4px 0 16px color-mix(in srgb, black 10%, transparent);">
                 <div id="sidebar-title" onclick="toggleMenu(); goHome();" class="cursor-pointer opacity-90 hover:opacity-100 transition-opacity mb-8 font-medium tracking-widest" style="font-size: var(--menu-font-size); font-family: var(--site-title-font, inherit);">fragments</div>
                 <nav class="flex flex-col gap-3" style="font-size: var(--menu-font-size); font-family: var(--site-title-font, inherit);">
