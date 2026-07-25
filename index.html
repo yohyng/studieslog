@@ -248,8 +248,9 @@
         body.card-home #card-fixed-footer-bar { display: block; }
         body.card-home #hamburger-btn {
             top: auto;
-            bottom: 0.25rem;
-            right: 1.5rem;
+            bottom: 0.15rem;
+            left: 1.5rem;
+            right: auto;
             border: none;
             background: none !important;
             backdrop-filter: none !important;
@@ -260,15 +261,15 @@
         body.card-page-active #card-filter-toggle {
             display: inline-flex;
             position: fixed;
-            left: 1.5rem;
-            bottom: 0.25rem;
+            right: 1.5rem;
+            bottom: 0.15rem;
             z-index: 40;
             margin-bottom: 0;
         }
         body.card-page-active #card-filter-panel {
             position: fixed;
-            left: 1.5rem;
-            bottom: 3rem;
+            right: 1.5rem;
+            bottom: 2.4rem;
             z-index: 40;
             max-width: min(90vw, 380px);
             max-height: 60vh;
@@ -415,7 +416,10 @@
            不要なら #title-rect-wrap のdivとCSS、JSのsetupTitleRectSway()/randomizeTitleShape()呼び出しを削除すれば元に戻ります */
         .title-rect-wrap { position: absolute; left: 0; z-index: 20; perspective: 500px; }
         .title-rect { width: 100%; height: 100%; overflow: visible; transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
-        .title-rect polygon { fill: none; stroke: currentColor; stroke-miterlimit: 10; }
+        /* 実験: タイトル文字の白背景と交差した部分だけ、mix-blend-modeで線の色が変わって見えるようにする */
+        .title-rect polygon { fill: none; stroke: currentColor; stroke-miterlimit: 10; mix-blend-mode: difference; }
+        /* 実験: タイトル文字の背景を白にして、その上に台形の白い線が重なると交差部分だけ暗く見える */
+        #site-title { background: #ffffff; color: #666666 !important; padding: 0.1em 0.5em; }
 
         .article-title { color: var(--text-color-solid); opacity: 0.85; line-height: inherit !important; transition: opacity 0.8s ease, color 0.5s ease; }
         /* コピペした本文の段落タグなどに行間のインラインスタイルが残っていても、必ずサイト設定の行間が効くようにする */
@@ -490,9 +494,8 @@
     <!-- ハンバーガーメニュー -->
     <button id="hamburger-btn" onclick="toggleMenu()" class="fixed top-6 z-40 glass-icon opacity-80 hover:opacity-100 transition-opacity" title="メニュー" aria-label="メニュー">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#ffffff" stroke-width="1.3" stroke-linecap="round" aria-hidden="true">
-            <line x1="3" y1="7" x2="21" y2="7" />
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="17" x2="21" y2="17" />
+            <line x1="3" y1="8" x2="21" y2="8" />
+            <line x1="3" y1="16" x2="21" y2="16" />
         </svg>
     </button>
 
@@ -502,31 +505,36 @@
     </div>
 
     <!-- パターンCだけ: ハンバーガーメニュー(右、CSSで移動)を乗せる固定フッター -->
-    <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 2rem; background: color-mix(in srgb, var(--bg-color) 70%, transparent); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%); border-top: 1px solid color-mix(in srgb, white 15%, transparent);"></div>
+    <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 1.4rem; background: color-mix(in srgb, var(--bg-color) 40%, transparent); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%); border-top: 1px solid color-mix(in srgb, white 15%, transparent);"></div>
 
     <!-- パターンCだけ: Filter。.fade-inの中(transformを持つ祖先)に置くとposition:fixedが効かなくなるため、
          他の固定UIと同じくbody直下に常設し、中身(カテゴリ/タグ行)だけrenderCardPage()が差し替える -->
-    <button id="card-filter-toggle" onclick="toggleCardFilterPanel(this)" class="inline-flex items-center gap-1 px-2 py-0.5 cursor-pointer hover:opacity-90 transition-opacity" style="font-size: 0.7rem;">
+    <button id="card-filter-toggle" onclick="toggleCardFilterPanel(this)" class="inline-flex items-center gap-1 px-1.5 py-0.5 cursor-pointer hover:opacity-90 transition-opacity" style="font-size: 0.6rem;">
         <span>Filter</span>
-        <span id="card-filter-dot" class="hidden" style="width: 4px; height: 4px; border-radius: 9999px; background: currentColor;"></span>
+        <span id="card-filter-dot" class="hidden" style="width: 3px; height: 3px; border-radius: 9999px; background: currentColor;"></span>
     </button>
     <div id="card-filter-panel" class="hidden"></div>
 
 
     <div id="menu-overlay" class="fixed inset-0 z-50 pointer-events-none">
         <div id="menu-catcher" class="absolute inset-0 pointer-events-none opacity-0" onclick="toggleMenu()"></div>
-        <div id="menu-panel" class="absolute top-0 right-0 h-full w-36 max-w-[55vw] pointer-events-auto transform translate-x-full transition-transform duration-300 ease-out">
+        <div id="menu-panel" class="absolute top-0 left-0 h-full w-36 max-w-[55vw] pointer-events-auto transform -translate-x-full transition-transform duration-300 ease-out">
             <!-- backdrop-filterはtransformと同じ要素に付けるとSafariで正しくぼけない(透けて見えなくなる)ため、
                  スライドさせる外側とガラス表現(ぼかし)の内側を別要素に分けている -->
-            <div class="h-full p-5" style="background: color-mix(in srgb, var(--bg-color) 5%, transparent); backdrop-filter: blur(10px) saturate(190%); -webkit-backdrop-filter: blur(10px) saturate(190%); color: var(--text-color); border-left: 1px solid color-mix(in srgb, currentColor 30%, transparent); box-shadow: inset 1px 0 0 color-mix(in srgb, white 25%, transparent), -4px 0 16px color-mix(in srgb, black 10%, transparent);">
-                <button onclick="toggleMenu()" class="opacity-50 hover:opacity-100 transition-opacity mb-10 text-lg leading-none" aria-label="閉じる">×</button>
+            <div class="h-full p-5" style="background: color-mix(in srgb, var(--bg-color) 5%, transparent); backdrop-filter: blur(10px) saturate(190%); -webkit-backdrop-filter: blur(10px) saturate(190%); color: var(--text-color); border-right: 1px solid color-mix(in srgb, currentColor 30%, transparent); box-shadow: inset -1px 0 0 color-mix(in srgb, white 25%, transparent), 4px 0 16px color-mix(in srgb, black 10%, transparent);">
+                <button onclick="toggleMenu()" class="opacity-50 hover:opacity-100 transition-opacity mb-6 text-lg leading-none" aria-label="閉じる">×</button>
+                <div id="sidebar-title" onclick="toggleMenu(); goHome();" class="cursor-pointer opacity-90 hover:opacity-100 transition-opacity mb-8 font-medium tracking-widest" style="font-size: var(--menu-font-size);">fragments</div>
                 <nav class="flex flex-col gap-3" style="font-size: var(--menu-font-size);">
-                    <a href="/" class="opacity-80 hover:opacity-100 transition-opacity">Top</a>
-                    <a href="/about" onclick="toggleMenu(); return goToSection('about', '/about');" class="opacity-80 hover:opacity-100 transition-opacity">About</a>
-                    <a href="/contact" onclick="toggleMenu(); return goToSection('contact', '/contact');" class="opacity-80 hover:opacity-100 transition-opacity">Contact</a>
-                    <a href="/tags" onclick="toggleMenu(); return goToSection('tag-list', '/tags');" class="opacity-80 hover:opacity-100 transition-opacity">Tag</a>
-                    <a href="/search" onclick="toggleMenu(); return goToSection('search', '/search');" class="opacity-80 hover:opacity-100 transition-opacity">Search</a>
-                    <button onclick="toggleMenu(); openSubscribeModal();" class="glass-chip self-start -ml-2.5 -mt-1.5 px-2.5 py-1 hover:opacity-90 transition-opacity" style="background: color-mix(in srgb, var(--subscribe-bg-color) 55%, transparent); color: var(--subscribe-text-color); font-size: 0.75em; font-family: inherit;">Subscribe</button>
+                    <a href="/about" onclick="toggleMenu(); return goToSection('about', '/about');" data-i18n="nav_about" class="opacity-80 hover:opacity-100 transition-opacity">About</a>
+                    <a href="/contact" onclick="toggleMenu(); return goToSection('contact', '/contact');" data-i18n="nav_contact" class="opacity-80 hover:opacity-100 transition-opacity">Contact</a>
+                    <a href="/tags" onclick="toggleMenu(); return goToSection('tag-list', '/tags');" data-i18n="nav_tag" class="opacity-80 hover:opacity-100 transition-opacity">Tag</a>
+                    <a href="/search" onclick="toggleMenu(); return goToSection('search', '/search');" data-i18n="nav_search" class="opacity-80 hover:opacity-100 transition-opacity">Search</a>
+                    <button onclick="toggleMenu(); openSubscribeModal();" data-i18n="nav_subscribe" class="glass-chip self-start -ml-2.5 -mt-1.5 px-2.5 py-1 hover:opacity-90 transition-opacity" style="background: color-mix(in srgb, var(--subscribe-bg-color) 55%, transparent); color: var(--subscribe-text-color); font-size: 0.75em; font-family: inherit;">Subscribe</button>
+                    <div class="flex gap-2 mt-2 pt-3" style="border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent); font-size: 0.75em;">
+                        <span id="locale-btn-ja" onclick="setLocale('ja')" class="cursor-pointer opacity-100 hover:opacity-100 transition-opacity" style="text-decoration: underline;">JP</span>
+                        <span class="opacity-40">/</span>
+                        <span id="locale-btn-en" onclick="setLocale('en')" class="cursor-pointer opacity-50 hover:opacity-100 transition-opacity">EN</span>
+                    </div>
                 </nav>
             </div>
         </div>
@@ -578,22 +586,22 @@
     <div id="subscribe-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.5);" onmousedown="if(event.target === this) closeSubscribeModal()">
         <div class="w-full max-w-sm p-6" style="background: var(--bg-color); color: var(--text-color); border: 1px solid color-mix(in srgb, currentColor 20%, transparent);">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-sm font-medium">購読する</h2>
+                <h2 data-i18n="subscribe_title" class="text-sm font-medium">購読する</h2>
                 <button onclick="closeSubscribeModal()" class="opacity-50 hover:opacity-100 transition-opacity text-lg leading-none" aria-label="閉じる">×</button>
             </div>
-            <p class="text-xs opacity-60 mb-4">新着記事をメールで受け取れます(週1回、更新があった週だけ届きます)</p>
+            <p data-i18n="subscribe_desc" class="text-xs opacity-60 mb-4">新着記事をメールで受け取れます(週1回、更新があった週だけ届きます)</p>
             <form onsubmit="return submitSubscribe(event)" class="flex flex-col gap-3">
                 <input id="subscribe-email" type="email" required placeholder="you@example.com" class="bg-transparent border-b text-sm px-2 py-1.5 focus:outline-none" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">
                 <input id="subscribe-hp" type="text" name="url" tabindex="-1" autocomplete="off" aria-hidden="true" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;">
-                <button type="submit" class="px-3 py-2 text-xs border hover:opacity-70 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">登録する</button>
+                <button type="submit" data-i18n="subscribe_submit" class="px-3 py-2 text-xs border hover:opacity-70 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">登録する</button>
             </form>
             <p id="subscribe-message" class="text-xs opacity-50 mt-2 hidden"></p>
         </div>
     </div>
 
-    <footer class="w-full content-width mt-8 pt-8 text-center opacity-30" style="border-top: 1px solid currentColor; font-size: 0.7rem;">
+    <footer class="w-full content-width mt-8 pt-8 text-center opacity-30" style="border-top: 1px solid currentColor; font-size: 0.6rem;">
         <p id="footer-text">© fragments</p>
-        <p class="mt-2"><a href="/terms" class="hover:opacity-70 transition-opacity" style="text-decoration: underline;">利用規約</a></p>
+        <p class="mt-2"><a href="/terms" data-i18n="footer_terms" class="hover:opacity-70 transition-opacity" style="text-decoration: underline;">利用規約</a></p>
     </footer>
 
     <script>
@@ -619,9 +627,71 @@
         let siteFootnoteColor = '#7dd3fc';
         let siteFontSize = 16;
         let siteAboutContent = '';
+        let siteAboutContentEn = '';
         let siteSnsXUrl = '';
         let siteSnsInstagramUrl = '';
         let siteSnsWebsiteUrl = '';
+
+        // 日英対応。UIの短い文言はここに集約し、data-i18n属性を持つ要素にapplyStaticTranslations()で反映する。
+        // 記事本文・Aboutページ・お問い合わせ・利用規約などの長文はレンダリング関数側でcurrentLocaleを見て分岐する
+        let currentLocale = localStorage.getItem('siteLocale') === 'en' ? 'en' : 'ja';
+        const I18N = {
+            ja: {
+                nav_about: 'About', nav_contact: 'Contact', nav_tag: 'Tag', nav_search: 'Search', nav_subscribe: 'Subscribe',
+                search_placeholder: 'タイトル・本文・タグで検索',
+                subscribe_title: '購読する',
+                subscribe_desc: '新着記事をメールで受け取れます(週1回、更新があった週だけ届きます)',
+                subscribe_submit: '登録する',
+                subscribe_success: '登録しました。ありがとうございます。',
+                subscribe_error: '登録に失敗しました',
+                subscribe_duplicate: 'このメールアドレスはすでに登録されています',
+                contact_sent: '送信しました。ありがとうございます。',
+                contact_error: '送信に失敗しました',
+                footer_terms: '利用規約',
+                search_no_results: '見つかりませんでした。',
+            },
+            en: {
+                nav_about: 'About', nav_contact: 'Contact', nav_tag: 'Tag', nav_search: 'Search', nav_subscribe: 'Subscribe',
+                search_placeholder: 'Search by title, body, or tag',
+                subscribe_title: 'Subscribe',
+                subscribe_desc: 'Get new posts by email (sent at most once a week, only when there’s an update).',
+                subscribe_submit: 'Subscribe',
+                subscribe_success: 'Subscribed. Thank you!',
+                subscribe_error: 'Something went wrong. Please try again.',
+                subscribe_duplicate: 'This email address is already subscribed.',
+                contact_sent: 'Sent. Thank you!',
+                contact_error: 'Something went wrong. Please try again.',
+                footer_terms: 'Terms of Use',
+                search_no_results: 'No results found.',
+            },
+        };
+
+        function t(key) {
+            return (I18N[currentLocale] && I18N[currentLocale][key]) || I18N.ja[key] || key;
+        }
+
+        function applyStaticTranslations() {
+            document.documentElement.lang = currentLocale;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                el.textContent = t(el.dataset.i18n);
+            });
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) searchInput.placeholder = t('search_placeholder');
+            document.getElementById('locale-btn-ja').classList.toggle('opacity-100', currentLocale === 'ja');
+            document.getElementById('locale-btn-ja').classList.toggle('opacity-50', currentLocale !== 'ja');
+            document.getElementById('locale-btn-ja').style.textDecoration = currentLocale === 'ja' ? 'underline' : 'none';
+            document.getElementById('locale-btn-en').classList.toggle('opacity-100', currentLocale === 'en');
+            document.getElementById('locale-btn-en').classList.toggle('opacity-50', currentLocale !== 'en');
+            document.getElementById('locale-btn-en').style.textDecoration = currentLocale === 'en' ? 'underline' : 'none';
+        }
+
+        // 言語を切り替える。記事一覧・About・お問い合わせなどページごとのレンダリングをすべてやり直すより、
+        // 単純にリロードした方が確実なので、切り替え時だけページ全体を再読み込みする
+        function setLocale(locale) {
+            if (locale === currentLocale) return;
+            localStorage.setItem('siteLocale', locale);
+            location.reload();
+        }
         // パターンA(timeline)/B(hub)は廃止し、パターンC(card)に統一した。関連コードはまだ残しているが、
         // このフラグを常に'card'にすることでルーティング上は到達不可にしている(DBのhomepage_layoutの値は無視する)
         let homepageLayout = 'card';
@@ -726,6 +796,7 @@
             subtitleEl.style.fontSize = (data.site_subtitle_size || 12) + 'px';
             subtitleEl.style.color = data.site_subtitle_color || data.text_color;
             siteAboutContent = data.about_content || '';
+            siteAboutContentEn = data.about_content_en || '';
             siteSnsXUrl = data.sns_x_url || '';
             siteSnsInstagramUrl = data.sns_instagram_url || '';
             siteSnsWebsiteUrl = data.sns_website_url || '';
@@ -812,28 +883,27 @@
                 : '';
             const related = relatedArticles(article, 3);
             const relatedHtml = related.length > 0
-                ? `<div class="text-left mb-5"><div class="text-xs opacity-40 mb-2">関連記事</div><div class="flex flex-col gap-1.5">${related.map(a => `<a href="/article/${a.id}" onclick="event.stopPropagation()" class="text-xs opacity-70 hover:opacity-100 transition-opacity">${escapeHtml(a.title)}</a>`).join('')}</div></div>`
+                ? `<div class="text-left mb-5"><div class="text-xs opacity-40 mb-3">関連記事</div><div class="card-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));" onclick="event.stopPropagation()">${related.map(a => articleCardHtml(a)).join('')}</div></div>`
                 : '';
             const backlinks = backlinkArticles(article, 5);
             const backlinkHtml = backlinks.length > 0
                 ? `<div class="text-left mb-5"><div class="text-xs opacity-40 mb-2">この記事へのリンク</div><div class="flex flex-col gap-1.5">${backlinks.map(a => `<a href="/article/${a.id}" onclick="event.stopPropagation()" class="text-xs opacity-70 hover:opacity-100 transition-opacity">${escapeHtml(a.title)}</a>`).join('')}</div></div>`
                 : '';
+            const title = localizedTitle(article);
+            const content = localizedContent(article);
             return `
-                <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" ${overrideStyle}>
+                <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" style="border: 1px solid color-mix(in srgb, white 15%, transparent); padding: 1.5rem;" ${overrideStyle}>
                     <div class="cursor-pointer group" onclick="toggleArticle(this, event)">
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
-                        <h2 class="text-lg font-normal mb-4 article-title">${article.title}</h2>
+                        <h2 class="text-lg font-normal mb-4 article-title">${title}</h2>
                         ${tagsHtml}
-                        <div class="article-snippet text-sm opacity-70 content-body">${applyFootnoteStyling(article.content, article.id)}</div>
-                        <div class="mt-4 text-center open-btn">
-                            <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;">↓ 続きを読む</span>
-                        </div>
+                        <div class="article-snippet text-sm opacity-70 content-body">${applyFootnoteStyling(content, article.id)}</div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
                         ${relatedHtml}
                         ${backlinkHtml}
                         <div class="flex items-center justify-center gap-3 mb-4">
-                            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="Xでシェア" aria-label="Xでシェア">${SHARE_ICONS.x}</a>
+                            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="Xでシェア" aria-label="Xでシェア">${SHARE_ICONS.x}</a>
                             <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>
                             <button onclick="shareToInstagram(${article.id})" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)" aria-label="リンクをコピー(Instagram用)">${SHARE_ICONS.instagram}</button>
                             <button onclick="shareArticle(${article.id})" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="共有" aria-label="共有">${SHARE_ICONS.share}</button>
@@ -944,13 +1014,13 @@
         function toggleMenu() {
             const panel = document.getElementById('menu-panel');
             const catcher = document.getElementById('menu-catcher');
-            const opening = panel.classList.contains('translate-x-full');
+            const opening = panel.classList.contains('-translate-x-full');
             if (opening) {
                 catcher.classList.remove('pointer-events-none');
-                panel.classList.remove('translate-x-full');
+                panel.classList.remove('-translate-x-full');
             } else {
                 catcher.classList.add('pointer-events-none');
-                panel.classList.add('translate-x-full');
+                panel.classList.add('-translate-x-full');
             }
         }
 
@@ -1428,10 +1498,21 @@
             return (html || '').replace(/<a\b[^>]*href="[^"]*(?:amazon\.[a-z.]+|amzn\.to)[^"]*"[^>]*>[\s\S]*?<\/a>/gi, '');
         }
 
+        // 日英対応: 英語版タイトル/本文があり、かつ現在の表示言語が英語ならそちらを使う。
+        // 空欄の場合(まだ翻訳していない記事)は日本語にフォールバックする
+        function localizedTitle(article) {
+            return (currentLocale === 'en' && article.title_en) ? article.title_en : article.title;
+        }
+        function localizedContent(article) {
+            return (currentLocale === 'en' && article.content_en) ? article.content_en : article.content;
+        }
+
         function articleCardHtml(article) {
             const tagsAttr = (article.tags || []).map(t => t.slug).join(',');
-            const imageUrl = getFirstImageUrl(article.content);
-            const plainText = stripHtml(stripPromoLinksForCard(article.content));
+            const title = localizedTitle(article);
+            const content = localizedContent(article);
+            const imageUrl = getFirstImageUrl(content);
+            const plainText = stripHtml(stripPromoLinksForCard(content));
             const excerpt = plainText.slice(0, CARD_EXCERPT_LENGTH);
             const excerptText = excerpt ? escapeHtml(excerpt) + (plainText.length > CARD_EXCERPT_LENGTH ? '…' : '') : '';
 
@@ -1439,14 +1520,14 @@
                 return `
                     <a href="/article/${article.id}" class="article-card article-card-image" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleCardTap(event, this)">
                         <img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" class="card-thumb-full">
-                        <div class="card-title">${escapeHtml(article.title)}</div>
+                        <div class="card-title">${escapeHtml(title)}</div>
                         ${excerptText ? `<div class="card-excerpt">${excerptText}</div>` : ''}
                     </a>
                 `;
             }
             return `
                 <a href="/article/${article.id}" class="article-card" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleCardTap(event, this)">
-                    <div class="card-title">${escapeHtml(article.title)}</div>
+                    <div class="card-title">${escapeHtml(title)}</div>
                     ${excerptText ? `<div class="card-excerpt">${excerptText}</div>` : ''}
                 </a>
             `;
@@ -1589,9 +1670,10 @@
         // サイト運営者についての自己紹介文+SNSリンク。通常のAboutページと、パターンBのハブの
         // アウトラインの両方から呼べるよう、HTML組み立てを共通の関数にまとめている
         function aboutBodyHtml() {
-            const body = siteAboutContent
-                ? escapeHtml(siteAboutContent).replace(/\n/g, '<br>')
-                : '<p class="opacity-40">まだ内容がありません。</p>';
+            const content = (currentLocale === 'en' && siteAboutContentEn) ? siteAboutContentEn : siteAboutContent;
+            const body = content
+                ? escapeHtml(content).replace(/\n/g, '<br>')
+                : `<p class="opacity-40">${currentLocale === 'en' ? 'Nothing here yet.' : 'まだ内容がありません。'}</p>`;
             // 記事本文と同じ行間になるよう、article本文と同じ計算式で!important付きの行間を直接指定する
             const lineHeight = siteLineHeight * currentLineHeightScale();
             const snsRow = (label, url, icon) => !url ? '' : `
@@ -1625,6 +1707,26 @@
 
         function contactBodyHtml() {
             contactPageRenderedAt = Date.now();
+            if (currentLocale === 'en') {
+                return `
+                    <div class="opacity-90 fade-in" style="font-size: 0.68rem; line-height: 1.9;">
+                        <h2 class="opacity-90 mb-3" style="letter-spacing: 0.05em;">Contact</h2>
+                        <form onsubmit="return submitInquiry(event)" class="flex flex-col gap-3 max-w-sm">
+                            <input id="inquiry-email" type="email" required placeholder="you@example.com" class="bg-transparent border-b px-2 py-1.5 focus:outline-none" style="font-size: 0.72rem; border-color: color-mix(in srgb, currentColor 30%, transparent);">
+                            <textarea id="inquiry-message" required rows="4" placeholder="Your message" class="bg-transparent border px-2 py-1.5 focus:outline-none resize-none" style="font-size: 0.72rem; border-color: color-mix(in srgb, currentColor 30%, transparent);"></textarea>
+                            <input id="inquiry-hp" type="text" name="url" tabindex="-1" autocomplete="off" aria-hidden="true" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;">
+                            <button type="submit" class="px-3 py-2 border hover:opacity-70 transition-opacity self-start" style="font-size: 0.68rem; border-color: color-mix(in srgb, currentColor 30%, transparent);">Send</button>
+                        </form>
+                        <p id="inquiry-status" class="opacity-50 mt-2 hidden" style="font-size: 0.68rem;"></p>
+                    </div>
+                    <div class="mt-10 pt-8 opacity-50 fade-in" style="font-size: 0.68rem; line-height: 1.9; border-top: 1px solid currentColor;">
+                        <h2 class="opacity-90 mb-3" style="letter-spacing: 0.05em;">Privacy Policy</h2>
+                        <p>This site's newsletter subscription form collects your email address solely to send update notifications. We do not provide or sell your information to any third party.</p>
+                        <p class="mt-3">We use Resend to send emails and Supabase to store data. We also load Google Fonts to display text, which causes your browser to communicate with Google's servers.</p>
+                        <p class="mt-3">You can unsubscribe at any time via the "unsubscribe" link in any email you receive; your email address is deleted once you do. For requests to view or delete your data, please contact us using the form above.</p>
+                    </div>
+                `;
+            }
             return `
                 <div class="opacity-90 fade-in" style="font-size: 0.68rem; line-height: 1.9;">
                     <h2 class="opacity-90 mb-3" style="letter-spacing: 0.05em;">お問い合わせ</h2>
@@ -1657,6 +1759,48 @@
             hideAllViews();
             const view = document.getElementById('terms-view');
             view.classList.remove('hidden');
+            if (currentLocale === 'en') {
+                view.innerHTML = `
+                    <div class="text-xs opacity-90 fade-in" style="line-height: 1.9;">
+                        <h1 class="text-sm font-medium mb-8">Terms of Use</h1>
+
+                        <h2 class="opacity-70 mb-2" style="letter-spacing: 0.05em;">1. Application</h2>
+                        <p class="opacity-60 mb-8">These Terms of Use (the "Terms") set forth the conditions for use of this site. All persons who access or use this site shall be deemed to have agreed to these Terms.</p>
+
+                        <h2 class="opacity-70 mb-2" style="letter-spacing: 0.05em;">2. Purpose of the Site</h2>
+                        <p class="opacity-60 mb-8">This site is a non-commercial, personal archive of essays and notes on space, design, and architecture, kept as a record of individual research and writing.</p>
+
+                        <h2 class="opacity-70 mb-2" style="letter-spacing: 0.05em;">3. Copyright and Intellectual Property Rights</h2>
+                        <p class="opacity-60 mb-3">All text, images, and other content published on this site are protected by copyright and are owned by the operator or by third parties holding legitimate rights. Book cover images and quoted excerpts are used within the scope permitted by the quotation provisions of copyright law.</p>
+                        <p class="opacity-60 mb-8">Users may not reproduce, copy, modify, distribute, publish, sell, or otherwise use any content on this site without prior authorization. If you wish to use any content from this site, please contact us in advance via the contact form and obtain permission. If you notice inaccuracies, please let us know via the same form.</p>
+
+                        <h2 class="opacity-70 mb-2" style="letter-spacing: 0.05em;">4. Prohibited Conduct</h2>
+                        <p class="opacity-60 mb-2">Users shall not engage in any of the following:</p>
+                        <ul class="opacity-60 mb-8" style="list-style: disc; padding-left: 1.4em;">
+                            <li>Any act that violates laws or public order and morals</li>
+                            <li>Any act that infringes upon the rights or interests of the operator or any third party</li>
+                            <li>Unauthorized reproduction or commercial use of this site's content</li>
+                            <li>Any act that interferes with the operation of this site</li>
+                            <li>Any other act deemed inappropriate by the operator</li>
+                        </ul>
+
+                        <h2 class="opacity-70 mb-2" style="letter-spacing: 0.05em;">5. Modification or Deletion of Content</h2>
+                        <p class="opacity-60 mb-8">The operator reserves the right to modify, revise, add to, remove, or suspend the content of this site at any time without prior notice.</p>
+
+                        <h2 class="opacity-70 mb-2" style="letter-spacing: 0.05em;">6. On Archive Extraction and AI Training</h2>
+                        <p class="opacity-60 mb-3">The writing published on this site is a personal record written within a specific interest and context. Extracting or systematically reconstructing this text apart from that context (e.g. scraping) is not permitted.</p>
+                        <p class="opacity-60 mb-8">The operator bears no responsibility for any unauthorized use of this site's content for AI training or other purposes by third parties, without the operator's involvement or permission, nor for any outputs generated from such use. The operator may implement technical measures, including access restrictions, as needed, and any attempt to circumvent such measures is prohibited.</p>
+
+                        <h2 class="opacity-70 mb-2" style="letter-spacing: 0.05em;">7. Disclaimer</h2>
+                        <p class="opacity-60 mb-3">The information on this site is presented as accurately as possible at the time of publication, but its completeness, accuracy, and timeliness are not guaranteed.</p>
+                        <p class="opacity-60 mb-3">The operator shall not be liable for any damages arising from the use of, or inability to use, this site.</p>
+                        <p class="opacity-60 mb-8">The operator shall not be responsible for the content or services of any external sites linked from this site.</p>
+
+                        <p class="opacity-40" style="font-size: 0.65rem;">Last updated: July 2026</p>
+                    </div>
+                `;
+                return;
+            }
             view.innerHTML = `
                 <div class="text-xs opacity-90 fade-in" style="line-height: 1.9;">
                     <h1 class="text-sm font-medium mb-8">利用規約</h1>
@@ -1772,17 +1916,18 @@
             const results = searchArticles(q);
             if (results.length === 0) {
                 meta.textContent = '';
-                container.innerHTML = '<p class="text-xs opacity-40 py-4">見つかりませんでした。</p>';
+                container.innerHTML = `<p class="text-xs opacity-40 py-4">${t('search_no_results')}</p>`;
                 return;
             }
-            meta.textContent = `${results.length}件見つかりました`;
+            meta.textContent = currentLocale === 'en' ? `${results.length} result(s) found` : `${results.length}件見つかりました`;
             container.innerHTML = results.map(a => {
-                const plainContent = stripHtml(a.content);
+                const title = localizedTitle(a);
+                const plainContent = stripHtml(localizedContent(a));
                 const excerptHtml = plainContent.toLowerCase().includes(q.toLowerCase()) ? highlightExcerpt(plainContent, q, 40) : '';
                 return `
                     <a href="/article/${a.id}" class="flex flex-col gap-1 py-4 border-b opacity-90 hover:opacity-100 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">
                         <div class="flex items-baseline justify-between gap-4">
-                            <span class="text-sm">${highlightText(a.title, q)}</span>
+                            <span class="text-sm">${highlightText(title, q)}</span>
                             <span class="text-xs opacity-60 whitespace-nowrap">${a.date}</span>
                         </div>
                         ${excerptHtml ? `<p class="text-xs opacity-60">${excerptHtml}</p>` : ''}
@@ -1876,15 +2021,18 @@
             displayedCount = 0;
             listContainer.innerHTML = '';
 
-            // 記事専用URL(/article/数字)や旧形式の共有リンク(#article-数字)からアクセスした場合、その記事まで表示して開く
+            // 記事専用URL(/article/数字)や旧形式の共有リンク(#article-数字)からアクセスした場合、
+            // その記事だけを表示する(1ページ1記事。それ以前の記事を巻き込んで並べない)
             const targetId = getPathArticleId() ?? getHashArticleId();
             const targetIndex = targetId != null ? articles.findIndex(a => a.id === targetId) : -1;
             if (targetIndex !== -1) {
-                renderArticles(targetIndex + 1);
+                const targetArticleData = articles[targetIndex];
+                listContainer.insertAdjacentHTML('beforeend', buildArticleHtml(targetArticleData));
+                forceLineHeight(targetArticleData, document.getElementById(`article-${targetArticleData.id}`));
+                displayedCount = targetIndex + 1;
                 const targetArticle = document.getElementById(`article-${targetId}`);
                 if (targetArticle) {
                     openArticle(targetArticle.querySelector('.cursor-pointer.group'));
-                    targetArticle.scrollIntoView({ behavior: 'instant', block: 'start' });
                 }
                 return;
             }
@@ -1961,7 +2109,7 @@
             const tooFast = Date.now() - subscribeModalOpenedAt < 1500;
             if (honeypot || tooFast) {
                 msg.classList.remove('hidden');
-                msg.textContent = '登録しました。ありがとうございます。';
+                msg.textContent = t('subscribe_success');
                 input.value = '';
                 return false;
             }
@@ -1969,9 +2117,9 @@
             const { error } = await sb.from('subscribers').insert({ email });
             msg.classList.remove('hidden');
             if (error) {
-                msg.textContent = error.code === '23505' ? 'このメールアドレスはすでに登録されています' : '登録に失敗しました';
+                msg.textContent = error.code === '23505' ? t('subscribe_duplicate') : t('subscribe_error');
             } else {
-                msg.textContent = '登録しました。ありがとうございます。';
+                msg.textContent = t('subscribe_success');
                 input.value = '';
             }
             return false;
@@ -1992,7 +2140,7 @@
             const tooFast = Date.now() - contactPageRenderedAt < 1500;
             if (honeypot || tooFast) {
                 status.classList.remove('hidden');
-                status.textContent = '送信しました。ありがとうございます。';
+                status.textContent = t('contact_sent');
                 emailInput.value = '';
                 messageInput.value = '';
                 return false;
@@ -2001,9 +2149,9 @@
             const { error } = await sb.from('inquiries').insert({ email, message });
             status.classList.remove('hidden');
             if (error) {
-                status.textContent = '送信に失敗しました';
+                status.textContent = t('contact_error');
             } else {
-                status.textContent = '送信しました。ありがとうございます。';
+                status.textContent = t('contact_sent');
                 emailInput.value = '';
                 messageInput.value = '';
             }
@@ -2018,7 +2166,8 @@
             return !isListRoute() && !isTagListRoute() && !isAboutRoute() && !isContactRoute() && !isTermsRoute() && !isSearchRoute() && !getTagSlug();
         }
 
-        window.addEventListener('scroll', () => { if(isHomeRoute() && window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) renderArticles(1); });
+        // 記事ページで下までスクロールすると次の記事が自動で読み込まれる無限スクロールは廃止した
+        // (パターンA/Bのフィードが廃止され、/article/:idの単独表示だけが残ったため。関連記事はカードで表示する)
 
         // 実験的機能: スクロール進行度バー
         function updateScrollProgress() {
@@ -2034,12 +2183,20 @@
         // スクロール中に出てくる固定ヘッダーに反映する
         function updateCardStickyTitle() {
             const src = document.getElementById('site-title');
+            if (!src) return;
             const dst = document.getElementById('card-sticky-title-text');
-            if (!src || !dst) return;
-            dst.textContent = src.textContent;
-            dst.style.fontFamily = src.style.fontFamily;
-            dst.style.color = src.style.color;
-            // フォントサイズだけは合わせず、常に小さめの固定サイズ(CSS側で指定)のままにする
+            if (dst) {
+                dst.textContent = src.textContent;
+                dst.style.fontFamily = src.style.fontFamily;
+                dst.style.color = src.style.color;
+                // フォントサイズだけは合わせず、常に小さめの固定サイズ(CSS側で指定)のままにする
+            }
+            // サイドバー上部のタイトルにも同じ表示を複製する
+            const sidebarTitle = document.getElementById('sidebar-title');
+            if (sidebarTitle) {
+                sidebarTitle.textContent = src.textContent;
+                sidebarTitle.style.fontFamily = src.style.fontFamily;
+            }
         }
 
         // 全ページ共通: 本来のヘッダーを過ぎてスクロールしたら、タイトルだけの固定ヘッダーを出す
@@ -2168,6 +2325,8 @@
             });
         }
         setupTitleRectSway();
+
+        applyStaticTranslations();
 
         (async () => {
             await applySiteSettings();
