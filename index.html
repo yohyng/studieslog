@@ -146,14 +146,14 @@
             container-type: inline-size;
         }
         /* 画像なしカードも、本文はタイトルの下から続けて流すのではなく、画像ありカードと同じように
-           カード最下部に固定して7行までに切り詰める */
+           カード最下部に固定して6行までに切り詰める */
         .article-card:not(.article-card-image) .card-excerpt {
             position: absolute;
             left: 0.75rem;
             right: 0.75rem;
             bottom: 0.75rem;
             display: -webkit-box;
-            -webkit-line-clamp: 7;
+            -webkit-line-clamp: 6;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
