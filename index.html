@@ -55,6 +55,8 @@
             --letter-spacing-scale: 1;
             /* bodyの左右余白(px-5 / min-[450px]:px-8 / md:px-12 / lg:px-0)と同じ値。ハンバーガーメニューの右端をコンテンツの右端に揃えるための計算に使う */
             --body-pad: 1.25rem;
+            /* iOS Safariのツールバー出入りでbottom:0のfixed要素がずれる問題の補正値(JSが実測して入れる) */
+            --fixed-bottom-offset: 0px;
         }
 
         @media (max-width: 640px) {
@@ -300,7 +302,7 @@
         body.card-home #card-fixed-footer-bar { display: block; }
         body.card-home #hamburger-btn {
             top: auto;
-            bottom: 0.125rem;
+            bottom: calc(0.125rem + var(--fixed-bottom-offset, 0px));
             left: 1.5rem;
             right: auto;
             border: none;
@@ -314,14 +316,14 @@
             display: inline-flex;
             position: fixed;
             right: 1.5rem;
-            bottom: 0.5rem;
+            bottom: calc(0.5rem + var(--fixed-bottom-offset, 0px));
             z-index: 40;
             margin-bottom: 0;
         }
         body.card-page-active #card-filter-panel {
             position: fixed;
             right: 1.5rem;
-            bottom: 2.4rem;
+            bottom: calc(2.4rem + var(--fixed-bottom-offset, 0px));
             z-index: 40;
             max-width: min(90vw, 380px);
             max-height: 60vh;
@@ -571,7 +573,7 @@
     </div>
 
     <!-- パターンCだけ: ハンバーガーメニュー(右、CSSで移動)を乗せる固定フッター -->
-    <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 2rem; background: color-mix(in srgb, var(--bg-color) 70%, transparent); border-top: 0.5px solid var(--divider-color); transform: translateZ(0); -webkit-transform: translateZ(0); will-change: transform;"></div>
+    <div id="card-fixed-footer-bar" class="fixed left-0 right-0 z-30" style="height: 2rem; bottom: var(--fixed-bottom-offset, 0px); background: color-mix(in srgb, var(--bg-color) 70%, transparent); border-top: 0.5px solid var(--divider-color); transform: translateZ(0); -webkit-transform: translateZ(0); will-change: transform;"></div>
 
     <!-- パターンCだけ: Filter。.fade-inの中(transformを持つ祖先)に置くとposition:fixedが効かなくなるため、
          他の固定UIと同じくbody直下に常設し、中身(カテゴリ/タグ行)だけrenderCardPage()が差し替える -->
@@ -2481,6 +2483,21 @@
         setupTitleRectSway();
 
         applyStaticTranslations();
+
+        // iOS Safari等では、スクロール中にposition:fixedの要素がブラウザの動的ツールバー(アドレスバー)の
+        // 表示/非表示に追従できず、一瞬「間違った位置」で描画されることがある(WebKitの既知の挙動)。
+        // visualViewport APIで実際に見えている領域を監視し、fixed要素のbottom位置をJSで補正する
+        function syncFixedBottomOffset() {
+            const vv = window.visualViewport;
+            if (!vv) return;
+            const offset = window.innerHeight - vv.height - vv.offsetTop;
+            document.documentElement.style.setProperty('--fixed-bottom-offset', Math.max(0, offset) + 'px');
+        }
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', syncFixedBottomOffset);
+            window.visualViewport.addEventListener('scroll', syncFixedBottomOffset);
+            syncFixedBottomOffset();
+        }
 
         (async () => {
             await applySiteSettings();
