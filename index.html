@@ -135,14 +135,12 @@
         body.story-view-active { padding-top: 4rem !important; }
         /* headerには margin-bottom: var(--header-spacing, 18rem) というインラインstyleが直接付いている
            ため、通常のクラスセレクタでは勝てない。!importantで上書きする */
-        body.story-view-active header { margin-bottom: 2rem !important; }
-        /* 本文が3行ぐらいでフェードに切り替わり、5行目までに消えていく(続きを読みたくなる見せ方)。
-           max-heightは行数*line-heightのem指定で、フォントサイズが変わっても比率が崩れない */
+        body.story-view-active header { margin-bottom: 3.5rem !important; }
+        /* フェードの開始/終了位置(行数ベース)はJS側でmax-height・mask-imageを一緒に計算して
+           inline styleで入れる(何行目からフェードするかを変えても、この2つがズレないようにするため) */
         .story-excerpt {
             position: relative;
             overflow: hidden;
-            mask-image: linear-gradient(to bottom, black 0%, black 60%, transparent 100%);
-            -webkit-mask-image: linear-gradient(to bottom, black 0%, black 60%, transparent 100%);
         }
         /* ページ最上部からタイトルまでの余白と、タイトルから本文(カード一覧など)までの余白を
            揃え(どちらも6rem)、タイトル+台形アイコンがその間で均等な位置に来るようにする。
@@ -1191,16 +1189,19 @@
                 : '';
             const plainText = stripHtml(content);
             const lineHeight = siteLineHeight * currentLineHeightScale();
-            // 3行目あたりからフェードして5行目までに消える(続きを読みたくなる見せ方)。
+            // 3行目あたりからフェードが始まり、8行目までになめらかに消える(続きを読みたくなる見せ方)。
             // 表示しきれない分はmask-image+overflow:hiddenで見た目上切るだけなので、
             // 「…」を付けず全文を流し込んでおく
-            const fadeLines = 5;
+            const fadeStartLine = 3;
+            const fadeEndLine = 8;
+            const fadeStartPct = (fadeStartLine / fadeEndLine) * 100;
+            const maskStyle = `linear-gradient(to bottom, black 0%, black ${fadeStartPct}%, transparent 100%)`;
             container.innerHTML = `
                 <article style="border: 0.5px solid var(--divider-color); padding: 1.5rem;">
                     <div class="text-xs opacity-40 mb-2">${article.date}</div>
                     <h2 class="text-lg font-normal mb-4 article-title">${escapeHtml(title)}</h2>
                     ${tagsHtml}
-                    <div class="content-body text-sm story-excerpt" style="line-height: ${lineHeight} !important; max-height: ${fadeLines * lineHeight}em;">${escapeHtml(plainText)}</div>
+                    <div class="content-body text-sm story-excerpt" style="line-height: ${lineHeight} !important; max-height: ${fadeEndLine * lineHeight}em; mask-image: ${maskStyle}; -webkit-mask-image: ${maskStyle};">${escapeHtml(plainText)}</div>
                 </article>
                 <p class="text-xs opacity-30 mt-4 text-center">${articleShareUrl(article.id)}</p>
             `;
@@ -2568,9 +2569,10 @@
                 renderSearchPage();
                 return;
             }
-            const storyArticleId = getStoryArticleId();
-            if (storyArticleId != null) {
-                renderArticleStoryView(storyArticleId);
+            // トークンが無い/違う場合も、下の通常フィードにフォールスルーさせず(記事の一覧が
+            // 丸見えになってしまうため)、必ずこのルートで「見つかりません」を出す
+            if (/^\/article\/\d+\/story(\/.*)?$/.test(location.pathname)) {
+                renderArticleStoryView(getStoryArticleId());
                 return;
             }
 
