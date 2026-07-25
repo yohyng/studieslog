@@ -148,7 +148,7 @@
 
                 <!-- 本文中には[番号]の印だけを残し、実際の注釈文はここでまとめて編集する(閲覧ページの
                      見た目と同じく、注釈は記事の最後にまとまる。data-note属性が実際に保存される値) -->
-                <div id="footnote-list-panel" class="tw-hide hidden mt-4 pt-4 border-t border-white/10">
+                <div id="footnote-list-panel" class="hidden mt-4 pt-4 border-t border-white/10">
                     <label class="text-xs text-white/50 block mb-2">注釈(本文中の[番号]に対応する内容)</label>
                     <div id="footnote-list-items" class="flex flex-col gap-2"></div>
                 </div>
@@ -1437,7 +1437,7 @@
         // --- 本文欄を閲覧ページと同じ文字組み・配色にして、公開時の見え方をある程度推測できるようにする ---
         async function loadSiteTypographyForPreview() {
             const { data, error } = await sb.from('site_settings')
-                .select('font, title_font, font_size, line_height, letter_spacing, text_align, bg_color, text_color')
+                .select('font, title_font, font_size, line_height, letter_spacing, text_align, bg_color, text_color, content_width, body_text_opacity, title_text_opacity')
                 .eq('id', 1).single();
             if (error || !data) {
                 console.error('サイト設定の取得に失敗しました', error);
@@ -1487,13 +1487,24 @@
                 dateEl.style.letterSpacing = t.letter_spacing + 'em';
                 dateEl.style.fontSize = (t.font_size * 0.75) + 'px';
                 dateEl.style.textAlign = t.text_align;
+
+                // 閲覧ページの本文は、content-widthの箱の中に記事の枠(border+padding:1.5rem)があり、
+                // その内側の幅で折り返している。同じ折り返し幅になるようeditor/titleの最大幅を絞る
+                if (t.content_width) {
+                    const articleBoxPad = 1.5 * t.font_size * 2;
+                    const wrapWidth = Math.max(200, t.content_width - articleBoxPad);
+                    editor.style.maxWidth = wrapWidth + 'px';
+                    titleEl.style.maxWidth = wrapWidth + 'px';
+                }
             }
             if (siteTypography) {
                 editor.style.color = siteTypography.text_color;
                 editor.style.backgroundColor = siteTypography.bg_color;
+                // 閲覧ページのcontent-body/article-titleと同じ不透明度を反映する
+                editor.style.opacity = siteTypography.body_text_opacity ?? 0.75;
 
                 titleEl.style.color = siteTypography.text_color;
-                titleEl.style.opacity = '0.85';
+                titleEl.style.opacity = siteTypography.title_text_opacity ?? 1;
 
                 dateEl.style.color = siteTypography.text_color;
                 dateEl.style.opacity = '0.4';
