@@ -137,14 +137,17 @@
            中央寄せになり、余りが「左端・カード間・右端」に分散して、2列のときだけ中央の隙間が
            両隣ぶん合算されて極端に広く見えてしまうため(実際にその不具合が出た)。
            Flexboxならカードは行の余りを分け合って--card-min〜--card-maxの間で伸び縮みし、
-           全カードが上限に達して余った分だけがjustify-content:centerで行の外側に出るので、
-           カード同士の間隔は常にgapのまま一定になる */
+           全カードが上限に達して余った分だけが行の外側に出るので、カード同士の間隔は常にgapのまま
+           一定になる。
+           行はflex-startで左に詰める。中央寄せにすると余りが左右に分かれてカードの左端が内側へ
+           入り込み、同じ幅を共有しているタイトル(header)やフッターの左端とずれてしまうため。
+           左詰めにしておけば「一番左のカードの左端 = コンテナの左端 = タイトルの左端」が常に揃う */
         :root { --card-min: 280px; --card-max: 350px; }
         .card-grid,
         .related-articles-grid {
             display: flex;
             flex-wrap: wrap;
-            justify-content: center;
+            justify-content: flex-start;
             gap: 0.75rem;
         }
         .card-grid > .article-card,
