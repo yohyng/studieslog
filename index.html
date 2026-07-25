@@ -181,10 +181,10 @@
             }
         }
         .card-excerpt {
-            /* clampで上下限を切ると、カード幅によって文字量の見え方が変わってしまうため、
-               あえて上限・下限を設けずcqiだけに比例させ、カードの大きさに関わらず
-               文字量(密度)が常に一定に見えるようにする */
-            font-size: calc(4cqi * var(--card-font-scale, 1));
+            /* スマホでは関連記事グリッドが1カラムになりカード自体が横幅いっぱいに広がるため、
+               cqiだけに比例させると記事本文よりカードの文字の方が大きくなってしまう。
+               上限・下限をclampで抑え、極端に大きく/小さくなる場面だけ緩和する */
+            font-size: clamp(0.75rem, calc(4cqi * var(--card-font-scale, 1) * var(--user-font-scale, 1)), 0.875rem);
             font-family: var(--card-excerpt-font, inherit);
             color: var(--text-color-solid);
             opacity: var(--body-text-opacity);
@@ -196,7 +196,7 @@
         /* 枠線を引かず、文字組みだけで見えない枠を感じさせる。タイトルは両端揃えだが最後の行だけ右揃えにする
            (本文の方は最後の行まで均等に伸ばす。card-excerptの均等揃えと使い分ける) */
         .card-title {
-            font-size: calc(4.5cqi * var(--card-font-scale, 1));
+            font-size: calc(4.5cqi * var(--card-font-scale, 1) * var(--user-font-scale, 1));
             font-family: var(--card-title-font, inherit);
             color: var(--text-color-solid);
             opacity: var(--title-text-opacity);
