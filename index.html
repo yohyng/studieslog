@@ -1053,17 +1053,21 @@
 
         // 実験的機能: 関連記事。この記事に付いているタグ1つ1つについて、同じタグを持つ他の記事を
         // 新しい順にlimitPerTag件集め、「#タグ名についての関連記事」としてタグごとにグループ化する。
+        // 複数のタグに同じ記事がまたがる場合は先のタグ側にだけ出し、後のタグ側では除外したうえで
+        // (usedIds)、空いた枠には次点の記事を繰り上げる。記事全体を通して重複が出ないようにするため
         // 不要ならこの関数とbuildArticleHtml内のrelatedHtml関連の3行を削除すれば元に戻ります
         function relatedArticlesByTag(article, limitPerTag) {
             if (!article.tags || article.tags.length === 0) return [];
+            const usedIds = new Set();
             return article.tags
-                .map(tag => ({
-                    tag,
-                    articles: articles
-                        .filter(a => a.id !== article.id && (a.tags || []).some(t => t.id === tag.id))
+                .map(tag => {
+                    const picked = articles
+                        .filter(a => a.id !== article.id && !usedIds.has(a.id) && (a.tags || []).some(t => t.id === tag.id))
                         .sort((a, b) => new Date(b.date) - new Date(a.date))
-                        .slice(0, limitPerTag),
-                }))
+                        .slice(0, limitPerTag);
+                    picked.forEach(a => usedIds.add(a.id));
+                    return { tag, articles: picked };
+                })
                 .filter(group => group.articles.length > 0);
         }
 
@@ -1866,12 +1870,29 @@
             if (!wrapEl || wrapEl.style.display === 'none') return [];
             const range = document.createRange();
             range.selectNodeContents(wrapEl);
-            const rects = Array.from(range.getClientRects()).filter(r => r.width && r.height);
-            // 行の矩形どうしの間にわずかな隙間が出ることがあるため、次の行の開始位置まで
+            const raw = Array.from(range.getClientRects()).filter(r => r.width && r.height)
+                .sort((a, b) => a.top - b.top);
+            // 英語フォントに日本語のグリフが無いとフォールバックで別フォントが使われ、同じ行の
+            // 途中(英日の境目)でもgetClientRects()の矩形が分かれることがある。縦位置が重なる
+            // 矩形は同じ行とみなして1つに結合しないと、行の一部だけ帯が塗られなくなってしまう
+            const lines = [];
+            raw.forEach(r => {
+                const last = lines[lines.length - 1];
+                const overlap = last ? Math.min(r.bottom, last.bottom) - Math.max(r.top, last.top) : 0;
+                if (last && overlap > Math.min(r.height, last.bottom - last.top) * 0.5) {
+                    last.left = Math.min(last.left, r.left);
+                    last.right = Math.max(last.right, r.right);
+                    last.top = Math.min(last.top, r.top);
+                    last.bottom = Math.max(last.bottom, r.bottom);
+                } else {
+                    lines.push({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
+                }
+            });
+            // 行と行の間にわずかな隙間が出ることがあるため、次の行の開始位置まで
             // 下端を伸ばして隙間を塞ぐ(色は隣接行と同じなので、伸ばしても見た目は変わらない)
-            return rects.map((r, i) => {
-                const bottom = i < rects.length - 1 ? rects[i + 1].top : r.bottom;
-                return { left: r.left, right: r.right, top: r.top, bottom, width: r.width, height: bottom - r.top };
+            return lines.map((l, i) => {
+                const bottom = i < lines.length - 1 ? lines[i + 1].top : l.bottom;
+                return { left: l.left, right: l.right, top: l.top, bottom, width: l.right - l.left, height: bottom - l.top };
             });
         }
 
