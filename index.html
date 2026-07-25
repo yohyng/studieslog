@@ -140,7 +140,7 @@
         body.story-view-active { padding-top: 2rem !important; }
         /* headerには margin-bottom: var(--header-spacing, 18rem) というインラインstyleが直接付いている
            ため、通常のクラスセレクタでは勝てない。!importantで上書きする */
-        body.story-view-active header { margin-bottom: 5rem !important; }
+        body.story-view-active header { margin-bottom: 6.5rem !important; }
         /* この画面だけ左右の余白をとる */
         body.story-view-active header,
         body.story-view-active #article-list {
@@ -2109,6 +2109,17 @@
         // CSSの合成モードは「背景に対して一意の変換」しかできず、"灰色の上では白・白の上では灰色"を
         // 同時には作れないため、帯の範囲だけに切り抜いたグレーの線のコピーを上に重ねて反転を表現する。
         // 台形は毎フレーム頂点が動くので、コピー側にも同じ頂点を配る(animateTitleShapeを参照)
+        // 要素自身のtransform: scale(...)の倍率を取り出す(無ければ1)。
+        // clip-path: inset()は要素自身の変形前のローカル座標系で解釈されるため、
+        // ビューポート基準の px(getBoundingClientRect)をそのまま使うと、
+        // transformで縮小されている要素では倍率分だけズレてしまう
+        function getElementScale(el) {
+            const t = getComputedStyle(el).transform;
+            if (!t || t === 'none') return 1;
+            const m = t.match(/matrix\(([^,]+),/);
+            return m ? parseFloat(m[1]) || 1 : 1;
+        }
+
         function syncTitleShapeOverlays() {
             const header = document.querySelector('header');
             const wrap = document.getElementById('title-rect-wrap');
@@ -2120,6 +2131,7 @@
             const wrapEl = document.getElementById('site-subtitle');
             if (!wrapEl || !wrapEl.dataset.bg) return;
             const stroke = getComputedStyle(document.documentElement).getPropertyValue('--subtitle-text-color').trim();
+            const scale = getElementScale(wrap);
             // 帯(renderSubtitleBandBg)と同じ矩形を使うことで、帯の形どおりに線を反転できる
             getSubtitleLineRects().forEach(r => {
                 if (!r.width || r.bottom <= wrapRect.top || r.top >= wrapRect.bottom) return;
@@ -2130,8 +2142,8 @@
                 copy.classList.add('title-rect-overlay');
                 copy.style.zIndex = '21';
                 copy.style.pointerEvents = 'none';
-                // 帯と重なる矩形だけを残すよう切り抜く
-                copy.style.clipPath = `inset(${r.top - wrapRect.top}px ${wrapRect.right - r.right}px ${wrapRect.bottom - r.bottom}px ${r.left - wrapRect.left}px)`;
+                // 帯と重なる矩形だけを残すよう切り抜く(scaleで割ってローカル座標系に変換する)
+                copy.style.clipPath = `inset(${(r.top - wrapRect.top) / scale}px ${(wrapRect.right - r.right) / scale}px ${(wrapRect.bottom - r.bottom) / scale}px ${(r.left - wrapRect.left) / scale}px)`;
                 const poly = copy.querySelector('polygon');
                 if (poly && stroke) poly.style.stroke = stroke;
                 header.appendChild(copy);
