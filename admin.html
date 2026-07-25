@@ -197,19 +197,6 @@
                     <div id="social-drafts" class="flex flex-col gap-3 mb-5"></div>
 
                     <div class="flex flex-wrap items-start gap-4">
-                        <div>
-                            <canvas id="ig-canvas" width="1080" height="1080" class="hidden"></canvas>
-                            <img id="ig-preview" class="hidden w-32 h-32 object-cover rounded border border-white/10" alt="Instagram用プレビュー">
-                            <p id="ig-preview-empty" class="text-xs text-white/30 w-32">本文に画像がありません</p>
-                        </div>
-                        <div class="flex flex-col gap-2">
-                            <span class="text-xs text-white/40">Instagram用(1:1に切り出し)</span>
-                            <div class="flex gap-2">
-                                <button onclick="shareIgImage()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">共有する</button>
-                                <button onclick="downloadIgImage()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">画像をダウンロード</button>
-                                <button onclick="copyIgCaption()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">キャプションをコピー</button>
-                            </div>
-                        </div>
                         <div class="flex flex-col gap-2">
                             <span class="text-xs text-white/40">Instagramストーリー用(サイトの見た目そのままのプレビューを新しいタブで開き、スマホでスクショしてください)</span>
                             <div class="flex gap-2">
@@ -1652,12 +1639,10 @@
             const excerpt = plain.length > 80 ? plain.slice(0, 80) + '…' : plain;
 
             const xText = truncateForPost(`${article.title}\n${url}`, 280);
-            const blueskyText = truncateForPost(`${article.title}\n${url}`, 300);
             const threadsText = truncateForPost(`${article.title}\n${excerpt}\n${url}`, 500);
 
             return [
                 { label: 'X', text: xText, composeUrl: `https://twitter.com/intent/tweet?text=${encodeURIComponent(xText)}` },
-                { label: 'Bluesky', text: blueskyText, composeUrl: null },
                 { label: 'Threads', text: threadsText, composeUrl: null },
             ];
         }
@@ -1681,95 +1666,6 @@
 
         function copySocialDraft(i) {
             navigator.clipboard.writeText(currentSocialDrafts[i].text)
-                .then(() => showToast('コピーしました'))
-                .catch(() => showToast('コピーに失敗しました'));
-        }
-
-        // --- Instagram用: 本文中の1枚目の画像を1:1に切り出す ---
-        let igImageReady = false;
-        let igCaption = '';
-
-        function extractFirstImageUrl(html) {
-            const div = document.createElement('div');
-            div.innerHTML = html;
-            const img = div.querySelector('img');
-            return img ? img.src : null;
-        }
-
-        function prepareIgImage(article) {
-            const preview = document.getElementById('ig-preview');
-            const empty = document.getElementById('ig-preview-empty');
-            const canvas = document.getElementById('ig-canvas');
-            igImageReady = false;
-            igCaption = `${article.title}\n${location.origin}/article/${article.id}`;
-
-            const url = extractFirstImageUrl(article.content);
-            if (!url) {
-                preview.classList.add('hidden');
-                empty.textContent = '本文に画像がありません';
-                empty.classList.remove('hidden');
-                return;
-            }
-
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => {
-                try {
-                    const size = Math.min(img.naturalWidth, img.naturalHeight);
-                    const sx = (img.naturalWidth - size) / 2;
-                    const sy = (img.naturalHeight - size) / 2;
-                    canvas.width = 1080;
-                    canvas.height = 1080;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, sx, sy, size, size, 0, 0, 1080, 1080);
-                    preview.src = canvas.toDataURL('image/jpeg', 0.92);
-                    preview.classList.remove('hidden');
-                    empty.classList.add('hidden');
-                    igImageReady = true;
-                } catch (e) {
-                    console.error(e);
-                    preview.classList.add('hidden');
-                    empty.textContent = '画像の切り出しに失敗しました';
-                    empty.classList.remove('hidden');
-                }
-            };
-            img.onerror = () => {
-                preview.classList.add('hidden');
-                empty.textContent = '画像の読み込みに失敗しました';
-                empty.classList.remove('hidden');
-            };
-            img.src = url;
-        }
-
-        function downloadIgImage() {
-            if (!igImageReady) { showToast('画像がありません'); return; }
-            const canvas = document.getElementById('ig-canvas');
-            const a = document.createElement('a');
-            a.href = canvas.toDataURL('image/jpeg', 0.92);
-            a.download = 'instagram.jpg';
-            a.click();
-        }
-
-        function shareIgImage() {
-            if (!igImageReady) { showToast('画像がありません'); return; }
-            const canvas = document.getElementById('ig-canvas');
-            canvas.toBlob(async (blob) => {
-                if (!blob) { showToast('画像の準備に失敗しました'); return; }
-                const file = new File([blob], 'instagram.jpg', { type: 'image/jpeg' });
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    try {
-                        await navigator.share({ files: [file], text: igCaption });
-                    } catch (e) {
-                        // ユーザーが共有をキャンセルした場合など
-                    }
-                } else {
-                    showToast('この端末は画像の共有に対応していません。ダウンロードしてください');
-                }
-            }, 'image/jpeg', 0.92);
-        }
-
-        function copyIgCaption() {
-            navigator.clipboard.writeText(igCaption)
                 .then(() => showToast('コピーしました'))
                 .catch(() => showToast('コピーに失敗しました'));
         }
@@ -1818,7 +1714,6 @@
 
             document.getElementById('social-share-panel').classList.remove('hidden');
             renderSocialDrafts(article);
-            prepareIgImage(article);
 
             showEditorView();
             checkForAutosaveDraft();
