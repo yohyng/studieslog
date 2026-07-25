@@ -1109,11 +1109,6 @@
         }
 
         function buildArticleHtml(article) {
-            // この記事だけの文字組みが設定されていれば、サイト全体の設定を上書きする(行間・頭出し高さはforceLineHeightがJSで適用する)
-            let overrideStyle = '';
-            if (article.font != null) {
-                overrideStyle = `style="font-family:${article.font}; font-size:${article.font_size}px; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};"`;
-            }
             const tagsHtml = (article.tags && article.tags.length > 0)
                 ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="glass-chip tag-chip px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: color-mix(in srgb, var(--article-tag-bg-color) 55%, transparent); color: var(--article-tag-text-color); font-size: var(--article-tag-font-size); font-family: var(--article-tag-font);">#${t.name}</a>`).join('')}</div>`
                 : '';
@@ -1133,7 +1128,7 @@
             const title = localizedTitle(article);
             const content = localizedContent(article);
             return `
-                <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" style="border: 0.5px solid var(--divider-color); padding: 1.5rem;" ${overrideStyle}>
+                <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" style="border: 0.5px solid var(--divider-color); padding: 1.5rem;">
                     <div class="cursor-pointer group" onclick="toggleArticle(this, event)">
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
                         <h2 class="text-lg font-normal mb-4 article-title">${title}</h2>
@@ -1202,14 +1197,14 @@
         // 本文内の全要素にJSから直接「!important付きの行間」を書き込んで確実に反映する。
         // 頭出し(閉じているときのプレビュー)の高さも、実際に表示されるフォントサイズ・行間に合わせて計算する
         function collapsedSnippetHeightPx(article) {
-            const fontSize = (article.font != null ? article.font_size : siteFontSize) * currentFontSizeScale();
-            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
+            const fontSize = siteFontSize * currentFontSizeScale();
+            const lineHeight = siteLineHeight * currentLineHeightScale();
             return fontSize * lineHeight * previewLines;
         }
 
         function forceLineHeight(article, articleEl) {
             if (!articleEl) return;
-            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
+            const lineHeight = siteLineHeight * currentLineHeightScale();
             articleEl.querySelectorAll('.content-body, .content-body *').forEach(el => {
                 el.style.setProperty('line-height', String(lineHeight), 'important');
             });
@@ -1470,14 +1465,11 @@
             `;
         }
 
-        // 記事本文と同じ計算式で文字組み(記事ごとの上書き含む)を再現し、そのまま展開表示する
+        // 記事本文と同じ計算式で文字組みを再現し、そのまま展開表示する
         function articleOutlineBodyHtml(article) {
-            const overrideStyle = article.font != null
-                ? `font-family:${article.font}; font-size:${article.font_size}px; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};`
-                : '';
-            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
+            const lineHeight = siteLineHeight * currentLineHeightScale();
             return `
-                <div class="content-body text-sm" style="${overrideStyle} line-height: ${lineHeight} !important;">${applyFootnoteStyling(article.content, article.id)}</div>
+                <div class="content-body text-sm" style="line-height: ${lineHeight} !important;">${applyFootnoteStyling(article.content, article.id)}</div>
                 <a href="/article/${article.id}" class="text-xs opacity-40 hover:opacity-80 transition-opacity mt-3 inline-block">→ ページで開く</a>
             `;
         }
@@ -1660,7 +1652,7 @@
         const LATEST_PREVIEW_LINES = 5;
 
         function outlineLatestArticleHtml(article) {
-            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
+            const lineHeight = siteLineHeight * currentLineHeightScale();
             const maxHeight = latestSnippetMaxHeight(article);
             return `
                 <div class="mb-4" data-article-id="${article.id}">
@@ -1677,8 +1669,8 @@
         }
 
         function latestSnippetMaxHeight(article) {
-            const fontSize = (article.font != null ? article.font_size : siteFontSize) * currentFontSizeScale();
-            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
+            const fontSize = siteFontSize * currentFontSizeScale();
+            const lineHeight = siteLineHeight * currentLineHeightScale();
             return fontSize * lineHeight * LATEST_PREVIEW_LINES;
         }
 

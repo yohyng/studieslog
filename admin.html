@@ -127,7 +127,7 @@
                     </select>
                     <label class="tw-hide flex items-center gap-2 mt-3 text-sm text-white/70 cursor-pointer w-fit">
                         <input id="edit-pinned" type="checkbox" class="accent-white/80">
-                        ピン留め(パターンBのArticle一覧の上部に固定表示。目安として3件程度まで推奨)
+                        ピン留め
                     </label>
                 </div>
 
@@ -180,79 +180,6 @@
                     <button onclick="resizeSelectedImage(75)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">75%</button>
                     <button onclick="resizeSelectedImage(100)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">100%</button>
                     <button onclick="resizeSelectedImage(null)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors text-white/50">元に戻す</button>
-                </div>
-
-                <!-- この記事だけの文字組み -->
-                <div class="tw-hide mt-6 pt-6 border-t border-white/10">
-                    <label class="flex items-center gap-2 text-xs text-white/70 mb-4">
-                        <input type="checkbox" id="edit-override-typography" onchange="toggleTypographyOverride()">
-                        この記事だけ文字組みを変える(オフの場合はサイト全体の表示設定に従います)
-                    </label>
-                    <div id="typography-override-fields" class="hidden flex flex-col gap-4 bg-white/5 border border-white/10 rounded p-4">
-                        <div>
-                            <label class="text-xs text-white/50 block mb-1">本文フォント</label>
-                            <select id="edit-font" onchange="applyEditorPreviewStyle()" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
-                                <optgroup label="明朝体">
-                                    <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
-                                    <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
-                                    <option value="'Noto Serif JP', serif">Noto Serif JP</option>
-                                    <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
-                                    <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
-                                    <option value="'Kaisei Decol', serif">Kaisei Decol</option>
-                                    <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
-                                </optgroup>
-                                <optgroup label="ゴシック体">
-                                    <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
-                                    <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
-                                    <option value="'Zen Kaku Gothic Antique', sans-serif">Zen Kaku Gothic Antique</option>
-                                    <option value="'Murecho', sans-serif">Murecho</option>
-                                    <option value="'RocknRoll One', sans-serif">RocknRoll One</option>
-                                    <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
-                                    <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
-                                    <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
-                                    <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
-                                </optgroup>
-                                <optgroup label="丸ゴシック体">
-                                    <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
-                                    <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
-                                </optgroup>
-                                <optgroup label="手書き風">
-                                    <option value="'Klee One', cursive">Klee One</option>
-                                </optgroup>
-                                <optgroup label="カリグラフィー風">
-                                    <option value="'New Tegomin', serif">New Tegomin</option>
-                                    <option value="'Yuji Syuku', serif">Yuji Syuku</option>
-                                </optgroup>
-                            </select>
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1">
-                                <span>文字サイズ</span><span id="edit-font-size-value"></span>
-                            </div>
-                            <input type="range" id="edit-font-size" min="10" max="40" step="1" class="w-full" oninput="document.getElementById('edit-font-size-value').textContent = this.value + 'px'; applyEditorPreviewStyle()">
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1">
-                                <span>行間</span><span id="edit-line-height-value"></span>
-                            </div>
-                            <input type="range" id="edit-line-height" min="1.0" max="10" step="0.1" class="w-full" oninput="document.getElementById('edit-line-height-value').textContent = this.value; applyEditorPreviewStyle()">
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1">
-                                <span>文字間隔</span><span id="edit-letter-spacing-value"></span>
-                            </div>
-                            <input type="range" id="edit-letter-spacing" min="-0.05" max="0.6" step="0.01" class="w-full" oninput="document.getElementById('edit-letter-spacing-value').textContent = this.value + 'em'; applyEditorPreviewStyle()">
-                        </div>
-                        <div>
-                            <label class="text-xs text-white/50 block mb-1">文字揃え</label>
-                            <select id="edit-text-align" onchange="applyEditorPreviewStyle()" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
-                                <option value="left">左揃え</option>
-                                <option value="center">中央揃え</option>
-                                <option value="right">右揃え</option>
-                                <option value="justify">両端揃え</option>
-                            </select>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- SNS投稿(保存済みの記事のみ。下書き文の自動生成とInstagram用画像の切り出し) -->
@@ -1488,13 +1415,6 @@
             }
         }
 
-        const TYPOGRAPHY_DEFAULTS = { font: "'Shippori Mincho', serif", font_size: 16, line_height: 2.2, letter_spacing: 0.08, text_align: 'left' };
-
-        function toggleTypographyOverride() {
-            document.getElementById('typography-override-fields').classList.toggle('hidden', !document.getElementById('edit-override-typography').checked);
-            applyEditorPreviewStyle();
-        }
-
         // --- 本文欄を閲覧ページと同じ文字組み・配色にして、公開時の見え方をある程度推測できるようにする ---
         async function loadSiteTypographyForPreview() {
             const { data, error } = await sb.from('site_settings')
@@ -1508,16 +1428,6 @@
         }
 
         function currentPreviewTypography() {
-            const useOverride = document.getElementById('edit-override-typography').checked;
-            if (useOverride) {
-                return {
-                    font: document.getElementById('edit-font').value,
-                    font_size: Number(document.getElementById('edit-font-size').value),
-                    line_height: Number(document.getElementById('edit-line-height').value),
-                    letter_spacing: Number(document.getElementById('edit-letter-spacing').value),
-                    text_align: document.getElementById('edit-text-align').value,
-                };
-            }
             if (!siteTypography) return null;
             return {
                 font: siteTypography.font,
@@ -1560,17 +1470,6 @@
                 dateEl.style.color = siteTypography.text_color;
                 dateEl.style.opacity = '0.4';
             }
-        }
-
-        function setTypographyFields(values) {
-            document.getElementById('edit-font').value = values.font;
-            document.getElementById('edit-font-size').value = values.font_size;
-            document.getElementById('edit-font-size-value').textContent = values.font_size + 'px';
-            document.getElementById('edit-line-height').value = values.line_height;
-            document.getElementById('edit-line-height-value').textContent = values.line_height;
-            document.getElementById('edit-letter-spacing').value = values.letter_spacing;
-            document.getElementById('edit-letter-spacing-value').textContent = values.letter_spacing + 'em';
-            document.getElementById('edit-text-align').value = values.text_align || 'left';
         }
 
         // --- 紹介リンク(書籍など) : カーソル位置に直接挿入し、本文と一緒に自由に移動・削除できるようにする ---
@@ -1623,9 +1522,7 @@
             document.getElementById('delete-btn').classList.add('hidden');
             document.getElementById('edit-status-label').textContent = '下書き';
             document.getElementById('edit-scheduled-at').value = '';
-            document.getElementById('edit-override-typography').checked = false;
-            setTypographyFields(TYPOGRAPHY_DEFAULTS);
-            toggleTypographyOverride();
+            applyEditorPreviewStyle();
             document.getElementById('social-share-panel').classList.add('hidden');
             await ensureTagsLoaded();
             selectedTagIds = new Set();
@@ -1785,10 +1682,7 @@
             document.getElementById('edit-status-label').textContent = formatStatusLabel(article);
             document.getElementById('edit-scheduled-at').value = article.scheduled_at ? toDatetimeLocalValue(article.scheduled_at) : '';
 
-            const hasOverride = article.font != null;
-            document.getElementById('edit-override-typography').checked = hasOverride;
-            setTypographyFields(hasOverride ? article : TYPOGRAPHY_DEFAULTS);
-            toggleTypographyOverride();
+            applyEditorPreviewStyle();
 
             await ensureTagsLoaded();
             await loadArticleTagSelection(article.id);
@@ -1852,18 +1746,13 @@
                 return;
             }
 
-            const useOverride = document.getElementById('edit-override-typography').checked;
             const category = document.getElementById('edit-category').value;
             const pinned = document.getElementById('edit-pinned').checked;
             const payload = {
                 date, title, content, status, category, pinned,
                 title_en: titleEn, content_en: contentEn,
                 scheduled_at: status === 'scheduled' ? scheduledAt : null,
-                font: useOverride ? document.getElementById('edit-font').value : null,
-                font_size: useOverride ? Number(document.getElementById('edit-font-size').value) : null,
-                line_height: useOverride ? Number(document.getElementById('edit-line-height').value) : null,
-                letter_spacing: useOverride ? Number(document.getElementById('edit-letter-spacing').value) : null,
-                text_align: useOverride ? document.getElementById('edit-text-align').value : null
+                font: null, font_size: null, line_height: null, letter_spacing: null, text_align: null
             };
             const { data, error } = editingId
                 ? await sb.from('articles').update(payload).eq('id', editingId).select().single()
