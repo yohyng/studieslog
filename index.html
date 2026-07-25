@@ -661,8 +661,10 @@
         </div>
         <h1 id="site-title" class="font-medium tracking-widest cursor-pointer inline-block relative z-10" onclick="goHome()">fragments</h1>
         <!-- サブタイトルは英語が上、日本語が下。どちらも未入力なら各行ごと非表示にする -->
-        <p id="site-subtitle-en" class="mt-4 relative z-10"></p>
-        <p id="site-subtitle" class="relative z-10">空間にまつわる議論をプロトタイプする</p>
+        <!-- 帯(背景)は<p>ではなく中の<span>に敷く。<p>に敷くと折り返して短くなった行でも
+             ブロックの幅いっぱいまで色が伸びてしまうが、インラインの<span>なら行ごとに文字幅で止まる -->
+        <p id="site-subtitle-en" class="mt-4 relative z-10"><span></span></p>
+        <p id="site-subtitle" class="relative z-10"><span>空間にまつわる議論をプロトタイプする</span></p>
     </header>
 
     <main id="article-list" class="w-full content-width flex flex-col gap-16 relative"></main>
@@ -963,15 +965,15 @@
             document.documentElement.style.setProperty('--subtitle-text-color', subtitleColor);
             [[subtitleEnEl, data.site_subtitle_en], [subtitleEl, data.site_subtitle]].forEach(([el, text], i) => {
                 if (!el) return;
-                if (text) el.textContent = text;
+                const inner = el.querySelector('span');
+                if (!inner) return;
+                if (text) inner.textContent = text;
                 el.style.fontSize = subtitleSize;
                 el.style.color = subtitleColor;
                 el.style.fontFamily = subtitleFont;
-                el.style.background = subtitleBg;
-                // 帯を文字の長さぴったりにする(ブロックのままだと行末まで伸びてしまう)
-                el.style.width = 'fit-content';
-                el.style.maxWidth = '100%';
-                el.style.display = el.textContent.trim() ? '' : 'none';
+                // 帯は<p>ではなくインラインの<span>に敷き、折り返した行も文字幅で止まるようにする
+                inner.style.background = subtitleBg;
+                el.style.display = inner.textContent.trim() ? '' : 'none';
                 // 英語が非表示のときは日本語側が先頭に来るので、上の余白はそちらに移す
                 if (i === 1) el.classList.toggle('mt-4', subtitleEnEl ? subtitleEnEl.style.display === 'none' : true);
             });
@@ -1842,23 +1844,27 @@
             const stroke = getComputedStyle(document.documentElement).getPropertyValue('--subtitle-text-color').trim();
             ['site-subtitle-en', 'site-subtitle'].forEach(id => {
                 const line = document.getElementById(id);
-                if (!line || line.style.display === 'none' || !line.textContent.trim()) return;
+                if (!line || line.style.display === 'none') return;
+                const inner = line.querySelector('span');
                 // 帯(背景)が無い行は、線を反転させる必要がない
-                if (!line.style.background) return;
-                const r = line.getBoundingClientRect();
-                if (!r.width || r.bottom <= wrapRect.top || r.top >= wrapRect.bottom) return;
-                const copy = wrap.cloneNode(true);
-                copy.removeAttribute('id');
-                copy.removeAttribute('onclick');
-                copy.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-                copy.classList.add('title-rect-overlay');
-                copy.style.zIndex = '21';
-                copy.style.pointerEvents = 'none';
-                // 帯と重なる矩形だけを残すよう切り抜く
-                copy.style.clipPath = `inset(${r.top - wrapRect.top}px ${wrapRect.right - r.right}px ${wrapRect.bottom - r.bottom}px ${r.left - wrapRect.left}px)`;
-                const poly = copy.querySelector('polygon');
-                if (poly && stroke) poly.style.stroke = stroke;
-                header.appendChild(copy);
+                if (!inner || !inner.textContent.trim() || !inner.style.background) return;
+                // 折り返している場合、帯は行ごとに文字幅で途切れる。getClientRects()は行ごとの矩形を
+                // 返すので、1行ぶんずつ切り抜いたコピーを作れば帯の形どおりに線が反転する
+                Array.from(inner.getClientRects()).forEach(r => {
+                    if (!r.width || r.bottom <= wrapRect.top || r.top >= wrapRect.bottom) return;
+                    const copy = wrap.cloneNode(true);
+                    copy.removeAttribute('id');
+                    copy.removeAttribute('onclick');
+                    copy.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+                    copy.classList.add('title-rect-overlay');
+                    copy.style.zIndex = '21';
+                    copy.style.pointerEvents = 'none';
+                    // 帯と重なる矩形だけを残すよう切り抜く
+                    copy.style.clipPath = `inset(${r.top - wrapRect.top}px ${wrapRect.right - r.right}px ${wrapRect.bottom - r.bottom}px ${r.left - wrapRect.left}px)`;
+                    const poly = copy.querySelector('polygon');
+                    if (poly && stroke) poly.style.stroke = stroke;
+                    header.appendChild(copy);
+                });
             });
         }
 
