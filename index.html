@@ -495,7 +495,7 @@
         }
         .content-body blockquote { border-left: 1px solid var(--text-color-solid); padding-left: 1.5em; margin: 2em 0; font-style: italic; opacity: 0.7; }
         .content-body h2 { font-size: 1.2em; margin: 2em 0 1em 0; opacity: 0.9; }
-        .footnote-ref { color: var(--footnote-color); background: var(--footnote-bg-color); padding: 0.02em 0.2em; border-radius: 0; }
+        .footnote-ref { color: var(--footnote-color); background: var(--footnote-bg-color); padding: 0; border-radius: 0; }
         .footnote-ref a { color: inherit; text-decoration: none; }
         .footnote-list { margin-top: 2.5em; padding-top: 1.2em; border-top: 0.5px solid var(--divider-color); font-size: 0.8em; list-style: none; }
         .footnote-list li { display: flex; gap: 0.5em; margin-bottom: 0.6em; }
@@ -888,6 +888,13 @@
         // 実行順序やレンダリング経路によって適用されないことがあったため、生成の起点を一本化した)。
         // 注釈は本文中に埋め込まず、記事の末尾に番号付きでまとめて表示する(参照元は番号リンクのみ)。
         // 同じページに複数の記事が並ぶ(一覧など)ことがあるため、アンカーIDは記事IDで名前空間を分ける
+        function navigateFootnote(fromId, toId) {
+            const target = document.getElementById(toId);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                target.focus();
+            }
+        }
         function applyFootnoteStyling(html, articleId) {
             const container = document.createElement('div');
             container.innerHTML = html;
@@ -900,12 +907,12 @@
                 notes.push(noteText);
                 el.id = `fnref-${articleId}-${n}`;
                 el.style.setProperty('color', siteFootnoteColor, 'important');
-                el.innerHTML = `<a href="#fn-${articleId}-${n}">[${n}]</a>`;
+                el.innerHTML = `<a href="javascript:void(0)" onclick="navigateFootnote('fnref-${articleId}-${n}', 'fn-${articleId}-${n}'); return false;">[${n}]</a>`;
             });
             let notesHtml = '';
             if (notes.length > 0) {
                 notesHtml = `<ol class="footnote-list">${notes.map((text, i) => `
-                    <li id="fn-${articleId}-${i + 1}"><span class="footnote-ref" style="color:${siteFootnoteColor};">[${i + 1}]</span><span style="color:${siteFootnoteTextColor}; font-family:${siteFootnoteTextFont};">${escapeHtml(text)}<a href="#fnref-${articleId}-${i + 1}" class="footnote-back">↩</a></span></li>
+                    <li id="fn-${articleId}-${i + 1}"><span class="footnote-ref" style="color:${siteFootnoteColor};">[${i + 1}]</span><span style="color:${siteFootnoteTextColor}; font-family:${siteFootnoteTextFont};">${escapeHtml(text)}<a href="javascript:void(0)" onclick="navigateFootnote('fn-${articleId}-${i + 1}', 'fnref-${articleId}-${i + 1}'); return false;" class="footnote-back">↩</a></span></li>
                 `).join('')}</ol>`;
             }
             return container.innerHTML + notesHtml;
