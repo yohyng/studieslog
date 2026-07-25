@@ -133,8 +133,8 @@
         /* alignHeaderToCards()が左右に同じpaddingを入れてタイトルの左端をカードの左端に合わせる。
            Tailwindのpreflight(box-sizing:border-box)が未読込でも幅が膨らまないよう自前で指定する */
         header { box-sizing: border-box; }
-        /* サブタイトルは非表示にする */
-        body.card-home #site-subtitle { display: none; }
+        /* サブタイトルはタイトルと同じくheader内の通常要素なので、headerに入れたpadding
+           (layoutCardGrids()がカードの左端に合わせて調整する)にそのまま追従する */
         /* カードは正方形(aspect-ratio:1/1)なので、横幅がそのまま高さになる。画面幅に応じて余白を
            足し引きしてカードサイズを間接的に抑えようとすると、幅の帯域ごとに破綻して収拾がつかない。
            そこでカード自体の最小・最大サイズを直接決め、1行に何枚並ぶかはブラウザに任せる。
