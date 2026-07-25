@@ -63,18 +63,6 @@
             :root { --line-height-scale: 0.75; --font-size-scale: 0.85; --letter-spacing-scale: 0.5; }
         }
 
-        /* 500〜699px(1カラムのままカードだけ横幅いっぱいまで広がりやすい帯域)では、左右に追加の
-           余白を取ってカードの横幅(ひいてはaspect-ratio:1/1の高さやcqi基準の文字サイズ)を抑える。
-           699pxで区切ることで700px以上のwide-page-active側のガター(--wide-gutter)との間に
-           隙間ができないようにする。500px未満の狭いスマホ幅は、余白があってもなくてもどのみち
-           1カラムにしかならないため、この追加余白の対象から外す(bodyの基本余白だけで十分) */
-        @media (min-width: 500px) and (max-width: 699px) {
-            #card-view, #tag-view {
-                padding-left: 1.75rem;
-                padding-right: 1.75rem;
-            }
-        }
-
         @media (min-width: 450px) {
             :root { --body-pad: 2rem; }
         }
@@ -115,10 +103,9 @@
            1023pxのウィンドウ幅では#card-viewが672px固定のままになり、auto-fillが2列にしかならず
            カードが大きくなりすぎていた。700pxからvwベースで広げることでこの帯を解消する */
         @media (min-width: 700px) {
-            /* 余白(左右のガター)は固定vw%ではなく可変にする。ただし余白を取りすぎると、本来2カラムに
-               収まる幅(700px台など)まで1カラムに押し込んでしまい逆効果になるため、上限は控えめにする。
-               画面が広がってカラム数が増えるにつれて(カード自体が既に小さくなるため)余白は徐々に小さくしていく */
-            :root { --wide-gutter: clamp(1.5rem, 6rem - 4vw, 3rem); }
+            /* 左右のガターは一定に保つ。カードが大きくなりすぎる問題は、余白で押し込むのではなく
+               .card-grid側でカード自体の最大サイズ(--card-max)を直接制限して解決する */
+            :root { --wide-gutter: 3rem; }
             body.wide-page-active #card-view {
                 max-width: min(1700px, calc(100vw - 2 * var(--wide-gutter)));
             }
@@ -132,20 +119,8 @@
                 max-width: min(1700px, calc(100vw - 2 * var(--wide-gutter)));
             }
         }
-        /* iPad 13インチ(ポートレート1024px〜ランドスケープ1366px)のあたりは、上のclampだと
-           余白が控えめでカードが大きく見えるため、この帯域だけ余白を大きめに上書きする */
-        @media (min-width: 1000px) and (max-width: 1450px) {
-            :root { --wide-gutter: 11rem; }
-        }
         /* 「更新をメールで受け取る」は一旦非表示にする */
         body.card-home #subscribe-cta { display: none; }
-        /* 5列並ぶだけの幅がある画面では、auto-fillに任せず列数を5に固定する。
-           そうしないと、単に#card-viewの幅を広げただけでは6列目が湧いてカードが小さいままになってしまう */
-        @media (min-width: 1400px) {
-            body.card-home .card-grid {
-                grid-template-columns: repeat(5, 1fr);
-            }
-        }
         /* ページ最上部からタイトルまでの余白と、タイトルから本文(カード一覧など)までの余白を
            揃え(どちらも6rem)、タイトル+台形アイコンがその間で均等な位置に来るようにする。
            bodyのpy-24(6rem)のうち上側だけ4remに詰め、headerの元々のpt-8(2rem)と合わせて上6remにする */
@@ -156,10 +131,22 @@
         body.card-home header { margin-bottom: 6rem; }
         /* サブタイトルは非表示にする */
         body.card-home #site-subtitle { display: none; }
-        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
-        /* 記事ページの関連記事用グリッド。card-gridと違って1400px以上での5列固定の対象にしない
-           (記事本文の狭い幅の中に置かれるため、5列固定にすると不自然に小さくなってしまう) */
-        .related-articles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
+        /* カードは正方形(aspect-ratio:1/1)なので、横幅がそのまま高さになる。画面幅に応じて余白を
+           足し引きしてカードサイズを間接的に抑えようとすると、幅の帯域ごとに破綻して収拾がつかない。
+           そこでカード自体の最小・最大サイズをここで直接決め、1行に何枚並ぶかはブラウザに任せる。
+           minmaxの上限を1frではなく--card-maxにすることで、どんな画面幅でもカードはこの幅を超えない */
+        :root { --card-min: 240px; --card-max: 300px; }
+        @media (max-width: 480px) {
+            /* 1カラムしか置けない狭い幅では、最小値が大きすぎると横がはみ出すため下限を下げる */
+            :root { --card-min: 0px; }
+        }
+        .card-grid,
+        .related-articles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(var(--card-min), var(--card-max)));
+            justify-content: center;
+            gap: 0.75rem;
+        }
         /* 関連記事セクションの下の区切り線は、この後にまだ記事が続く場合だけ表示する
            (単体記事ページのように後に何も続かない場合は区切り線が浮いて見えるため出さない) */
         .related-section:not(:last-child) { border-bottom: 0.5px solid var(--divider-color); }
