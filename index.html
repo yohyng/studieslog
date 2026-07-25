@@ -128,6 +128,9 @@
         /* 記事ページの関連記事用グリッド。card-gridと違って1400px以上での5列固定の対象にしない
            (記事本文の狭い幅の中に置かれるため、5列固定にすると不自然に小さくなってしまう) */
         .related-articles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
+        /* 関連記事セクションの下の区切り線は、この後にまだ記事が続く場合だけ表示する
+           (単体記事ページのように後に何も続かない場合は区切り線が浮いて見えるため出さない) */
+        .related-section:not(:last-child) { border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
         /* 記事下部のSNSシェアアイコンはすりガラス背景を無くし、白い丸線のみのフラット表示にする */
         .glass-icon.share-icon-flat { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; border-color: color-mix(in srgb, white 60%, transparent); }
         .article-card {
@@ -940,9 +943,9 @@
                 : '';
             const relatedGroups = relatedArticlesByTag(article, 3);
             const relatedHtml = relatedGroups.length > 0
-                ? `<div id="related-${article.id}" class="hidden text-left mt-8 pb-8" style="border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);">${relatedGroups.map(g => `
+                ? `<div id="related-${article.id}" class="hidden related-section text-left mt-8 pb-8">${relatedGroups.map(g => `
                     <div class="mb-8">
-                        <div class="text-xs opacity-40 mb-3"><span class="glass-chip tag-chip inline-block px-2 py-0.5" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color);">#${escapeHtml(g.tag.name)}</span>についての関連記事</div>
+                        <div class="text-xs opacity-40 mb-3"><span class="glass-chip tag-chip inline-block px-2 py-0.5" style="background: #ffffff; color: #6b7278;">#${escapeHtml(g.tag.name)}</span>についての関連記事</div>
                         <div class="related-articles-grid" onclick="event.stopPropagation()">${g.articles.map(a => articleCardHtml(a)).join('')}</div>
                     </div>
                 `).join('')}</div>`
