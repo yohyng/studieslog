@@ -133,7 +133,7 @@
            足し引きしてカードサイズを間接的に抑えようとすると、幅の帯域ごとに破綻して収拾がつかない。
            そこでカード自体の最小・最大サイズをここで直接決め、1行に何枚並ぶかはブラウザに任せる。
            minmaxの上限を1frではなく--card-maxにすることで、どんな画面幅でもカードはこの幅を超えない */
-        :root { --card-min: 240px; --card-max: 300px; }
+        :root { --card-min: 240px; --card-max: 350px; }
         @media (max-width: 480px) {
             /* 1カラムしか置けない狭い幅では、最小値が大きすぎると横がはみ出すため下限を下げる */
             :root { --card-min: 0px; }
@@ -283,7 +283,21 @@
            Filterボタンだけはカード一覧を絞り込む機能なので、実際にカードグリッドを表示している
            ときだけ付くcard-page-activeクラス(renderCardPage()が付け、hideAllViews()が外す)で
            表示を切り替える */
-        #card-fixed-footer-bar { display: none; }
+        /* position:fixedをTailwind(CDN)の .fixed クラス任せにすると、CDNの読み込みが遅い・
+           ブロックされる環境ではクラスが当たらず、これらのUIが固定されないまま本文と一緒に
+           スクロールしてしまう(実際にiPad+VPN環境でフッターバーが画面中央に流れる不具合が出た)。
+           bodyの基本レイアウトと同じ理由で、位置指定は素のCSSでも必ず効くようにしておく */
+        #card-fixed-footer-bar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+        #hamburger-btn { position: fixed; }
+        #card-sticky-header { position: fixed; top: 0; left: 0; }
+        #scroll-progress { position: fixed; top: 0; left: 0; }
+        #menu-overlay { position: fixed; inset: 0; }
         body.card-home #card-fixed-footer-bar { display: block; }
         body.card-home #hamburger-btn {
             top: auto;
