@@ -1548,6 +1548,73 @@
             showToast('挿入しました');
         }
 
+        // --- 自動保存(ブラウザが落ちたりタブを閉じてしまっても本文が消えないようにするための保険) ---
+        // サーバーには保存せず、あくまでlocalStorageに定期的に控えを取っておくだけ。
+        // 本保存(下書き保存/予約投稿/公開する)が成功したら控えは消す
+        const AUTOSAVE_DEBOUNCE_MS = 1500;
+        let autosaveTimer = null;
+
+        function autosaveDraftKey() {
+            return 'admin_draft_article_' + (editingId != null ? editingId : 'new');
+        }
+
+        function scheduleAutosaveDraft() {
+            clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(saveDraftToLocalStorage, AUTOSAVE_DEBOUNCE_MS);
+        }
+
+        function saveDraftToLocalStorage() {
+            const draft = {
+                title: document.getElementById('edit-title').value,
+                titleEn: document.getElementById('edit-title-en').value,
+                content: document.getElementById('edit-content').innerHTML,
+                contentEn: document.getElementById('edit-content-en').innerHTML,
+                savedAt: Date.now(),
+            };
+            try {
+                localStorage.setItem(autosaveDraftKey(), JSON.stringify(draft));
+            } catch (e) {
+                // 容量超過などは静かに諦める(自動保存はあくまで保険なので、失敗しても本編集は続けられる)
+            }
+        }
+
+        function clearAutosaveDraft() {
+            localStorage.removeItem(autosaveDraftKey());
+        }
+
+        // 記事を開いた(新規/編集どちらも)直後に、保存し損ねた自動保存の控えが無いか確認する。
+        // 今読み込んだ内容と全く同じなら聞かずに黙って消す
+        function checkForAutosaveDraft() {
+            let draft;
+            try {
+                draft = JSON.parse(localStorage.getItem(autosaveDraftKey()) || 'null');
+            } catch (e) {
+                draft = null;
+            }
+            if (!draft) return;
+            const sameAsLoaded = draft.title === document.getElementById('edit-title').value
+                && draft.content === document.getElementById('edit-content').innerHTML
+                && (draft.titleEn || '') === document.getElementById('edit-title-en').value
+                && (draft.contentEn || '') === document.getElementById('edit-content-en').innerHTML;
+            if (sameAsLoaded) {
+                clearAutosaveDraft();
+                return;
+            }
+            const when = new Date(draft.savedAt).toLocaleString('ja-JP');
+            if (confirm(`保存されていない自動保存の控え(${when}時点)があります。復元しますか？`)) {
+                document.getElementById('edit-title').value = draft.title;
+                document.getElementById('edit-title-en').value = draft.titleEn || '';
+                document.getElementById('edit-content').innerHTML = draft.content;
+                document.getElementById('edit-content-en').innerHTML = draft.contentEn || '<p></p>';
+                updateCharCount();
+                migrateInlineFootnoteNotes(document.getElementById('edit-content'));
+                renderFootnoteListPanel();
+                applyEditorPreviewStyle();
+            } else {
+                clearAutosaveDraft();
+            }
+        }
+
         async function openNewEditor() {
             editingId = null;
             document.getElementById('edit-date').value = todayString();
@@ -1569,6 +1636,7 @@
             renderTagCheckboxes();
             showEditorView();
             document.getElementById('edit-title').focus();
+            checkForAutosaveDraft();
         }
 
         // --- SNS投稿の下書き自動生成 ---
@@ -1753,6 +1821,7 @@
             prepareIgImage(article);
 
             showEditorView();
+            checkForAutosaveDraft();
         }
 
         // 予約投稿は「cronで自動的にstatusを書き換える」方式ではなく、
@@ -1825,6 +1894,7 @@
                 return;
             }
             await syncArticleTags(data.id);
+            clearAutosaveDraft();
             showToast(status === 'draft' ? '下書き保存しました' : status === 'scheduled' ? '予約投稿を設定しました' : '公開しました');
             backToList();
         }
@@ -2987,6 +3057,12 @@
         });
         twEditor.addEventListener('input', updateCharCount);
         twEditor.addEventListener('input', renderFootnoteListPanel);
+
+        // 自動保存: タイトル・本文(日英)を編集するたびに、少し待ってからlocalStorageへ控えを取る
+        [twEditor, 'edit-title-en', 'edit-content-en', 'edit-title'].forEach(target => {
+            const el = typeof target === 'string' ? document.getElementById(target) : target;
+            el.addEventListener('input', scheduleAutosaveDraft);
+        });
     </script>
 </body>
 </html>
