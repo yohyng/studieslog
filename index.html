@@ -1838,9 +1838,12 @@
                 </div>
             `;
             applyUserFontScale();
+            // ピン留めされた記事(目安3件程度)を先頭に、それ以外は元の日付順のまま並べる
+            // (sortは安定ソートなので、ピン留め同士・非ピン留め同士の相対順序は元の日付順のまま保たれる)
+            const sortedForCards = [...articles].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
             view.innerHTML = `
                 <div class="fade-in">
-                    <div class="card-grid">${articles.map(a => articleCardHtml(a)).join('')}</div>
+                    <div class="card-grid">${sortedForCards.map(a => articleCardHtml(a)).join('')}</div>
                 </div>
             `;
             scheduleAlignHeaderToCards();
