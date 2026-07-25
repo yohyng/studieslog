@@ -551,8 +551,13 @@
 
     <!-- パターンCだけ: Filter。.fade-inの中(transformを持つ祖先)に置くとposition:fixedが効かなくなるため、
          他の固定UIと同じくbody直下に常設し、中身(カテゴリ/タグ行)だけrenderCardPage()が差し替える -->
-    <button id="card-filter-toggle" onclick="toggleCardFilterPanel(this)" class="inline-flex items-center gap-1 px-1.5 py-0.5 cursor-pointer hover:opacity-90 transition-opacity" style="font-size: 0.6rem;">
-        <span>Filter</span>
+    <button id="card-filter-toggle" onclick="toggleCardFilterPanel(this)" class="inline-flex items-center gap-1 px-1.5 py-0.5 cursor-pointer hover:opacity-90 transition-opacity" style="font-size: 0.6rem;" aria-label="Filter" title="Filter">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+            <line x1="3" y1="7" x2="14" y2="7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+            <circle cx="17.5" cy="7" r="2.6" fill="currentColor"/>
+            <circle cx="6.5" cy="17" r="2.6" fill="currentColor"/>
+            <line x1="10" y1="17" x2="21" y2="17" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        </svg>
         <span id="card-filter-dot" class="hidden" style="width: 3px; height: 3px; border-radius: 9999px; background: currentColor;"></span>
     </button>
     <div id="card-filter-panel" class="hidden"></div>
