@@ -1217,11 +1217,11 @@
             const plainText = stripHtml(content);
             const fontSize = siteFontSize * currentFontSizeScale();
             const lineHeight = siteLineHeight * currentLineHeightScale();
-            // 4行目あたりからフェードが始まり、9行目までになめらかに消える(続きを読みたくなる見せ方)。
+            // 3行目あたりからフェードが始まり、7行目までになめらかに消える(続きを読みたくなる見せ方)。
             // 表示しきれない分はmask-image+overflow:hiddenで見た目上切るだけなので、
             // 「…」を付けず全文を流し込んでおく
-            const fadeStartLine = 4;
-            const fadeEndLine = 9;
+            const fadeStartLine = 3;
+            const fadeEndLine = 7;
             const fadeStartPct = (fadeStartLine / fadeEndLine) * 100;
             const maskStyle = `linear-gradient(to bottom, black 0%, black ${fadeStartPct}%, transparent 100%)`;
             container.innerHTML = `
