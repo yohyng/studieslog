@@ -1437,7 +1437,7 @@
         // --- 本文欄を閲覧ページと同じ文字組み・配色にして、公開時の見え方をある程度推測できるようにする ---
         async function loadSiteTypographyForPreview() {
             const { data, error } = await sb.from('site_settings')
-                .select('font, font_size, line_height, letter_spacing, text_align, bg_color, text_color')
+                .select('font, title_font, font_size, line_height, letter_spacing, text_align, bg_color, text_color')
                 .eq('id', 1).single();
             if (error || !data) {
                 console.error('サイト設定の取得に失敗しました', error);
@@ -1453,6 +1453,9 @@
             if (!siteTypography) return null;
             return {
                 font: siteTypography.font,
+                // 閲覧ページの記事タイトル(article-title)は本文とは別にtitle_fontを使っており、
+                // 空欄なら本文フォントにフォールバックする(index.html側と同じ挙動)
+                titleFont: siteTypography.title_font || siteTypography.font,
                 font_size: siteTypography.font_size,
                 line_height: siteTypography.line_height,
                 letter_spacing: siteTypography.letter_spacing,
@@ -1475,13 +1478,15 @@
                 editor.style.letterSpacing = t.letter_spacing + 'em';
                 editor.style.textAlign = t.text_align;
 
-                titleEl.style.fontFamily = t.font;
+                titleEl.style.fontFamily = t.titleFont;
                 titleEl.style.letterSpacing = t.letter_spacing + 'em';
                 titleEl.style.fontSize = (t.font_size * 1.125) + 'px';
+                titleEl.style.textAlign = t.text_align;
 
                 dateEl.style.fontFamily = t.font;
                 dateEl.style.letterSpacing = t.letter_spacing + 'em';
                 dateEl.style.fontSize = (t.font_size * 0.75) + 'px';
+                dateEl.style.textAlign = t.text_align;
             }
             if (siteTypography) {
                 editor.style.color = siteTypography.text_color;
