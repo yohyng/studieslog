@@ -105,6 +105,9 @@
             body.wide-page-active #tag-view {
                 max-width: min(1700px, 97vw);
             }
+            body.wide-page-active #title-list-view {
+                max-width: min(1700px, 97vw);
+            }
             body.wide-page-active header {
                 max-width: min(1700px, 97vw);
             }
@@ -1189,6 +1192,7 @@
         // ハッシュタグ一覧ページ
         async function renderTagList() {
             hideAllViews();
+            document.body.classList.add('wide-page-active');
             const listView = document.getElementById('title-list-view');
             listView.classList.remove('hidden');
 
