@@ -22,6 +22,10 @@
             --tag-text-color: #6b7278;
             --tag-font-size: 12px;
             --tag-font: 'Shippori Mincho', serif;
+            --article-tag-bg-color: #ffffff;
+            --article-tag-text-color: #6b7278;
+            --article-tag-font-size: 12px;
+            --article-tag-font: 'Shippori Mincho', serif;
             --tag-description-color: #ffffff;
             --tag-description-size: 12px;
             --footnote-color: #7dd3fc;
@@ -74,10 +78,12 @@
         .content-width { max-width: var(--content-width); }
 
 
-        /* カード一覧の横幅拡張(#card-view/header/footer)は、実際にカードグリッドを表示している
-           ときだけ付くcard-page-activeクラスに限定する(card-homeは全ページ常時付いているため、
+        /* カード一覧の横幅拡張(#card-view/#tag-view/header/footer)は、実際にカードグリッドを表示している
+           ときだけ付くwide-page-activeクラスに限定する(card-homeは全ページ常時付いているため、
            ここをcard-homeにすると記事ページ・About等でもheader/footerだけ広がってしまい、
-           本文(content-width基準、672px)側と左端が揃わなくなる)。カードグリッドはauto-fillで
+           本文(content-width基準、672px)側と左端が揃わなくなる)。TOPのカード一覧(renderCardPage)と
+           タグページ(renderTagPage、こちらもTOPと同じカードグリッドで一覧表示する)の両方で使うため、
+           Filterボタンの表示可否専用のcard-page-activeとは別クラスにしている。カードグリッドはauto-fillで
            列数が自然に変わるので、メディアクエリなしでそのままレスポンシブになる。
            ある程度の幅があれば#card-view自体の横幅を広げて、並ぶ列数を増やす。
            タイトル(header)・最下段の区切り線(footer)も同じ幅に揃えることで、左端が一致するようにする
@@ -86,13 +92,16 @@
            1023pxのウィンドウ幅では#card-viewが672px固定のままになり、auto-fillが2列にしかならず
            カードが大きくなりすぎていた。700pxからvwベースで広げることでこの帯を解消する */
         @media (min-width: 700px) {
-            body.card-page-active #card-view {
+            body.wide-page-active #card-view {
                 max-width: min(1700px, 97vw);
             }
-            body.card-page-active header {
+            body.wide-page-active #tag-view {
                 max-width: min(1700px, 97vw);
             }
-            body.card-page-active footer {
+            body.wide-page-active header {
+                max-width: min(1700px, 97vw);
+            }
+            body.wide-page-active footer {
                 max-width: min(1700px, 97vw);
             }
         }
@@ -116,6 +125,11 @@
         /* サブタイトルは非表示にする */
         body.card-home #site-subtitle { display: none; }
         .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
+        /* 記事ページの関連記事用グリッド。card-gridと違って1400px以上での5列固定の対象にしない
+           (記事本文の狭い幅の中に置かれるため、5列固定にすると不自然に小さくなってしまう) */
+        .related-articles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
+        /* 記事下部のSNSシェアアイコンはすりガラス背景を無くし、白い丸線のみのフラット表示にする */
+        .share-icon-flat { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; border-color: color-mix(in srgb, white 60%, transparent); }
         .article-card {
             display: block;
             overflow: hidden;
@@ -494,11 +508,12 @@
 </head>
 <body class="min-h-screen flex flex-col items-center py-24 px-5 min-[450px]:px-8 md:px-12 lg:px-0 card-home">
     <script>
-        // トップページ(カードグリッド)はほぼ確実にcard-page-activeになるため、JSでのデータ読み込み完了を待たず
-        // ここで先に付けておく。こうしないと、初期描画ではheader/footerがcontent-width幅で中央寄せに見え、
-        // 読み込み後に横幅が広がって左端に寄る「がくっ」というジャンプが発生してしまう
+        // トップページ(カードグリッド)はほぼ確実にcard-page-active/wide-page-activeになるため、JSでの
+        // データ読み込み完了を待たずここで先に付けておく。こうしないと、初期描画ではheader/footerが
+        // content-width幅で中央寄せに見え、読み込み後に横幅が広がって左端に寄る「がくっ」というジャンプが発生してしまう
         if (location.pathname.replace(/\/$/, '') === '') {
             document.body.classList.add('card-page-active');
+            document.body.classList.add('wide-page-active');
         }
     </script>
 
@@ -599,9 +614,9 @@
     </div>
 
     <div id="subscribe-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.5);" onmousedown="if(event.target === this) closeSubscribeModal()">
-        <div class="w-full max-w-sm p-6" style="background: var(--bg-color); color: var(--text-color); border: 1px solid color-mix(in srgb, currentColor 20%, transparent);">
+        <div class="w-full max-w-sm p-6" style="background: color-mix(in srgb, var(--bg-color) 55%, transparent); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%); color: var(--text-color); border: 1px solid color-mix(in srgb, currentColor 20%, transparent);">
             <div class="flex items-center justify-between mb-4">
-                <h2 data-i18n="subscribe_title" class="text-sm font-medium">購読する</h2>
+                <h2 id="subscribe-modal-title" data-i18n="subscribe_title" class="text-sm font-medium">購読する</h2>
                 <button onclick="closeSubscribeModal()" class="opacity-50 hover:opacity-100 transition-opacity text-lg leading-none" aria-label="閉じる">×</button>
             </div>
             <p data-i18n="subscribe_desc" class="text-xs opacity-60 mb-4">新着記事をメールで受け取れます(週1回、更新があった週だけ届きます)</p>
@@ -782,6 +797,11 @@
             document.documentElement.style.setProperty('--tag-text-color', data.tag_text_color || data.bg_color);
             document.documentElement.style.setProperty('--tag-font-size', (data.tag_font_size || 12) + 'px');
             document.documentElement.style.setProperty('--tag-font', data.tag_font || data.font);
+            // 記事本文中のハッシュタグ専用の設定(空欄/0ならタグ表示のグローバル設定に従う)
+            document.documentElement.style.setProperty('--article-tag-bg-color', data.article_tag_bg_color || data.tag_bg_color || data.text_color);
+            document.documentElement.style.setProperty('--article-tag-text-color', data.article_tag_text_color || data.tag_text_color || data.bg_color);
+            document.documentElement.style.setProperty('--article-tag-font-size', (data.article_tag_font_size || data.tag_font_size || 12) + 'px');
+            document.documentElement.style.setProperty('--article-tag-font', data.article_tag_font || data.tag_font || data.font);
             document.documentElement.style.setProperty('--tag-description-color', data.tag_description_color || data.text_color);
             document.documentElement.style.setProperty('--footnote-color', data.footnote_color || data.text_color);
             siteFootnoteColor = data.footnote_color || data.text_color;
@@ -796,6 +816,9 @@
             document.documentElement.style.setProperty('--selection-text-color', data.selection_text_color || data.bg_color);
             document.documentElement.style.setProperty('--subscribe-bg-color', data.subscribe_bg_color || data.text_color);
             document.documentElement.style.setProperty('--subscribe-text-color', data.subscribe_text_color || data.bg_color);
+            // 記事下部のSubscribeボタン専用の色設定(空欄ならグローバルのSubscribe設定に従う)
+            document.documentElement.style.setProperty('--article-subscribe-bg-color', data.article_subscribe_bg_color || data.subscribe_bg_color || data.text_color);
+            document.documentElement.style.setProperty('--article-subscribe-text-color', data.article_subscribe_text_color || data.subscribe_text_color || data.bg_color);
             siteFontSize = data.font_size;
             document.documentElement.style.setProperty('--base-font-size', data.font_size + 'px');
             document.body.style.fontFamily = data.font;
@@ -877,17 +900,20 @@
             return container.innerHTML + notesHtml;
         }
 
-        // 実験的機能: 関連記事(共有タグが多い順、なければ表示しない)。不要ならこの関数とbuildArticleHtml内の
-        // relatedHtml関連の3行を削除すれば元に戻ります
-        function relatedArticles(article, limit) {
+        // 実験的機能: 関連記事。この記事に付いているタグ1つ1つについて、同じタグを持つ他の記事を
+        // 新しい順にlimitPerTag件集め、「#タグ名についての関連記事」としてタグごとにグループ化する。
+        // 不要ならこの関数とbuildArticleHtml内のrelatedHtml関連の3行を削除すれば元に戻ります
+        function relatedArticlesByTag(article, limitPerTag) {
             if (!article.tags || article.tags.length === 0) return [];
-            const tagIds = new Set(article.tags.map(t => t.id));
-            return articles
-                .filter(a => a.id !== article.id && a.tags && a.tags.some(t => tagIds.has(t.id)))
-                .map(a => ({ article: a, shared: a.tags.filter(t => tagIds.has(t.id)).length }))
-                .sort((a, b) => b.shared - a.shared || new Date(b.article.date) - new Date(a.article.date))
-                .slice(0, limit)
-                .map(x => x.article);
+            return article.tags
+                .map(tag => ({
+                    tag,
+                    articles: articles
+                        .filter(a => a.id !== article.id && (a.tags || []).some(t => t.id === tag.id))
+                        .sort((a, b) => new Date(b.date) - new Date(a.date))
+                        .slice(0, limitPerTag),
+                }))
+                .filter(group => group.articles.length > 0);
         }
 
         // 実験的機能: 記事同士の相互リンク(バックリンク)。本文中で他の記事の/article/IDへリンクしておくと、
@@ -905,11 +931,16 @@
                 overrideStyle = `style="font-family:${article.font}; font-size:${article.font_size}px; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};"`;
             }
             const tagsHtml = (article.tags && article.tags.length > 0)
-                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="glass-chip tag-chip px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${t.name}</a>`).join('')}</div>`
+                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="glass-chip tag-chip px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: color-mix(in srgb, var(--article-tag-bg-color) 55%, transparent); color: var(--article-tag-text-color); font-size: var(--article-tag-font-size); font-family: var(--article-tag-font);">#${t.name}</a>`).join('')}</div>`
                 : '';
-            const related = relatedArticles(article, 3);
-            const relatedHtml = related.length > 0
-                ? `<div class="text-left mt-8 pt-8" style="border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);"><div class="text-xs opacity-40 mb-3">関連記事</div><div class="card-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));" onclick="event.stopPropagation()">${related.map(a => articleCardHtml(a)).join('')}</div></div>`
+            const relatedGroups = relatedArticlesByTag(article, 3);
+            const relatedHtml = relatedGroups.length > 0
+                ? `<div id="related-${article.id}" class="hidden text-left mt-8 pt-8" style="border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);">${relatedGroups.map(g => `
+                    <div class="mb-8">
+                        <div class="text-xs opacity-40 mb-3">#${escapeHtml(g.tag.name)}についての関連記事</div>
+                        <div class="related-articles-grid" onclick="event.stopPropagation()">${g.articles.map(a => articleCardHtml(a)).join('')}</div>
+                    </div>
+                `).join('')}</div>`
                 : '';
             const backlinks = backlinkArticles(article, 5);
             const backlinkHtml = backlinks.length > 0
@@ -927,17 +958,16 @@
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
                         ${backlinkHtml}
-                        <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;" onclick="closeArticle(this.parentElement.previousElementSibling)">↑ 閉じる</span>
-                        ${relatedHtml}
                         <div class="flex items-center justify-center gap-3 mt-8">
-                            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="Xでシェア" aria-label="Xでシェア">${SHARE_ICONS.x}</a>
-                            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>
-                            <button onclick="shareToInstagram(${article.id})" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)" aria-label="リンクをコピー(Instagram用)">${SHARE_ICONS.instagram}</button>
-                            <button onclick="shareArticle(${article.id})" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="共有" aria-label="共有">${SHARE_ICONS.share}</button>
-                            <button onclick="event.stopPropagation(); openSubscribeModal()" class="glass-chip hover:opacity-90 transition-opacity px-3 py-1.5" style="background: color-mix(in srgb, var(--subscribe-bg-color) 55%, transparent); color: var(--subscribe-text-color); font-size: 0.6rem;" title="更新をメールで受け取る" aria-label="購読">Subscribe</button>
+                            <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="glass-icon share-icon-flat opacity-70 hover:opacity-100 transition-opacity" title="Xでシェア" aria-label="Xでシェア">${SHARE_ICONS.x}</a>
+                            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="glass-icon share-icon-flat opacity-70 hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>
+                            <button onclick="shareToInstagram(${article.id})" class="glass-icon share-icon-flat opacity-70 hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)" aria-label="リンクをコピー(Instagram用)">${SHARE_ICONS.instagram}</button>
+                            <button onclick="shareArticle(${article.id})" class="glass-icon share-icon-flat opacity-70 hover:opacity-100 transition-opacity" title="共有" aria-label="共有">${SHARE_ICONS.share}</button>
+                            <button onclick="event.stopPropagation(); openSubscribeModal()" class="glass-chip hover:opacity-90 transition-opacity px-3 py-1.5" style="background: color-mix(in srgb, var(--article-subscribe-bg-color) 55%, transparent); color: var(--article-subscribe-text-color); font-size: 0.6rem;" title="更新をメールで受け取る" aria-label="購読">Subscribe</button>
                         </div>
                     </div>
-                </article>`;
+                </article>
+                ${relatedHtml}`;
         }
 
         function articleShareUrl(id) {
@@ -1092,8 +1122,11 @@
             document.getElementById('search-view').classList.add('hidden');
             document.getElementById('loading-indicator').classList.add('hidden');
             // card-homeはヘッダー・フッターの構成を全ページ共通にするため常時付けたままにする(<body>参照)。
-            // card-page-activeはFilterボタンの表示可否だけに使うので、カードグリッド以外では外す
+            // card-page-activeはFilterボタンの表示可否だけに使うので、カードグリッド以外では外す。
+            // wide-page-activeはheader/footer/コンテンツの横幅拡張だけに使う(カードグリッド表示のページ全般=
+            // TOPのカード一覧・タグページで共通)ので、これも表示中のビュー以外では外す
             document.body.classList.remove('card-page-active');
+            document.body.classList.remove('wide-page-active');
             document.getElementById('card-sticky-header').classList.remove('card-sticky-header-visible');
         }
 
@@ -1567,6 +1600,7 @@
         function renderCardPage() {
             hideAllViews();
             document.body.classList.add('card-page-active');
+            document.body.classList.add('wide-page-active');
             cardActiveCategory = '';
             cardActiveTags = new Set();
             const view = document.getElementById('card-view');
@@ -1871,6 +1905,7 @@
         // ハッシュタグ別の一覧ページ(タグ名・説明+該当記事)
         async function renderTagPage(slug) {
             hideAllViews();
+            document.body.classList.add('wide-page-active');
             const view = document.getElementById('tag-view');
             view.classList.remove('hidden');
 
@@ -1880,23 +1915,18 @@
                 return;
             }
 
+            // タグページの基本レイアウトはTOPのカード一覧と揃える(card-grid + articleCardHtml)
             const matched = articles.filter(a => (a.tags || []).some(t => t.slug === slug));
+            const cardsHtml = matched.length > 0
+                ? `<div class="card-grid">${matched.map(a => articleCardHtml(a)).join('')}</div>`
+                : '<p class="text-xs opacity-40">このタグの記事はまだありません。</p>';
             view.innerHTML = `
                 <div class="mb-16 fade-in">
                     <h2 class="glass-chip tag-chip inline-block font-normal mb-3 px-3 py-1" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: calc(var(--tag-font-size) * 1.4); font-family: var(--tag-font);">#${tag.name}</h2>
                     ${tag.description ? `<p style="color: var(--tag-description-color); font-size: var(--tag-description-size); line-height: inherit;">${escapeHtml(tag.description)}</p>` : ''}
                 </div>
-                <div id="tag-article-list" class="flex flex-col gap-16"></div>
+                ${cardsHtml}
             `;
-            const tagListContainer = document.getElementById('tag-article-list');
-            if (matched.length === 0) {
-                tagListContainer.innerHTML = '<p class="text-xs opacity-40">このタグの記事はまだありません。</p>';
-                return;
-            }
-            matched.forEach(article => {
-                tagListContainer.insertAdjacentHTML('beforeend', buildArticleHtml(article));
-                forceLineHeight(article, document.getElementById(`article-${article.id}`));
-            });
         }
 
         // タイトル・本文・タグ名を対象にした検索
@@ -2068,13 +2098,17 @@
         function toggleArticle(wrapperNode, evt) {
             const snippet = wrapperNode.querySelector('.article-snippet');
             const isOpen = snippet.classList.contains('open-full');
-            // 開いている間は、本文エリアのクリックでは閉じない(読んだり選択したりの邪魔をしない)。閉じるのはタイトル部分か「↑閉じる」ボタンのみ
+            // 開いている間は、本文エリアのクリックでは閉じない(読んだり選択したりの邪魔をしない)。閉じるのはタイトル部分のみ
             if (isOpen && evt && evt.target.closest('.content-body')) return;
             const articleEl = wrapperNode.closest('article');
             const id = articleEl.dataset.id;
             if (isOpen) {
-                closeArticle(wrapperNode);
-                history.pushState({}, '', '/');
+                // pushStateだけでURLを'/'に戻すと、表示は開いたままの記事ページのDOMが残るのに
+                // location.pathnameだけ home と同じになってしまい、その後サイトタイトルを押しても
+                // goHome()が「もう home にいる」と誤認してスクロールするだけで何も起きなくなる
+                // (実際のカードグリッドには戻らない)。本文専用ページ(/article/:id)を閉じる場合は
+                // 素直に本来のTOPページへ実移動する
+                location.href = '/';
             } else {
                 openArticle(wrapperNode);
                 history.pushState({}, '', `/article/${id}`);
@@ -2089,6 +2123,8 @@
             snippet.classList.add('open-full');
             snippet.style.maxHeight = 'none';
             wrapperNode.nextElementSibling.classList.remove('hidden');
+            const relatedWrap = document.getElementById('related-' + wrapperNode.closest('article').dataset.id);
+            if (relatedWrap) relatedWrap.classList.remove('hidden');
         }
 
         function closeArticle(wrapperNode) {
@@ -2098,6 +2134,8 @@
             const article = articles.find(a => a.id === Number(articleEl.dataset.id));
             if (article) snippet.style.maxHeight = collapsedSnippetHeightPx(article) + 'px';
             wrapperNode.nextElementSibling.classList.add('hidden');
+            const relatedWrap = document.getElementById('related-' + articleEl.dataset.id);
+            if (relatedWrap) relatedWrap.classList.add('hidden');
         }
 
         function showToast(msg) {
@@ -2111,6 +2149,8 @@
         function openSubscribeModal() {
             document.getElementById('subscribe-modal').classList.remove('hidden');
             document.getElementById('subscribe-message').classList.add('hidden');
+            const siteTitleText = document.getElementById('site-title').textContent;
+            document.getElementById('subscribe-modal-title').textContent = `${siteTitleText} newsletter | ${t('subscribe_title')}`;
             document.getElementById('subscribe-email').focus();
             subscribeModalOpenedAt = Date.now();
         }
@@ -2263,7 +2303,7 @@
         // テスト実装: タイトル横の台形装飾。サイズ・位置・不透明度・線の太さ・ランダム度・揺れ幅・ホバー反応の強さは
         // すべて表示設定(site_settings)のtitle_shape_*列で管理者が調整できる
         let titleShapeSettings = {
-            enabled: true, width: 200, height: 193, top: -45,
+            enabled: true, width: 200, height: 193, top: -100,
             opacity: 0.4, strokeWidth: 1, jitter: 14, wobble: 6, hoverIntensity: 1,
         };
         let titleShapeBase = null;
@@ -2273,7 +2313,7 @@
                 enabled: data.title_shape_enabled !== false,
                 width: data.title_shape_width || 200,
                 height: data.title_shape_height || 193,
-                top: data.title_shape_top != null ? data.title_shape_top : -45,
+                top: data.title_shape_top != null ? data.title_shape_top : -100,
                 opacity: data.title_shape_opacity != null ? data.title_shape_opacity : 0.4,
                 strokeWidth: data.title_shape_stroke_width != null ? data.title_shape_stroke_width : 1,
                 jitter: data.title_shape_jitter != null ? data.title_shape_jitter : 14,

@@ -108,7 +108,7 @@ create table if not exists public.site_settings (
   title_shape_enabled boolean not null default true,
   title_shape_width int not null default 200,
   title_shape_height int not null default 193,
-  title_shape_top int not null default -45,
+  title_shape_top int not null default -100,
   title_shape_opacity numeric not null default 0.4,
   title_shape_stroke_width numeric not null default 1,
   title_shape_jitter numeric not null default 14,
@@ -158,7 +158,7 @@ alter table public.site_settings add column if not exists bg_image_url text not 
 alter table public.site_settings add column if not exists title_shape_enabled boolean not null default true;
 alter table public.site_settings add column if not exists title_shape_width int not null default 200;
 alter table public.site_settings add column if not exists title_shape_height int not null default 193;
-alter table public.site_settings add column if not exists title_shape_top int not null default -45;
+alter table public.site_settings add column if not exists title_shape_top int not null default -100;
 alter table public.site_settings add column if not exists title_shape_opacity numeric not null default 0.4;
 alter table public.site_settings add column if not exists title_shape_stroke_width numeric not null default 1;
 alter table public.site_settings add column if not exists title_shape_jitter numeric not null default 14;
@@ -207,6 +207,16 @@ alter table public.site_settings add column if not exists sns_website_url text n
 -- 注釈文(本文最後の注釈リストの説明文)の色・フォント。空文字なら本文の設定に従う
 alter table public.site_settings add column if not exists footnote_text_color text not null default '';
 alter table public.site_settings add column if not exists footnote_text_font text not null default '';
+
+-- 記事本文中のハッシュタグ専用設定(空欄/0ならタグ表示のグローバル設定に従う)
+alter table public.site_settings add column if not exists article_tag_bg_color text not null default '';
+alter table public.site_settings add column if not exists article_tag_text_color text not null default '';
+alter table public.site_settings add column if not exists article_tag_font_size int not null default 0;
+alter table public.site_settings add column if not exists article_tag_font text not null default '';
+
+-- 記事下部のSubscribeボタン専用の色設定(空欄ならグローバルのSubscribe配色に従う)
+alter table public.site_settings add column if not exists article_subscribe_bg_color text not null default '';
+alter table public.site_settings add column if not exists article_subscribe_text_color text not null default '';
 
 -- ハッシュタグ
 create table if not exists public.tags (
