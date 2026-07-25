@@ -73,11 +73,13 @@
         .content-width { max-width: var(--content-width); }
 
 
-        /* パターンC(カード型)のグリッドは auto-fill で列数が自然に変わるので、メディアクエリなしで
-           そのままレスポンシブになる。ある程度の幅があれば#card-view自体の横幅を広げて、並ぶ列数を増やす。
-           タイトル(header)も同じ幅に揃えることで、カード一覧の左端とタイトルの左端が一致するようにする
-           (揃えないと、header側だけ細い列のまま中央寄せされ、カード一覧より内側に見えてしまう)。
-           以前は min-width:1024px からしか広げていなかったため、672px(他パターンと共通のcontent-width)〜
+        /* ヘッダー・フッターの構成(幅・余白・サブタイトル非表示など)は全ページ共通にしたいので、
+           bodyには常時card-homeクラスを付けている(index.html <body>参照)。カードグリッドは
+           auto-fill で列数が自然に変わるので、メディアクエリなしでそのままレスポンシブになる。
+           ある程度の幅があれば#card-view自体の横幅を広げて、並ぶ列数を増やす。
+           タイトル(header)・最下段の区切り線(footer)も同じ幅に揃えることで、左端が一致するようにする
+           (揃えないと、header/footer側だけ細い列のまま中央寄せされ、カード一覧より内側に見えてしまう)。
+           以前は min-width:1024px からしか広げていなかったため、672px(content-widthの既定値)〜
            1023pxのウィンドウ幅では#card-viewが672px固定のままになり、auto-fillが2列にしかならず
            カードが大きくなりすぎていた。700pxからvwベースで広げることでこの帯を解消する */
         @media (min-width: 700px) {
@@ -87,12 +89,11 @@
             body.card-home header {
                 max-width: min(1700px, 97vw);
             }
-            /* 最下段の区切り線(footer)もカード一覧と同じ幅に揃える */
             body.card-home footer {
                 max-width: min(1700px, 97vw);
             }
         }
-        /* パターンCでは「更新をメールで受け取る」は一旦非表示にする */
+        /* 「更新をメールで受け取る」は一旦非表示にする */
         body.card-home #subscribe-cta { display: none; }
         /* 5列並ぶだけの幅がある画面では、auto-fillに任せず列数を5に固定する。
            そうしないと、単に#card-viewの幅を広げただけでは6列目が湧いてカードが小さいままになってしまう */
@@ -101,7 +102,7 @@
                 grid-template-columns: repeat(5, 1fr);
             }
         }
-        /* パターンCだけ、ページ最上部からタイトルまでの余白と、タイトルからカード一覧までの余白を
+        /* ページ最上部からタイトルまでの余白と、タイトルから本文(カード一覧など)までの余白を
            揃え(どちらも6rem)、タイトル+台形アイコンがその間で均等な位置に来るようにする。
            bodyのpy-24(6rem)のうち上側だけ4remに詰め、headerの元々のpt-8(2rem)と合わせて上6remにする */
         /* Tailwind(CDN)のpy-24クラスと同じ詳細度(クラス1つ)なので、後から読み込まれるTailwindの
@@ -109,7 +110,7 @@
            上書きできなかったことがあったため、同じ轍を踏まないための予防策) */
         body.card-home { padding-top: 4rem !important; }
         body.card-home header { margin-bottom: 6rem; }
-        /* パターンCだけ、サブタイトルは非表示にする */
+        /* サブタイトルは非表示にする */
         body.card-home #site-subtitle { display: none; }
         .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
         .article-card {
@@ -238,8 +239,11 @@
             pointer-events: auto;
         }
 
-        /* パターンCだけ、Filterボタンとハンバーガーメニューを固定フッターの左右に寄せる。
-           bodyのcard-homeクラスはrenderCardPage()が付け、hideAllViews()が外す(既存の仕組みを流用) */
+        /* ヘッダー・フッターの構成(幅揃え・固定フッターバー・ハンバーガーの位置)は
+           全ページ共通にするため、bodyには常時card-homeクラスを付けている(index.html <body>参照)。
+           Filterボタンだけはカード一覧を絞り込む機能なので、実際にカードグリッドを表示している
+           ときだけ付くcard-page-activeクラス(renderCardPage()が付け、hideAllViews()が外す)で
+           表示を切り替える */
         #card-fixed-footer-bar { display: none; }
         body.card-home #card-fixed-footer-bar { display: block; }
         body.card-home #hamburger-btn {
@@ -253,7 +257,7 @@
             box-shadow: none !important;
         }
         #card-filter-toggle { display: none; }
-        body.card-home #card-filter-toggle {
+        body.card-page-active #card-filter-toggle {
             display: inline-flex;
             position: fixed;
             left: 1.5rem;
@@ -261,7 +265,7 @@
             z-index: 40;
             margin-bottom: 0;
         }
-        body.card-home #card-filter-panel {
+        body.card-page-active #card-filter-panel {
             position: fixed;
             left: 1.5rem;
             bottom: 3rem;
@@ -477,7 +481,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500&family=Shippori+Mincho+B1:wght@400;500&family=Noto+Serif+JP:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&family=Kaisei+Tokumin:wght@400;500;700&family=Kaisei+Decol:wght@400;700&family=BIZ+UDPMincho:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=BIZ+UDPGothic:wght@400;700&family=Sawarabi+Gothic&family=M+PLUS+1p:wght@400;500;700&family=Kosugi+Maru&family=Zen+Maru+Gothic:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;500;700&family=Klee+One:wght@400;600&family=New+Tegomin&family=Yuji+Syuku&family=Fraunces:wght@400;600;700&family=Bodoni+Moda:wght@400;500;700&family=Abril+Fatface&family=Grenze+Gotisch:wght@400;600;700&family=Italiana&family=Cormorant:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="min-h-screen flex flex-col items-center py-24 px-5 min-[450px]:px-8 md:px-12 lg:px-0">
+<body class="min-h-screen flex flex-col items-center py-24 px-5 min-[450px]:px-8 md:px-12 lg:px-0 card-home">
 
     <div id="scroll-progress" class="fixed top-0 left-0 h-[2px] z-50" style="width: 0%; background: var(--text-color-solid); opacity: 0.5;"></div>
 
@@ -991,7 +995,9 @@
             document.getElementById('tag-view').classList.add('hidden');
             document.getElementById('search-view').classList.add('hidden');
             document.getElementById('loading-indicator').classList.add('hidden');
-            document.body.classList.remove('card-home');
+            // card-homeはヘッダー・フッターの構成を全ページ共通にするため常時付けたままにする(<body>参照)。
+            // card-page-activeはFilterボタンの表示可否だけに使うので、カードグリッド以外では外す
+            document.body.classList.remove('card-page-active');
             document.getElementById('card-sticky-header').classList.remove('card-sticky-header-visible');
         }
 
@@ -1453,8 +1459,7 @@
 
         function renderCardPage() {
             hideAllViews();
-            document.body.classList.add('card-home');
-            updateCardStickyTitle();
+            document.body.classList.add('card-page-active');
             cardActiveCategory = '';
             cardActiveTags = new Set();
             const view = document.getElementById('card-view');
@@ -2037,16 +2042,9 @@
             // フォントサイズだけは合わせず、常に小さめの固定サイズ(CSS側で指定)のままにする
         }
 
-        // パターンCのカードグリッドを見ている間だけ、本来のヘッダーを過ぎてスクロールしたら
-        // タイトルだけの固定ヘッダーを出す
+        // 全ページ共通: 本来のヘッダーを過ぎてスクロールしたら、タイトルだけの固定ヘッダーを出す
         function handleCardStickyScroll() {
             const stickyHeader = document.getElementById('card-sticky-header');
-            const cardView = document.getElementById('card-view');
-            const isCardHome = homepageLayout === 'card' && !cardView.classList.contains('hidden');
-            if (!isCardHome) {
-                stickyHeader.classList.remove('card-sticky-header-visible');
-                return;
-            }
             const headerEl = document.querySelector('header');
             const threshold = headerEl ? headerEl.getBoundingClientRect().bottom + window.scrollY : 200;
             stickyHeader.classList.toggle('card-sticky-header-visible', window.scrollY > threshold);
@@ -2173,6 +2171,8 @@
 
         (async () => {
             await applySiteSettings();
+            // スクロール追従ヘッダーのタイトル表示は全ページ共通なので、ここで一度だけ複製しておく
+            updateCardStickyTitle();
             await loadArticles();
         })();
     </script>
