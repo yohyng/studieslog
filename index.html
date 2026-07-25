@@ -148,10 +148,11 @@
            余りはグリッド自体の左右paddingとしてalignHeaderToCards()がJSで入れる。
            こうすると「全体は中央に置かれる/どの行も同じ左端から始まる」が両立し、同じ量のpaddingを
            タイトル(header)にも入れることでタイトルの左端もカードの左端に揃う */
-        /* --related-card-min: 関連記事だけの下限。記事本文(約650px)という中途半端な幅では、下限280pxだと
-           1行2枚で端数が出てトップページのカードと大きさがずれる。下限を下げて枚数の自由度を上げ、
-           トップ側に近い大きさになるようにしている。元に戻すときはこの値を--card-minと同じにすればよい */
-        :root { --card-min: 280px; --card-max: 350px; --related-card-min: 200px; }
+        /* --related-card-min: 関連記事だけの下限。記事本文幅(約650px)だと下限200pxのままでは3列になって
+           カードが216px程度まで縮み小さすぎたため、240pxに引き上げて強制的に2列にしている。
+           2列になるとカード自体は330px前後まで大きくなるので、代わりにgapを広げて余白を確保している。
+           元に戻すときはこの値を--card-minと同じにし、gapも0.75remに戻せばよい */
+        :root { --card-min: 280px; --card-max: 350px; --related-card-min: 240px; }
         .card-grid,
         .related-articles-grid {
             display: flex;
@@ -160,6 +161,7 @@
             gap: 0.75rem;
             box-sizing: border-box;
         }
+        .related-articles-grid { gap: 2rem; }
         .card-grid > .article-card,
         .related-articles-grid > .article-card {
             /* カード幅はlayoutCardGrids()が1行に並ぶ枚数から逆算して--card-wに入れる。伸縮させると
