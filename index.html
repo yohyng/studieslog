@@ -908,16 +908,9 @@
                 ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="glass-chip tag-chip px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${t.name}</a>`).join('')}</div>`
                 : '';
             const related = relatedArticles(article, 3);
-            // 【デバッグ用・一時的】関連記事の表示位置自体が機能しているか確認するため、
-            // 一致する記事が無い場合もダミーカードを必ず表示する。原因切り分けが済んだら
-            // このダミーcard-grid(DEBUG_relatedHtml)は削除し、下のコメントアウトに戻すこと
-            const DEBUG_dummyRelated = `<div class="card-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));" onclick="event.stopPropagation()">
-                <div class="article-card" style="aspect-ratio:1/1; padding:0.75rem; border:1px solid color-mix(in srgb, white 25%, transparent);">
-                    <div class="card-title">[DEBUG] ダミー関連記事</div>
-                    <div class="card-excerpt">これはテスト表示です。この文字が見えていれば関連記事セクション自体は正しく描画されています。</div>
-                </div>
-            </div>`;
-            const relatedHtml = `<div class="text-left mt-8 pt-8" style="border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);"><div class="text-xs opacity-40 mb-3">関連記事</div>${related.length > 0 ? `<div class="card-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));" onclick="event.stopPropagation()">${related.map(a => articleCardHtml(a)).join('')}</div>` : DEBUG_dummyRelated}</div>`;
+            const relatedHtml = related.length > 0
+                ? `<div class="text-left mt-8 pt-8" style="border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);"><div class="text-xs opacity-40 mb-3">関連記事</div><div class="card-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));" onclick="event.stopPropagation()">${related.map(a => articleCardHtml(a)).join('')}</div></div>`
+                : '';
             const backlinks = backlinkArticles(article, 5);
             const backlinkHtml = backlinks.length > 0
                 ? `<div class="text-left mb-5"><div class="text-xs opacity-40 mb-2">この記事へのリンク</div><div class="flex flex-col gap-1.5">${backlinks.map(a => `<a href="/article/${a.id}" onclick="event.stopPropagation()" class="text-xs opacity-70 hover:opacity-100 transition-opacity">${escapeHtml(a.title)}</a>`).join('')}</div></div>`
