@@ -609,7 +609,8 @@
     </div>
 
     <!-- パターンCだけ: ハンバーガーメニュー(右、CSSで移動)を乗せる固定フッター -->
-    <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 2rem; background: color-mix(in srgb, var(--bg-color) 70%, transparent); border-top: 0.5px solid var(--divider-color);"></div>
+    <!-- 背景・ぼかしはサイドバー(#menu-panel内)と同じ設定にして、すりガラスの質感を揃えている -->
+    <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 2rem; background: color-mix(in srgb, var(--bg-color) 5%, transparent); backdrop-filter: blur(10px) saturate(190%); -webkit-backdrop-filter: blur(10px) saturate(190%); border-top: 0.5px solid var(--divider-color); box-shadow: inset 0 1px 0 color-mix(in srgb, white 25%, transparent), 0 -4px 16px color-mix(in srgb, black 10%, transparent);"></div>
 
     <!-- パターンCだけ: Filter。.fade-inの中(transformを持つ祖先)に置くとposition:fixedが効かなくなるため、
          他の固定UIと同じくbody直下に常設し、中身(カテゴリ/タグ行)だけrenderCardPage()が差し替える -->
