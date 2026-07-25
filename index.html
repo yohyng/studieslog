@@ -127,6 +127,9 @@
            上書きできなかったことがあったため、同じ轍を踏まないための予防策) */
         body.card-home { padding-top: 4rem !important; }
         body.card-home header { margin-bottom: 6rem; }
+        /* alignHeaderToCards()が左右に同じpaddingを入れてタイトルの左端をカードの左端に合わせる。
+           Tailwindのpreflight(box-sizing:border-box)が未読込でも幅が膨らまないよう自前で指定する */
+        header { box-sizing: border-box; }
         /* サブタイトルは非表示にする */
         body.card-home #site-subtitle { display: none; }
         /* カードは正方形(aspect-ratio:1/1)なので、横幅がそのまま高さになる。画面幅に応じて余白を
@@ -137,11 +140,11 @@
            中央寄せになり、余りが「左端・カード間・右端」に分散して、2列のときだけ中央の隙間が
            両隣ぶん合算されて極端に広く見えてしまうため(実際にその不具合が出た)。
            Flexboxならカードは行の余りを分け合って--card-min〜--card-maxの間で伸び縮みし、
-           全カードが上限に達して余った分だけが行の外側に出るので、カード同士の間隔は常にgapのまま
-           一定になる。
-           行はflex-startで左に詰める。中央寄せにすると余りが左右に分かれてカードの左端が内側へ
-           入り込み、同じ幅を共有しているタイトル(header)やフッターの左端とずれてしまうため。
-           左詰めにしておけば「一番左のカードの左端 = コンテナの左端 = タイトルの左端」が常に揃う */
+           全カードが上限に達すると余りが出るが、これをjustify-content:centerで吸収すると最下段の
+           半端な枚数まで中央に寄ってしまい、上の行と左端が揃わない。そこで行は常に左詰めにし、
+           余りはグリッド自体の左右paddingとしてalignHeaderToCards()がJSで入れる。
+           こうすると「全体は中央に置かれる/どの行も同じ左端から始まる」が両立し、同じ量のpaddingを
+           タイトル(header)にも入れることでタイトルの左端もカードの左端に揃う */
         :root { --card-min: 280px; --card-max: 350px; }
         .card-grid,
         .related-articles-grid {
@@ -149,11 +152,14 @@
             flex-wrap: wrap;
             justify-content: flex-start;
             gap: 0.75rem;
+            box-sizing: border-box;
         }
         .card-grid > .article-card,
         .related-articles-grid > .article-card {
-            flex: 1 1 var(--card-min);
-            max-width: var(--card-max);
+            /* カード幅はlayoutCardGrids()が1行に並ぶ枚数から逆算して--card-wに入れる。伸縮させると
+               枚数が半端な最下段だけカードが大きくなってしまうため、伸び縮みはさせず固定幅で置く */
+            flex: 0 0 var(--card-w, var(--card-min));
+            max-width: 100%;
             /* flexアイテムの既定(min-width:auto)だと中身の最小幅より縮めず、狭い画面で横にはみ出す */
             min-width: 0;
         }
@@ -1742,7 +1748,53 @@
                     <div class="card-grid">${articles.map(a => articleCardHtml(a)).join('')}</div>
                 </div>
             `;
+            scheduleAlignHeaderToCards();
         }
+
+        // カードの並びをCSSだけで決めると、(1)枚数が半端な最下段のカードだけ余りを吸って大きくなる、
+        // (2)中央寄せにすると最下段だけ中央に寄って上の行と左端が揃わない、という問題が同時に起きる。
+        // 1行に並ぶ枚数から1枚あたりの幅を逆算して固定し、余りはグリッド自体の左右paddingとして
+        // 振り分けることで、「全カード同じ大きさ」「どの行も同じ左端から始まる」「全体は中央」を満たす。
+        // 同じpaddingをタイトル(header)にも入れれば、タイトルの左端もカードの左端に揃う
+        function layoutCardGrids() {
+            const rootStyle = getComputedStyle(document.documentElement);
+            const cardMax = parseFloat(rootStyle.getPropertyValue('--card-max')) || 350;
+            const cardMin = parseFloat(rootStyle.getPropertyValue('--card-min')) || 280;
+            let headerPad = 0;
+            document.querySelectorAll('.card-grid, .related-articles-grid').forEach(grid => {
+                grid.style.paddingLeft = '';
+                grid.style.paddingRight = '';
+                const width = grid.clientWidth;
+                if (!width) return;
+                const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
+                const perRow = Math.max(1, Math.floor((width + gap) / (cardMin + gap)));
+                const cardWidth = Math.min(cardMax, (width - (perRow - 1) * gap) / perRow);
+                grid.style.setProperty('--card-w', cardWidth + 'px');
+                // 中央に寄せるのは一覧ページのカードだけ。関連記事は記事本文の左端に揃えたいので寄せない
+                if (!grid.classList.contains('card-grid')) return;
+                const pad = Math.max(0, (width - (perRow * cardWidth + (perRow - 1) * gap)) / 2);
+                if (pad > 0.5) {
+                    grid.style.paddingLeft = pad + 'px';
+                    grid.style.paddingRight = pad + 'px';
+                    headerPad = pad;
+                }
+            });
+            const header = document.querySelector('header');
+            if (header) {
+                header.style.paddingLeft = headerPad ? headerPad + 'px' : '';
+                header.style.paddingRight = headerPad ? headerPad + 'px' : '';
+            }
+        }
+
+        let layoutCardGridsRaf = null;
+        function scheduleAlignHeaderToCards() {
+            if (layoutCardGridsRaf) cancelAnimationFrame(layoutCardGridsRaf);
+            layoutCardGridsRaf = requestAnimationFrame(() => {
+                layoutCardGridsRaf = null;
+                layoutCardGrids();
+            });
+        }
+        window.addEventListener('resize', scheduleAlignHeaderToCards);
 
         // フィルターボタンを開閉する。カテゴリ/タグどちらかが選ばれている間は、パネルを閉じても
         // ボタンに小さいドットを出して「絞り込み中」であることが分かるようにする
@@ -2042,6 +2094,7 @@
                 </div>
                 ${cardsHtml}
             `;
+            scheduleAlignHeaderToCards();
         }
 
         // タイトル・本文・タグ名を対象にした検索
@@ -2239,7 +2292,11 @@
             snippet.style.maxHeight = 'none';
             wrapperNode.nextElementSibling.classList.remove('hidden');
             const relatedWrap = document.getElementById('related-' + wrapperNode.closest('article').dataset.id);
-            if (relatedWrap) relatedWrap.classList.remove('hidden');
+            if (relatedWrap) {
+                relatedWrap.classList.remove('hidden');
+                // 隠れている間はclientWidthが0でカード幅を計算できないため、表示してから測り直す
+                scheduleAlignHeaderToCards();
+            }
         }
 
         function closeArticle(wrapperNode) {
