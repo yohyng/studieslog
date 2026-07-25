@@ -135,14 +135,14 @@
         body.story-view-active { padding-top: 4rem !important; }
         /* headerには margin-bottom: var(--header-spacing, 18rem) というインラインstyleが直接付いている
            ため、通常のクラスセレクタでは勝てない。!importantで上書きする */
-        body.story-view-active header { margin-bottom: 1rem !important; }
-        /* 本文が7行ぐらいで下からフェードして消えていく(続きを読みたくなる見せ方)。
+        body.story-view-active header { margin-bottom: 2rem !important; }
+        /* 本文が3行ぐらいでフェードに切り替わり、5行目までに消えていく(続きを読みたくなる見せ方)。
            max-heightは行数*line-heightのem指定で、フォントサイズが変わっても比率が崩れない */
         .story-excerpt {
             position: relative;
             overflow: hidden;
-            mask-image: linear-gradient(to bottom, black 0%, black 77%, transparent 100%);
-            -webkit-mask-image: linear-gradient(to bottom, black 0%, black 77%, transparent 100%);
+            mask-image: linear-gradient(to bottom, black 0%, black 60%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 0%, black 60%, transparent 100%);
         }
         /* ページ最上部からタイトルまでの余白と、タイトルから本文(カード一覧など)までの余白を
            揃え(どちらも6rem)、タイトル+台形アイコンがその間で均等な位置に来るようにする。
@@ -1191,10 +1191,10 @@
                 : '';
             const plainText = stripHtml(content);
             const lineHeight = siteLineHeight * currentLineHeightScale();
-            // 7行目あたりからフェードして消える(続きを読みたくなる見せ方)。
+            // 3行目あたりからフェードして5行目までに消える(続きを読みたくなる見せ方)。
             // 表示しきれない分はmask-image+overflow:hiddenで見た目上切るだけなので、
             // 「…」を付けず全文を流し込んでおく
-            const fadeLines = 9;
+            const fadeLines = 5;
             container.innerHTML = `
                 <article style="border: 0.5px solid var(--divider-color); padding: 1.5rem;">
                     <div class="text-xs opacity-40 mb-2">${article.date}</div>
@@ -1294,9 +1294,24 @@
 
         // Instagramストーリー用: サイトタイトル・サブタイトルと、この記事のカード(折りたたみ状態)だけを
         // 表示する専用ページ。他のUIを隠した状態でスマホでスクショしてもらう想定
+        // 連番のURL(/article/1/story, /article/2/story...)を適当に踏んで見られてしまわないよう、
+        // 英数字を織り交ぜた文字列をURLの末尾に要求する。本物の認証ではなく、リンクを知っている人
+        // だけがアクセスする程度の目的なので、鍵は特に隠さずこの関数自体で決まる(admin.html側にも
+        // 同じ関数を複製してリンク生成に使っている)
+        function storyPreviewToken(id) {
+            const raw = `story-${id}-fragments-preview`;
+            let hash = 0;
+            for (let i = 0; i < raw.length; i++) {
+                hash = (hash * 31 + raw.charCodeAt(i)) >>> 0;
+            }
+            return hash.toString(36);
+        }
+
         function getStoryArticleId() {
-            const m = location.pathname.match(/^\/article\/(\d+)\/story\/?$/);
-            return m ? Number(m[1]) : null;
+            const m = location.pathname.match(/^\/article\/(\d+)\/story\/([a-z0-9]+)\/?$/);
+            if (!m) return null;
+            const id = Number(m[1]);
+            return m[2] === storyPreviewToken(id) ? id : null;
         }
 
         // 旧形式の共有リンク(#article-数字)も念のため引き続き開けるようにしておく

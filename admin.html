@@ -1692,9 +1692,20 @@
 
         // Instagramストーリー用: サイトの見た目そのままのプレビューページを新しいタブで開く。
         // そこでスマホでスクショしてもらう想定(story-view-activeがヘッダー以外のUIを隠す)
+        // index.html側と同じ関数(URLの末尾に付ける英数字トークンの生成)を複製している。
+        // 本物の認証ではなく、連番URLを適当に踏んで見られないようにする程度の目的
+        function storyPreviewToken(id) {
+            const raw = `story-${id}-fragments-preview`;
+            let hash = 0;
+            for (let i = 0; i < raw.length; i++) {
+                hash = (hash * 31 + raw.charCodeAt(i)) >>> 0;
+            }
+            return hash.toString(36);
+        }
+
         function openStoryPreview() {
             if (!editingId) { showToast('先に記事を保存してください'); return; }
-            window.open(`${location.origin}/article/${editingId}/story`, '_blank');
+            window.open(`${location.origin}/article/${editingId}/story/${storyPreviewToken(editingId)}`, '_blank');
         }
 
         async function openEditEditor(id) {
