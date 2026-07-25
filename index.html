@@ -510,7 +510,7 @@
         .footnote-list li { display: flex; align-items: flex-start; gap: 0.5em; margin-bottom: 0.6em; }
         .footnote-list li span:first-child { flex-shrink: 0; }
         .footnote-list a.footnote-back { opacity: 0.5; text-decoration: none; margin-left: 0.3em; }
-        .search-highlight { background: #ffffff; color: #000000; border-radius: 2px; padding: 0 0.1em; }
+        .search-highlight { background: #ffffff; color: #6b7278; border-radius: 2px; padding: 0 0.1em; }
         /* パターンB(ハブ)のWorkFlowy風アウトライン */
         .outline-toggle { user-select: none; }
         /* 記事一覧の項目間にうっすら区切り線を入れる(最初の項目の上と最後の項目の下には出さない) */
@@ -2010,12 +2010,12 @@
                 const plainContent = stripHtml(localizedContent(a));
                 const excerptHtml = plainContent.toLowerCase().includes(q.toLowerCase()) ? highlightExcerpt(plainContent, q, 40) : '';
                 return `
-                    <a href="/article/${a.id}" class="flex flex-col gap-1 py-4 border-b opacity-90 hover:opacity-100 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">
+                    <a href="/article/${a.id}" class="flex flex-col gap-1 py-4 border-b transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent); color: rgba(255, 255, 255, 0.9);">
                         <div class="flex items-baseline justify-between gap-4">
                             <span class="text-sm" style="font-family: var(--article-title-font, inherit);">${highlightText(title, q)}</span>
-                            <span class="text-xs opacity-60 whitespace-nowrap">${a.date}</span>
+                            <span class="text-xs whitespace-nowrap" style="color: rgba(255, 255, 255, 0.6);">${a.date}</span>
                         </div>
-                        ${excerptHtml ? `<p class="text-xs opacity-60" style="font-family: ${a.font || 'inherit'};">${excerptHtml}</p>` : ''}
+                        ${excerptHtml ? `<p class="text-xs" style="font-family: ${a.font || 'inherit'}; color: rgba(255, 255, 255, 0.6);">${excerptHtml}</p>` : ''}
                     </a>
                 `;
             }).join('');
