@@ -979,7 +979,7 @@
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
                         <h2 class="text-lg font-normal mb-4 article-title">${title}</h2>
                         ${tagsHtml}
-                        <div class="article-snippet text-sm content-body">${applyFootnoteStyling(content, article.id)}</div>
+                        <div class="article-snippet text-sm"><div class="content-body">${applyFootnoteStyling(content, article.id)}</div></div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
                         ${backlinkHtml}
@@ -1462,7 +1462,7 @@
                     <div class="text-sm opacity-90">${escapeHtml(article.title)}</div>
                     ${outlineBulletTagsHtml(article)}
                     <div class="opacity-40 mt-1" style="font-size: 0.65rem;">${escapeHtml(article.date)}</div>
-                    <div class="latest-snippet text-sm content-body mt-1" style="line-height: ${lineHeight} !important; max-height: ${maxHeight}px;">${applyFootnoteStyling(article.content, article.id)}</div>
+                    <div class="latest-snippet text-sm mt-1" style="line-height: ${lineHeight} !important; max-height: ${maxHeight}px;"><div class="content-body">${applyFootnoteStyling(article.content, article.id)}</div></div>
                     <div class="mt-1 text-center">
                         <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity latest-open-btn" style="font-size: 0.65rem;" onclick="toggleLatestSnippet(this)">↓ 続きを読む</span>
                         <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity latest-close-btn hidden" style="font-size: 0.65rem;" onclick="toggleLatestSnippet(this)">↑ 閉じる</span>
