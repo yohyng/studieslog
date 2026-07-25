@@ -158,7 +158,10 @@
                 <div id="edit-content" class="content-editor bg-white/5 border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
                 <div id="edit-char-count" class="tw-hide text-xs text-white/30 mt-1 text-right">0文字</div>
 
-                <label class="tw-hide text-xs text-white/50 block mb-1 mt-6">本文(英語。空欄なら英語表示でも日本語のまま。装飾ツールバーはなく、太字/斜体などはCtrl+B/Ctrl+Iなどのブラウザ標準ショートカットのみ対応)</label>
+                <div class="tw-hide flex items-center justify-between mt-6 mb-1">
+                    <label class="text-xs text-white/50 block">本文(英語。空欄なら英語表示でも日本語のまま。装飾ツールバーはなく、太字/斜体などはCtrl+B/Ctrl+Iなどのブラウザ標準ショートカットのみ対応)</label>
+                    <button id="ai-translate-btn" onclick="translateArticleToEnglish()" class="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap" title="上のタイトル・本文(日本語)をGeminiで英訳し、下の英語欄に入れます(今の英語欄の内容は上書きされます)">✨ AIで英訳</button>
+                </div>
                 <div id="edit-content-en" class="content-editor bg-white/5 border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
 
                 <div class="tw-hide mt-6">
@@ -2423,6 +2426,53 @@
             } catch (e) {
                 console.error(e);
                 showToast('テストメールの送信に失敗しました');
+            }
+        }
+
+        // 日本語のタイトル・本文をGemini API(サーバー側の/api/translate経由)で英訳し、英語欄に入れる。
+        // APIキーはサーバー側だけが持ち、ブラウザには一切渡らない
+        async function translateArticleToEnglish() {
+            const title = document.getElementById('edit-title').value.trim();
+            const content = document.getElementById('edit-content').innerHTML;
+            if (!title && !document.getElementById('edit-content').textContent.trim()) {
+                showToast('先に日本語のタイトルか本文を入力してください');
+                return;
+            }
+            const titleEnEl = document.getElementById('edit-title-en');
+            const contentEnEl = document.getElementById('edit-content-en');
+            if ((titleEnEl.value.trim() || contentEnEl.textContent.trim())
+                && !confirm('既に入力されている英語欄の内容は上書きされます。よろしいですか？')) return;
+
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) {
+                showToast('ログイン状態を確認できませんでした');
+                return;
+            }
+
+            const btn = document.getElementById('ai-translate-btn');
+            btn.disabled = true;
+            btn.textContent = '翻訳中...';
+            try {
+                const res = await fetch('/api/translate', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content }),
+                });
+                const result = await res.json();
+                if (!res.ok) {
+                    console.error(result);
+                    showToast('英訳に失敗しました');
+                    return;
+                }
+                titleEnEl.value = result.title_en || '';
+                contentEnEl.innerHTML = result.content_en || '<p></p>';
+                showToast('英訳しました(内容を確認してください)');
+            } catch (e) {
+                console.error(e);
+                showToast('英訳に失敗しました');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '✨ AIで英訳';
             }
         }
 
