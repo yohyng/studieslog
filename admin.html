@@ -536,7 +536,12 @@
                                 <input id="set-site-subtitle-size" type="range" min="10" max="40" step="1" class="w-24" oninput="document.getElementById('set-site-subtitle-size-value').textContent = this.value + 'px'">
                                 <span id="set-site-subtitle-size-value" class="text-xs text-white/40 w-10"></span>
                             </div>
-                            <input id="set-site-subtitle-color" type="color" class="w-8 h-8 rounded cursor-pointer" title="サブタイトルの色">
+                            <input id="set-site-subtitle-color" type="color" class="w-8 h-8 rounded cursor-pointer" title="サブタイトルの文字色">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-white/40">帯の色</span>
+                                <input id="set-site-subtitle-bg-color" type="color" class="w-8 h-8 rounded cursor-pointer" title="サブタイトルの背景(帯)の色" oninput="delete this.dataset.cleared;">
+                                <button type="button" onclick="document.getElementById('set-site-subtitle-bg-color').dataset.cleared='1'; this.textContent='帯なし(解除する場合は色を選択)';" class="text-xs text-white/40 hover:text-white/70 transition-colors">帯を消す</button>
+                            </div>
                         </div>
                     </div>
 
@@ -2755,6 +2760,11 @@
             document.getElementById('set-site-subtitle-size').value = data.site_subtitle_size;
             document.getElementById('set-site-subtitle-size-value').textContent = data.site_subtitle_size + 'px';
             document.getElementById('set-site-subtitle-color').value = data.site_subtitle_color;
+            const subtitleBgInput = document.getElementById('set-site-subtitle-bg-color');
+            subtitleBgInput.value = data.site_subtitle_bg_color || '#ffffff';
+            // 空文字(帯なし)はカラー入力では表現できないため、data属性で保持する
+            delete subtitleBgInput.dataset.cleared;
+            if (!data.site_subtitle_bg_color) subtitleBgInput.dataset.cleared = '1';
             document.getElementById('set-menu-font-size').value = data.menu_font_size || 12;
             document.getElementById('set-menu-font-size-value').textContent = (data.menu_font_size || 12) + 'px';
             document.getElementById('set-font').value = data.font;
@@ -2844,6 +2854,7 @@
                 site_title_size: Number(document.getElementById('set-site-title-size').value),
                 site_title_color: document.getElementById('set-site-title-color').value,
                 site_subtitle_font: document.getElementById('set-site-subtitle-font').value,
+                site_subtitle_bg_color: document.getElementById('set-site-subtitle-bg-color').dataset.cleared ? '' : document.getElementById('set-site-subtitle-bg-color').value,
                 site_subtitle_en: document.getElementById('set-site-subtitle-en').value.trim(),
                 site_subtitle: document.getElementById('set-site-subtitle').value.trim(),
                 site_subtitle_size: Number(document.getElementById('set-site-subtitle-size').value),

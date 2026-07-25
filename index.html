@@ -954,16 +954,24 @@
             const subtitleColor = data.site_subtitle_color || data.text_color;
             // 空欄なら本文フォントに従う
             const subtitleFont = data.site_subtitle_font || data.font;
+            const subtitleBg = data.site_subtitle_bg_color || '';
+            // 白帯に重なった部分の台形の線を反転させる(syncTitleShapeOverlays)ときの線色に使う
+            document.documentElement.style.setProperty('--subtitle-text-color', subtitleColor);
             [[subtitleEnEl, data.site_subtitle_en], [subtitleEl, data.site_subtitle]].forEach(([el, text], i) => {
                 if (!el) return;
                 if (text) el.textContent = text;
                 el.style.fontSize = subtitleSize;
                 el.style.color = subtitleColor;
                 el.style.fontFamily = subtitleFont;
+                el.style.background = subtitleBg;
+                // 帯を文字の長さぴったりにする(ブロックのままだと行末まで伸びてしまう)
+                el.style.width = 'fit-content';
+                el.style.maxWidth = '100%';
                 el.style.display = el.textContent.trim() ? '' : 'none';
                 // 英語が非表示のときは日本語側が先頭に来るので、上の余白はそちらに移す
                 if (i === 1) el.classList.toggle('mt-4', subtitleEnEl ? subtitleEnEl.style.display === 'none' : true);
             });
+            scheduleAlignHeaderToCards();
             siteAboutContent = data.about_content || '';
             siteAboutContentEn = data.about_content_en || '';
             siteSnsXUrl = data.sns_x_url || '';
@@ -1809,6 +1817,42 @@
             // 同じ量だけleftをずらして、タイトルと一緒にカードの左端へ追従させる
             const shapeWrap = document.getElementById('title-rect-wrap');
             if (shapeWrap) shapeWrap.style.left = headerPad ? headerPad + 'px' : '';
+            syncTitleShapeOverlays();
+        }
+
+        // サブタイトルに白帯を敷くと、その上を通る台形の白い線が白同士で見えなくなってしまう。
+        // CSSの合成モードは「背景に対して一意の変換」しかできず、"灰色の上では白・白の上では灰色"を
+        // 同時には作れないため、帯の範囲だけに切り抜いたグレーの線のコピーを上に重ねて反転を表現する。
+        // 台形は毎フレーム頂点が動くので、コピー側にも同じ頂点を配る(animateTitleShapeを参照)
+        function syncTitleShapeOverlays() {
+            const header = document.querySelector('header');
+            const wrap = document.getElementById('title-rect-wrap');
+            if (!header) return;
+            header.querySelectorAll('.title-rect-overlay').forEach(el => el.remove());
+            if (!wrap || wrap.style.display === 'none') return;
+            const wrapRect = wrap.getBoundingClientRect();
+            if (!wrapRect.width || !wrapRect.height) return;
+            const stroke = getComputedStyle(document.documentElement).getPropertyValue('--subtitle-text-color').trim();
+            ['site-subtitle-en', 'site-subtitle'].forEach(id => {
+                const line = document.getElementById(id);
+                if (!line || line.style.display === 'none' || !line.textContent.trim()) return;
+                // 帯(背景)が無い行は、線を反転させる必要がない
+                if (!line.style.background) return;
+                const r = line.getBoundingClientRect();
+                if (!r.width || r.bottom <= wrapRect.top || r.top >= wrapRect.bottom) return;
+                const copy = wrap.cloneNode(true);
+                copy.removeAttribute('id');
+                copy.removeAttribute('onclick');
+                copy.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+                copy.classList.add('title-rect-overlay');
+                copy.style.zIndex = '21';
+                copy.style.pointerEvents = 'none';
+                // 帯と重なる矩形だけを残すよう切り抜く
+                copy.style.clipPath = `inset(${r.top - wrapRect.top}px ${wrapRect.right - r.right}px ${wrapRect.bottom - r.bottom}px ${r.left - wrapRect.left}px)`;
+                const poly = copy.querySelector('polygon');
+                if (poly && stroke) poly.style.stroke = stroke;
+                header.appendChild(copy);
+            });
         }
 
         let layoutCardGridsRaf = null;
@@ -2551,7 +2595,9 @@
 
         // 何もしていない間も頂点ごとに違う周期のsin/cosでゆっくり辺の長さが揺れ続ける
         function animateTitleShape(timestamp) {
-            const polygon = document.querySelector('#title-rect polygon');
+            // 本体と、白帯に重なる部分用の反転コピー(.title-rect-overlay)の両方に同じ頂点を配る
+            const polygons = document.querySelectorAll('#title-rect polygon, .title-rect-overlay polygon');
+            const polygon = polygons[0];
             if (polygon && titleShapeBase) {
                 const t = timestamp / 1000;
                 const amp = titleShapeSettings.wobble;
@@ -2562,7 +2608,7 @@
                         return `${(x + ox).toFixed(1)},${(y + oy).toFixed(1)}`;
                     })
                     .join(' ');
-                polygon.setAttribute('points', points);
+                polygons.forEach(p => p.setAttribute('points', points));
             }
             requestAnimationFrame(animateTitleShape);
         }
@@ -2573,15 +2619,20 @@
             const wrap = document.getElementById('title-rect-wrap');
             const rect = document.getElementById('title-rect');
             if (!wrap || !rect) return;
+            // ホバー時の傾きも、反転コピー側に同じものを掛けないと重なった部分だけ形がずれてしまう
+            const applyTilt = (transform) => {
+                rect.style.transform = transform;
+                document.querySelectorAll('.title-rect-overlay .title-rect').forEach(el => { el.style.transform = transform; });
+            };
             wrap.addEventListener('mousemove', (e) => {
                 const bounds = wrap.getBoundingClientRect();
                 const relX = (e.clientX - bounds.left) / bounds.width - 0.5;
                 const relY = (e.clientY - bounds.top) / bounds.height - 0.5;
                 const k = titleShapeSettings.hoverIntensity;
-                rect.style.transform = `rotateX(${(-relY * 10 * k).toFixed(2)}deg) rotateY(${(relX * 16 * k).toFixed(2)}deg)`;
+                applyTilt(`rotateX(${(-relY * 10 * k).toFixed(2)}deg) rotateY(${(relX * 16 * k).toFixed(2)}deg)`);
             });
             wrap.addEventListener('mouseleave', () => {
-                rect.style.transform = 'rotateX(0deg) rotateY(0deg)';
+                applyTilt('rotateX(0deg) rotateY(0deg)');
             });
         }
         setupTitleRectSway();

@@ -139,6 +139,8 @@ alter table public.site_settings add column if not exists site_subtitle text not
 alter table public.site_settings add column if not exists site_subtitle_en text not null default '';
 -- サブタイトルのフォント(日英共通。空文字なら本文フォントに従う)
 alter table public.site_settings add column if not exists site_subtitle_font text not null default '';
+-- サブタイトルの背景(帯)の色。空文字なら帯なし
+alter table public.site_settings add column if not exists site_subtitle_bg_color text not null default '#ffffff';
 alter table public.site_settings add column if not exists preview_lines int not null default 3;
 alter table public.site_settings add column if not exists content_width int not null default 672;
 alter table public.site_settings add column if not exists text_align text not null default 'left';
