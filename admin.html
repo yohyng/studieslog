@@ -776,6 +776,14 @@
                         <input type="range" id="set-title-text-opacity" min="0.2" max="1" step="0.05" class="w-full" oninput="document.getElementById('title-text-opacity-value').textContent = Math.round(this.value * 100) + '%'">
                     </div>
 
+                    <!-- タイトル・台形アイコンのセクションと、各ページのコンテンツとの間隔 -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <div class="flex justify-between text-xs text-white/50 mb-1">
+                            <span>タイトルセクションと本文の間隔</span><span id="header-spacing-value"></span>
+                        </div>
+                        <input type="range" id="set-header-spacing" min="80" max="480" step="8" class="w-full" oninput="document.getElementById('header-spacing-value').textContent = this.value + 'px'">
+                    </div>
+
                     <!-- 注釈 -->
                     <div class="mb-6 pb-6 border-b border-white/10">
                         <label class="text-xs text-white/50 block mb-2">注釈番号の色</label>
@@ -2687,6 +2695,9 @@
             const titleTextOpacity = data.title_text_opacity != null ? data.title_text_opacity : 1;
             document.getElementById('set-title-text-opacity').value = titleTextOpacity;
             document.getElementById('title-text-opacity-value').textContent = Math.round(titleTextOpacity * 100) + '%';
+            const headerSpacing = data.header_spacing != null ? data.header_spacing : 288;
+            document.getElementById('set-header-spacing').value = headerSpacing;
+            document.getElementById('header-spacing-value').textContent = headerSpacing + 'px';
             document.getElementById('set-page-title').value = data.page_title || '';
             document.getElementById('set-site-title').value = data.site_title || '';
             document.getElementById('set-site-title-font').value = data.site_title_font || '';
@@ -2779,6 +2790,7 @@
                 card_excerpt_font: document.getElementById('set-card-excerpt-font').value,
                 body_text_opacity: Number(document.getElementById('set-body-text-opacity').value),
                 title_text_opacity: Number(document.getElementById('set-title-text-opacity').value),
+                header_spacing: Number(document.getElementById('set-header-spacing').value),
                 page_title: document.getElementById('set-page-title').value.trim(),
                 site_title: document.getElementById('set-site-title').value.trim(),
                 site_title_font: document.getElementById('set-site-title-font').value,

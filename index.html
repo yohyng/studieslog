@@ -107,17 +107,21 @@
            1023pxのウィンドウ幅では#card-viewが672px固定のままになり、auto-fillが2列にしかならず
            カードが大きくなりすぎていた。700pxからvwベースで広げることでこの帯を解消する */
         @media (min-width: 700px) {
+            /* 余白(左右のガター)は固定vw%ではなく可変にする。iPad幅あたり(1カラム〜2カラムの境目)は
+               カードが巨大化しやすいので余白を大きめに確保し、画面が広がってカラム数が増えるにつれて
+               (カード自体が既に小さくなるため)余白は徐々に小さくしていく */
+            :root { --wide-gutter: clamp(2rem, 9rem - 4vw, 6rem); }
             body.wide-page-active #card-view {
-                max-width: min(1700px, 97vw);
+                max-width: min(1700px, calc(100vw - 2 * var(--wide-gutter)));
             }
             body.wide-page-active #tag-view {
-                max-width: min(1700px, 97vw);
+                max-width: min(1700px, calc(100vw - 2 * var(--wide-gutter)));
             }
             body.wide-page-active header {
-                max-width: min(1700px, 97vw);
+                max-width: min(1700px, calc(100vw - 2 * var(--wide-gutter)));
             }
             body.wide-page-active footer {
-                max-width: min(1700px, 97vw);
+                max-width: min(1700px, calc(100vw - 2 * var(--wide-gutter)));
             }
         }
         /* 「更新をメールで受け取る」は一旦非表示にする */
@@ -599,7 +603,7 @@
         </div>
     </div>
 
-    <header class="w-full content-width pt-8 mb-72 opacity-0 fade-in relative" style="animation-delay: 0.2s; isolation: isolate;">
+    <header class="w-full content-width pt-8 opacity-0 fade-in relative" style="animation-delay: 0.2s; isolation: isolate; margin-bottom: var(--header-spacing, 18rem);">
         <div class="title-rect-wrap cursor-pointer" id="title-rect-wrap" aria-hidden="true" onclick="goHome()">
             <svg class="title-rect" id="title-rect" viewBox="0 0 210 205" preserveAspectRatio="none">
                 <polygon points="30,30 180,6 124,130 30,97" />
@@ -911,6 +915,7 @@
             if (data.card_title_font) document.documentElement.style.setProperty('--card-title-font', data.card_title_font);
             if (data.card_excerpt_font) document.documentElement.style.setProperty('--card-excerpt-font', data.card_excerpt_font);
             document.documentElement.style.setProperty('--body-text-opacity', data.body_text_opacity != null ? data.body_text_opacity : 0.75);
+            document.documentElement.style.setProperty('--header-spacing', (data.header_spacing != null ? data.header_spacing : 288) + 'px');
             document.documentElement.style.setProperty('--title-text-opacity', data.title_text_opacity != null ? data.title_text_opacity : 1);
             const footerTitle = data.site_title || document.getElementById('site-title').textContent;
             document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} ${footerTitle}`;

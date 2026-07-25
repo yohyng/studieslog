@@ -225,6 +225,9 @@ alter table public.site_settings add column if not exists article_subscribe_text
 alter table public.site_settings add column if not exists body_text_opacity numeric not null default 0.75;
 alter table public.site_settings add column if not exists title_text_opacity numeric not null default 1;
 
+-- タイトル・台形アイコンのセクションと、その下の各ページのコンテンツとの間隔(px)
+alter table public.site_settings add column if not exists header_spacing int not null default 288;
+
 -- ハッシュタグ
 create table if not exists public.tags (
   id bigint generated always as identity primary key,
