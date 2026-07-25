@@ -186,6 +186,10 @@
             aspect-ratio: 1 / 1;
             padding: 0.75rem;
             border: 0.5px solid var(--divider-color);
+            /* Tailwindのpreflight(box-sizing:border-box)が未読込(CDN未読込/遅延)の環境だと、この
+               padding・borderがlayoutCardGrids()の計算した幅の外側に足されてしまい、2列に並ぶはずの
+               幅でも1列しか入らなくなる(headerと同じ理由。134行目付近のコメント参照)。自前で指定する */
+            box-sizing: border-box;
             transition: opacity 0.3s ease, background 0.2s ease, border-color 0.2s ease;
             /* カード自身の実際の幅を基準にタイトル・本文の文字サイズを決める(コンテナクエリ)。
                列数が変わって1枚あたりの幅が変わっても、体感の文字サイズが極端に変わらないようにする */
