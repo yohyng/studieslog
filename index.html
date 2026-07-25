@@ -141,18 +141,11 @@
         /* headerには margin-bottom: var(--header-spacing, 18rem) というインラインstyleが直接付いている
            ため、通常のクラスセレクタでは勝てない。!importantで上書きする */
         body.story-view-active header { margin-bottom: 5rem !important; }
-        /* この画面だけ左右の余白を広めにとる */
+        /* この画面だけ左右の余白をとる */
         body.story-view-active header,
         body.story-view-active #article-list {
-            padding-left: 1.5rem !important;
-            padding-right: 1.5rem !important;
-        }
-        /* タイトル・台形アイコン・サブタイトル・記事タイトル・本文を全部ひとまわり小さくする。
-           台形アイコンは文字サイズに連動しない固定サイズのため、font-sizeだけでなくzoomで
-           レイアウト全体を縮小する(transformだと台形の3D揺れ用transformと競合するため使わない) */
-        body.story-view-active header,
-        body.story-view-active #article-list {
-            zoom: 0.85;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
         }
         /* フェードの開始/終了位置(行数ベース)はJS側でmax-height・mask-imageを一緒に計算して
            inline styleで入れる(何行目からフェードするかを変えても、この2つがズレないようにするため) */
@@ -1200,26 +1193,43 @@
                 container.innerHTML = '<p class="text-xs opacity-40 py-2">記事が見つかりませんでした。</p>';
                 return;
             }
+
+            // タイトル・台形アイコン・サブタイトルをこの画面だけ一回り縮小する。zoomだと
+            // Rangeベースのサブタイトル帯計測の座標がズレる(Chromiumの既知の癖)ため使わず、
+            // 文字はfont-size、台形アイコンは文字サイズに連動しない固定サイズなのでtransformで
+            // それぞれ縮小する(台形の3D揺れ用transformは内側の#title-rectに掛かるので競合しない)
+            const STORY_SCALE = 0.85;
+            const titleEl = document.getElementById('site-title');
+            const subtitleWrapEl = document.getElementById('site-subtitle');
+            const shapeWrap = document.getElementById('title-rect-wrap');
+            if (titleEl) titleEl.style.fontSize = (parseFloat(getComputedStyle(titleEl).fontSize) * STORY_SCALE) + 'px';
+            if (subtitleWrapEl) subtitleWrapEl.style.fontSize = (parseFloat(getComputedStyle(subtitleWrapEl).fontSize) * STORY_SCALE) + 'px';
+            if (shapeWrap) {
+                shapeWrap.style.transform = `scale(${STORY_SCALE})`;
+                shapeWrap.style.transformOrigin = 'top left';
+            }
+
             const title = localizedTitle(article);
             const content = localizedContent(article);
             const tagsHtml = (article.tags && article.tags.length > 0)
-                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<span class="glass-chip tag-chip px-2 py-0.5" style="background: color-mix(in srgb, var(--article-tag-bg-color) 55%, transparent); color: var(--article-tag-text-color); font-size: var(--article-tag-font-size); font-family: var(--article-tag-font);">#${escapeHtml(t.name)}</span>`).join('')}</div>`
+                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<span class="glass-chip tag-chip px-2 py-0.5" style="background: color-mix(in srgb, var(--article-tag-bg-color) 55%, transparent); color: var(--article-tag-text-color); font-size: calc(var(--article-tag-font-size) * ${STORY_SCALE}); font-family: var(--article-tag-font);">#${escapeHtml(t.name)}</span>`).join('')}</div>`
                 : '';
             const plainText = stripHtml(content);
+            const fontSize = siteFontSize * currentFontSizeScale();
             const lineHeight = siteLineHeight * currentLineHeightScale();
-            // 3行目あたりからフェードが始まり、7行目までになめらかに消える(続きを読みたくなる見せ方)。
+            // 5行目あたりからフェードが始まり、15行目までになめらかに消える(続きを読みたくなる見せ方)。
             // 表示しきれない分はmask-image+overflow:hiddenで見た目上切るだけなので、
             // 「…」を付けず全文を流し込んでおく
-            const fadeStartLine = 3;
-            const fadeEndLine = 7;
+            const fadeStartLine = 5;
+            const fadeEndLine = 15;
             const fadeStartPct = (fadeStartLine / fadeEndLine) * 100;
             const maskStyle = `linear-gradient(to bottom, black 0%, black ${fadeStartPct}%, transparent 100%)`;
             container.innerHTML = `
                 <article style="border: 0.5px solid var(--divider-color); padding: 1.5rem;">
-                    <div class="text-xs opacity-40 mb-2">${article.date}</div>
-                    <h2 class="text-lg font-normal mb-4 article-title">${escapeHtml(title)}</h2>
+                    <div class="text-xs opacity-40 mb-2" style="font-size: ${0.75 * fontSize * STORY_SCALE}px;">${article.date}</div>
+                    <h2 class="font-normal mb-4 article-title" style="font-size: ${1.125 * fontSize * STORY_SCALE}px;">${escapeHtml(title)}</h2>
                     ${tagsHtml}
-                    <div class="content-body text-sm story-excerpt" style="line-height: ${lineHeight} !important; max-height: ${fadeEndLine * lineHeight}em; mask-image: ${maskStyle}; -webkit-mask-image: ${maskStyle};">${escapeHtml(plainText)}</div>
+                    <div class="content-body story-excerpt" style="font-size: ${0.875 * fontSize * STORY_SCALE}px; line-height: ${lineHeight} !important; max-height: ${fadeEndLine * lineHeight}em; mask-image: ${maskStyle}; -webkit-mask-image: ${maskStyle};">${escapeHtml(plainText)}</div>
                 </article>
                 <p class="text-xs opacity-30 mt-4 text-center">${articleShareUrl(article.id)}</p>
             `;
