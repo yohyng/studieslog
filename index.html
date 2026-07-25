@@ -122,6 +122,18 @@
         }
         /* 「更新をメールで受け取る」は一旦非表示にする */
         body.card-home #subscribe-cta { display: none; }
+        /* Instagramストーリー用ページ: サイトタイトル・サブタイトルとこの記事のカードだけを見せ、
+           スマホでスクショしてもらう想定なので、それ以外のUIは全部隠す */
+        body.story-view-active #scroll-progress,
+        body.story-view-active #hamburger-btn,
+        body.story-view-active #card-sticky-header,
+        body.story-view-active #card-fixed-footer-bar,
+        body.story-view-active #menu-overlay,
+        body.story-view-active footer {
+            display: none !important;
+        }
+        body.story-view-active { padding-top: 4rem !important; }
+        body.story-view-active header { margin-bottom: 3rem; }
         /* ページ最上部からタイトルまでの余白と、タイトルから本文(カード一覧など)までの余白を
            揃え(どちらも6rem)、タイトル+台形アイコンがその間で均等な位置に来るようにする。
            bodyのpy-24(6rem)のうち上側だけ4remに詰め、headerの元々のpt-8(2rem)と合わせて上6remにする */
@@ -1149,6 +1161,38 @@
                 ${relatedHtml}`;
         }
 
+        // Instagramストーリー用ページ。関連記事・注釈・シェアボタンなどは含めず、
+        // 折りたたみ状態(タイトル・日付・タグ・抜粋)だけを見せる。story-view-activeクラスが
+        // ヘッダー以外のUI(サイドバー・フッターなど)を隠すので、あとはスマホでスクショしてもらう想定
+        function renderArticleStoryView(id) {
+            hideAllViews();
+            document.body.classList.add('story-view-active');
+            document.getElementById('article-list').classList.remove('hidden');
+            const container = document.getElementById('article-list');
+            const article = articles.find(a => a.id === id);
+            if (!article) {
+                container.innerHTML = '<p class="text-xs opacity-40 py-2">記事が見つかりませんでした。</p>';
+                return;
+            }
+            const title = localizedTitle(article);
+            const content = localizedContent(article);
+            const tagsHtml = (article.tags && article.tags.length > 0)
+                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<span class="glass-chip tag-chip px-2 py-0.5" style="background: color-mix(in srgb, var(--article-tag-bg-color) 55%, transparent); color: var(--article-tag-text-color); font-size: var(--article-tag-font-size); font-family: var(--article-tag-font);">#${escapeHtml(t.name)}</span>`).join('')}</div>`
+                : '';
+            const plainText = stripHtml(content);
+            const excerpt = plainText.slice(0, CARD_EXCERPT_LENGTH);
+            const excerptHtml = excerpt ? escapeHtml(excerpt) + (plainText.length > CARD_EXCERPT_LENGTH ? '…' : '') : '';
+            const lineHeight = siteLineHeight * currentLineHeightScale();
+            container.innerHTML = `
+                <article style="border: 0.5px solid var(--divider-color); padding: 1.5rem;">
+                    <div class="text-xs opacity-40 mb-2">${article.date}</div>
+                    <h2 class="text-lg font-normal mb-4 article-title">${escapeHtml(title)}</h2>
+                    ${tagsHtml}
+                    <div class="content-body text-sm" style="line-height: ${lineHeight} !important;">${excerptHtml}</div>
+                </article>
+            `;
+        }
+
         function articleShareUrl(id) {
             return `${SITE_URL}/article/${id}`;
         }
@@ -1232,6 +1276,13 @@
             return m ? Number(m[1]) : null;
         }
 
+        // Instagramストーリー用: サイトタイトル・サブタイトルと、この記事のカード(折りたたみ状態)だけを
+        // 表示する専用ページ。他のUIを隠した状態でスマホでスクショしてもらう想定
+        function getStoryArticleId() {
+            const m = location.pathname.match(/^\/article\/(\d+)\/story\/?$/);
+            return m ? Number(m[1]) : null;
+        }
+
         // 旧形式の共有リンク(#article-数字)も念のため引き続き開けるようにしておく
         function getHashArticleId() {
             const m = location.hash.match(/^#article-(\d+)$/);
@@ -1312,6 +1363,7 @@
             // TOPのカード一覧・タグページで共通)ので、これも表示中のビュー以外では外す
             document.body.classList.remove('card-page-active');
             document.body.classList.remove('wide-page-active');
+            document.body.classList.remove('story-view-active');
             document.getElementById('card-sticky-header').classList.remove('card-sticky-header-visible');
         }
 
@@ -2483,6 +2535,11 @@
             }
             if (isSearchRoute()) {
                 renderSearchPage();
+                return;
+            }
+            const storyArticleId = getStoryArticleId();
+            if (storyArticleId != null) {
+                renderArticleStoryView(storyArticleId);
                 return;
             }
 

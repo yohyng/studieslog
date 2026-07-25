@@ -210,16 +210,10 @@
                                 <button onclick="copyIgCaption()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">キャプションをコピー</button>
                             </div>
                         </div>
-                        <div>
-                            <canvas id="ig-story-canvas" width="1080" height="1920" class="hidden"></canvas>
-                            <img id="ig-story-preview" class="hidden w-20 h-36 object-cover rounded border border-white/10" alt="Instagramストーリー用プレビュー">
-                            <p id="ig-story-preview-empty" class="text-xs text-white/30 w-20">本文に画像がありません</p>
-                        </div>
                         <div class="flex flex-col gap-2">
-                            <span class="text-xs text-white/40">Instagramストーリー用(縦型 9:16)</span>
+                            <span class="text-xs text-white/40">Instagramストーリー用(サイトの見た目そのままのプレビューを新しいタブで開き、スマホでスクショしてください)</span>
                             <div class="flex gap-2">
-                                <button onclick="shareIgStoryImage()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">共有する</button>
-                                <button onclick="downloadIgStoryImage()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">画像をダウンロード</button>
+                                <button onclick="openStoryPreview()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">プレビューを開く</button>
                             </div>
                         </div>
                     </div>
@@ -1442,31 +1436,17 @@
 
         // --- 本文欄を閲覧ページと同じ文字組み・配色にして、公開時の見え方をある程度推測できるようにする ---
         async function loadSiteTypographyForPreview() {
-            // 本文プレビューに必須の基本項目(古くからある列なので確実に存在する)を先に取得する。
-            // これが失敗すると編集画面のフォント・文字サイズが本番と合わなくなるため、
-            // 後から追加した列(Instagramストーリー用など)の取得失敗と切り分けて調べられるようにする
             const { data, error } = await sb.from('site_settings')
                 .select('font, font_size, line_height, letter_spacing, text_align, bg_color, text_color')
                 .eq('id', 1).single();
             if (error || !data) {
-                console.error('サイト設定(基本項目)の取得に失敗しました', error);
+                console.error('サイト設定の取得に失敗しました', error);
                 showToast('サイト設定の取得に失敗しました(編集画面のフォントが本番と異なる場合があります)');
                 return;
             }
             siteTypography = data;
             document.body.style.backgroundColor = data.bg_color;
             applyEditorPreviewStyle();
-
-            // Instagramストーリー用の追加項目。schema.sqlを最新まで実行していない環境では
-            // 列が無くて失敗することがあるが、その場合でも上の基本プレビューには影響させない
-            const extra = await sb.from('site_settings')
-                .select('site_title, site_title_font, site_title_color, site_subtitle, site_subtitle_en, site_subtitle_font, site_subtitle_color, article_tag_bg_color, article_tag_text_color, article_tag_font')
-                .eq('id', 1).single();
-            if (extra.error || !extra.data) {
-                console.error('サイト設定(Instagramストーリー用項目)の取得に失敗しました', extra.error);
-                return;
-            }
-            Object.assign(siteTypography, extra.data);
         }
 
         function currentPreviewTypography() {
@@ -1710,166 +1690,11 @@
                 .catch(() => showToast('コピーに失敗しました'));
         }
 
-        // --- Instagramストーリー用: サイトのタイトル・サブタイトル・記事カードをそのままブランド画像として
-        // 描画する(本文中の画像の有無に関わらず、どの記事でも同じ見た目で書き出せる)。
-        // キャプションは1:1版と共通(igCaption)なので、コピーはそちらのボタンを使う
-        let igStoryImageReady = false;
-
-        // 日本語には単語区切りが無いため、1文字ずつ測って幅に収まるところで折り返す
-        function wrapCanvasText(ctx, text, maxWidth) {
-            const lines = [];
-            let line = '';
-            for (const ch of String(text || '')) {
-                const test = line + ch;
-                if (line && ctx.measureText(test).width > maxWidth) {
-                    lines.push(line);
-                    line = ch;
-                } else {
-                    line = test;
-                }
-            }
-            if (line) lines.push(line);
-            return lines;
-        }
-
-        function roundRectPath(ctx, x, y, w, h, r) {
-            ctx.beginPath();
-            ctx.moveTo(x + r, y);
-            ctx.arcTo(x + w, y, x + w, y + h, r);
-            ctx.arcTo(x + w, y + h, x, y + h, r);
-            ctx.arcTo(x, y + h, x, y, r);
-            ctx.arcTo(x, y, x + w, y, r);
-            ctx.closePath();
-        }
-
-        async function prepareIgStoryCard(article) {
-            const preview = document.getElementById('ig-story-preview');
-            const empty = document.getElementById('ig-story-preview-empty');
-            const canvas = document.getElementById('ig-story-canvas');
-            igStoryImageReady = false;
-            empty.textContent = '画像を作成中…';
-            empty.classList.remove('hidden');
-            preview.classList.add('hidden');
-
-            try {
-                if (document.fonts && document.fonts.ready) await document.fonts.ready;
-                const s = siteTypography || {};
-                const W = 1080, H = 1920;
-                canvas.width = W;
-                canvas.height = H;
-                const ctx = canvas.getContext('2d');
-
-                const bg = s.bg_color || '#2b2b28';
-                const text = s.text_color || '#ffffff';
-                const titleFont = s.site_title_font || s.font || "'Shippori Mincho', serif";
-                const titleColor = s.site_title_color || text;
-                const subtitleFont = s.site_subtitle_font || s.font || titleFont;
-                const subtitleColor = s.site_subtitle_color || text;
-                const bodyFont = s.font || titleFont;
-
-                ctx.fillStyle = bg;
-                ctx.fillRect(0, 0, W, H);
-
-                const marginX = 90;
-                let y = 220;
-                ctx.textBaseline = 'alphabetic';
-                ctx.fillStyle = titleColor;
-                ctx.font = `500 84px ${titleFont}`;
-                ctx.fillText(s.site_title || 'fragments', marginX, y);
-
-                ctx.font = `26px ${subtitleFont}`;
-                ctx.fillStyle = subtitleColor;
-                const subtitleLines = [
-                    ...(s.site_subtitle_en ? wrapCanvasText(ctx, s.site_subtitle_en, W - marginX * 2) : []),
-                    ...(s.site_subtitle ? wrapCanvasText(ctx, s.site_subtitle, W - marginX * 2) : []),
-                ];
-                y += 60;
-                subtitleLines.forEach(line => { ctx.fillText(line, marginX, y); y += 38; });
-
-                // 記事カード(枠だけ描き、高さは中身に合わせて後から決める)
-                const cardX = marginX;
-                const cardW = W - marginX * 2;
-                const cardPad = 56;
-                const cardTop = y + 100;
-                let cy = cardTop + cardPad;
-
-                ctx.font = `24px ${bodyFont}`;
-                ctx.fillStyle = 'rgba(255,255,255,0.4)';
-                ctx.fillText(article.date, cardX + cardPad, cy);
-                cy += 64;
-
-                ctx.font = `600 44px ${titleFont}`;
-                ctx.fillStyle = titleColor;
-                wrapCanvasText(ctx, article.title || '', cardW - cardPad * 2).forEach(line => {
-                    ctx.fillText(line, cardX + cardPad, cy);
-                    cy += 58;
-                });
-                cy += 16;
-
-                const articleTags = Array.from(selectedTagIds).map(id => tags.find(t => t.id === id)).filter(Boolean);
-                if (articleTags.length > 0) {
-                    const tagBg = s.article_tag_bg_color || 'rgba(255,255,255,0.15)';
-                    const tagText = s.article_tag_text_color || text;
-                    const tagFont = s.article_tag_font || bodyFont;
-                    ctx.font = `22px ${tagFont}`;
-                    const label = `#${articleTags[0].name}`;
-                    const chipPadX = 22, chipH = 48;
-                    const tw = ctx.measureText(label).width;
-                    ctx.fillStyle = tagBg;
-                    roundRectPath(ctx, cardX + cardPad, cy, tw + chipPadX * 2, chipH, chipH / 2);
-                    ctx.fill();
-                    ctx.fillStyle = tagText;
-                    ctx.fillText(label, cardX + cardPad + chipPadX, cy + chipH / 2 + 8);
-                    cy += chipH + 40;
-                }
-
-                ctx.font = `28px ${bodyFont}`;
-                ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                const excerptLines = wrapCanvasText(ctx, stripHtml(article.content || ''), cardW - cardPad * 2).slice(0, 8);
-                excerptLines.forEach(line => { ctx.fillText(line, cardX + cardPad, cy); cy += 42; });
-
-                const cardH = cy + cardPad - cardTop;
-                ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-                ctx.lineWidth = 1.5;
-                ctx.strokeRect(cardX, cardTop, cardW, cardH);
-
-                preview.src = canvas.toDataURL('image/jpeg', 0.92);
-                preview.classList.remove('hidden');
-                empty.classList.add('hidden');
-                igStoryImageReady = true;
-            } catch (e) {
-                console.error(e);
-                empty.textContent = '画像の作成に失敗しました';
-                empty.classList.remove('hidden');
-                preview.classList.add('hidden');
-            }
-        }
-
-        function downloadIgStoryImage() {
-            if (!igStoryImageReady) { showToast('画像がありません'); return; }
-            const canvas = document.getElementById('ig-story-canvas');
-            const a = document.createElement('a');
-            a.href = canvas.toDataURL('image/jpeg', 0.92);
-            a.download = 'instagram-story.jpg';
-            a.click();
-        }
-
-        function shareIgStoryImage() {
-            if (!igStoryImageReady) { showToast('画像がありません'); return; }
-            const canvas = document.getElementById('ig-story-canvas');
-            canvas.toBlob(async (blob) => {
-                if (!blob) { showToast('画像の準備に失敗しました'); return; }
-                const file = new File([blob], 'instagram-story.jpg', { type: 'image/jpeg' });
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    try {
-                        await navigator.share({ files: [file], text: igCaption });
-                    } catch (e) {
-                        // ユーザーが共有をキャンセルした場合など
-                    }
-                } else {
-                    showToast('この端末は画像の共有に対応していません。ダウンロードしてください');
-                }
-            }, 'image/jpeg', 0.92);
+        // Instagramストーリー用: サイトの見た目そのままのプレビューページを新しいタブで開く。
+        // そこでスマホでスクショしてもらう想定(story-view-activeがヘッダー以外のUIを隠す)
+        function openStoryPreview() {
+            if (!editingId) { showToast('先に記事を保存してください'); return; }
+            window.open(`${location.origin}/article/${editingId}/story`, '_blank');
         }
 
         async function openEditEditor(id) {
@@ -1899,7 +1724,6 @@
             document.getElementById('social-share-panel').classList.remove('hidden');
             renderSocialDrafts(article);
             prepareIgImage(article);
-            prepareIgStoryCard(article);
 
             showEditorView();
         }
