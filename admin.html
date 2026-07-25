@@ -770,6 +770,11 @@
                     </div>
 
                     <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">注釈文の色</label>
+                        <input id="set-footnote-text-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                    </div>
+
+                    <div class="mb-6 pb-6 border-b border-white/10">
                         <label class="text-xs text-white/50 block mb-2">SNSシェア時の既定画像(記事に画像がない場合に使われます)</label>
                         <div class="flex gap-2 mb-2">
                             <input id="set-og-image" type="text" placeholder="https://..." class="flex-1 bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
@@ -2600,6 +2605,7 @@
             document.getElementById('set-tag-description-size').value = data.tag_description_size;
             document.getElementById('set-tag-description-size-value').textContent = data.tag_description_size + 'px';
             document.getElementById('set-footnote-color').value = data.footnote_color;
+            document.getElementById('set-footnote-text-color').value = data.footnote_text_color || data.text_color;
             document.getElementById('set-selection-bg-color').value = data.selection_bg_color;
             document.getElementById('set-selection-text-color').value = data.selection_text_color;
             document.getElementById('set-about-content').value = data.about_content || '';
@@ -2658,6 +2664,7 @@
                 tag_description_color: document.getElementById('set-tag-description-color').value,
                 tag_description_size: Number(document.getElementById('set-tag-description-size').value),
                 footnote_color: document.getElementById('set-footnote-color').value,
+                footnote_text_color: document.getElementById('set-footnote-text-color').value,
                 selection_bg_color: document.getElementById('set-selection-bg-color').value,
                 selection_text_color: document.getElementById('set-selection-text-color').value,
                 about_content: document.getElementById('set-about-content').value.trim(),

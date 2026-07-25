@@ -25,6 +25,7 @@
             --tag-description-color: #ffffff;
             --tag-description-size: 12px;
             --footnote-color: #7dd3fc;
+            --footnote-text-color: #ffffff;
             --menu-font-size: 12px;
             --list-heading-bg-color: #ffffff;
             --list-heading-text-color: #6b7278;
@@ -467,8 +468,8 @@
         }
         .content-body blockquote { border-left: 1px solid var(--text-color-solid); padding-left: 1.5em; margin: 2em 0; font-style: italic; opacity: 0.7; }
         .content-body h2 { font-size: 1.2em; margin: 2em 0 1em 0; opacity: 0.9; }
-        .footnote-ref { color: var(--footnote-color); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
-        .footnote-ref a { color: inherit; text-decoration: inherit; }
+        .footnote-ref { color: var(--footnote-color); background: color-mix(in srgb, var(--footnote-color) 18%, transparent); padding: 0.05em 0.35em; border-radius: 0.3em; }
+        .footnote-ref a { color: inherit; text-decoration: none; }
         .footnote-list { margin-top: 2.5em; padding-top: 1.2em; border-top: 1px dotted color-mix(in srgb, currentColor 30%, transparent); font-size: 0.8em; opacity: 0.75; list-style: none; }
         .footnote-list li { display: flex; gap: 0.5em; margin-bottom: 0.6em; }
         .footnote-list li span:first-child { flex-shrink: 0; }
@@ -624,6 +625,7 @@
         let previewLines = 3;
         let siteLineHeight = 2.2;
         let siteFootnoteColor = '#7dd3fc';
+        let siteFootnoteTextColor = '#ffffff';
         let siteFontSize = 16;
         let siteAboutContent = '';
         let siteAboutContentEn = '';
@@ -767,6 +769,8 @@
             document.documentElement.style.setProperty('--tag-description-color', data.tag_description_color || data.text_color);
             document.documentElement.style.setProperty('--footnote-color', data.footnote_color || data.text_color);
             siteFootnoteColor = data.footnote_color || data.text_color;
+            document.documentElement.style.setProperty('--footnote-text-color', data.footnote_text_color || data.text_color);
+            siteFootnoteTextColor = data.footnote_text_color || data.text_color;
             document.documentElement.style.setProperty('--menu-font-size', (data.menu_font_size || 12) + 'px');
             document.documentElement.style.setProperty('--list-heading-bg-color', data.list_heading_bg_color || data.text_color);
             document.documentElement.style.setProperty('--list-heading-text-color', data.list_heading_text_color || data.bg_color);
@@ -850,7 +854,7 @@
             let notesHtml = '';
             if (notes.length > 0) {
                 notesHtml = `<ol class="footnote-list">${notes.map((text, i) => `
-                    <li id="fn-${articleId}-${i + 1}"><span style="color:${siteFootnoteColor};">[${i + 1}]</span><span>${escapeHtml(text)}<a href="#fnref-${articleId}-${i + 1}" class="footnote-back">↩</a></span></li>
+                    <li id="fn-${articleId}-${i + 1}"><span style="color:${siteFootnoteColor};">[${i + 1}]</span><span style="color:${siteFootnoteTextColor};">${escapeHtml(text)}<a href="#fnref-${articleId}-${i + 1}" class="footnote-back">↩</a></span></li>
                 `).join('')}</ol>`;
             }
             return container.innerHTML + notesHtml;
