@@ -27,6 +27,11 @@
         /* ブラウザ既定のドロップダウン展開部は背景が白になることが多く、継承した白文字のままだと見えなくなるため明示的に指定する */
         select option, select optgroup { color: #1a1a1a; background-color: #ffffff; }
 
+        /* 表示設定画面のタブ(全体設定/記事本文/カード表示/タグ表示/About) */
+        .settings-tab-btn { color: rgba(255,255,255,0.4); border-bottom: 2px solid transparent; transition: color 0.15s ease, border-color 0.15s ease; }
+        .settings-tab-btn:hover { color: rgba(255,255,255,0.7); }
+        .settings-tab-btn.active { color: #ffffff; border-color: rgba(255,255,255,0.6); }
+
         /* タイプライターモード: 本文以外のUIをフェード+ぼかしで隠し、キャレットの行を画面上の一定位置にロックする */
         .tw-hide { transition: opacity 0.3s ease, filter 0.3s ease; }
         #app-screen.typewriter-mode .tw-hide {
@@ -396,486 +401,509 @@
                 <h2 class="text-sm font-medium mb-1">表示設定</h2>
                 <p class="text-xs text-white/40 mb-8">公開ページ全体の見た目のデフォルトです。保存すると全ての訪問者に反映されます。</p>
 
-                <!-- サイト構成: パターンA(時系列フィード)/B(ハブ型)は廃止し、パターンC(カード型)に統一した。
-                     フロント側のコード自体は残っているが到達不可にしているため、選択肢もパターンCのみにしてある -->
-                <div class="mb-6 pb-6 border-b border-white/10">
-                    <label class="text-xs text-white/50 block mb-2">サイト構成</label>
-                    <select id="set-homepage-layout" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
-                        <option value="card">パターンC: トップがカード型グリッド、カテゴリでフィルター</option>
-                    </select>
-                    <p class="text-xs text-white/30 mt-2">パターンCに統一したため、現在はこの構成のみ選べます。</p>
+                <!-- 設定タブ: サイト全体の見た目/記事本文/カード表示(パターンC)/タグ表示/Aboutページで分けて表示する -->
+                <div class="flex gap-1 mb-6 border-b border-white/10 overflow-x-auto">
+                    <button onclick="switchSettingsTab('overall')" data-settings-tab="overall" class="settings-tab-btn active px-3 py-2 text-xs whitespace-nowrap">全体設定</button>
+                    <button onclick="switchSettingsTab('article')" data-settings-tab="article" class="settings-tab-btn px-3 py-2 text-xs whitespace-nowrap">記事本文</button>
+                    <button onclick="switchSettingsTab('card')" data-settings-tab="card" class="settings-tab-btn px-3 py-2 text-xs whitespace-nowrap">カード表示</button>
+                    <button onclick="switchSettingsTab('tag')" data-settings-tab="tag" class="settings-tab-btn px-3 py-2 text-xs whitespace-nowrap">タグ表示</button>
+                    <button onclick="switchSettingsTab('about')" data-settings-tab="about" class="settings-tab-btn px-3 py-2 text-xs whitespace-nowrap">About</button>
                 </div>
 
-                <!-- パターンC(カード型)のカード内文字設定 -->
-                <div class="mb-6 pb-6 border-b border-white/10">
-                    <label class="text-xs text-white/50 block mb-2">パターンCのカード文字設定</label>
-                    <div class="flex justify-between text-xs text-white/50 mb-1">
-                        <span>文字サイズ</span><span id="card-font-scale-value"></span>
+                <!-- 全体設定: サイト構成、タイトル、メニュー、背景色、台形装飾、選択ハイライト色など、
+                     ページ全体・複数のセクションにまたがる見た目の設定 -->
+                <div class="settings-tab-panel" data-settings-panel="overall">
+                    <!-- サイト構成: パターンA(時系列フィード)/B(ハブ型)は廃止し、パターンC(カード型)に統一した。
+                         フロント側のコード自体は残っているが到達不可にしているため、選択肢もパターンCのみにしてある -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">サイト構成</label>
+                        <select id="set-homepage-layout" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                            <option value="card">パターンC: トップがカード型グリッド、カテゴリでフィルター</option>
+                        </select>
+                        <p class="text-xs text-white/30 mt-2">パターンCに統一したため、現在はこの構成のみ選べます。</p>
                     </div>
-                    <input type="range" id="set-card-font-scale" min="0.7" max="1.4" step="0.05" class="w-full mb-4" oninput="document.getElementById('card-font-scale-value').textContent = this.value">
 
-                    <label class="text-xs text-white/50 block mb-1">タイトルフォント</label>
-                    <select id="set-card-title-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30">
-                        <option value="">本文と同じフォント</option>
-                        <optgroup label="明朝体">
-                            <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
-                            <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
-                            <option value="'Noto Serif JP', serif">Noto Serif JP</option>
-                            <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
-                            <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
-                            <option value="'Kaisei Decol', serif">Kaisei Decol</option>
-                            <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
-                        </optgroup>
-                        <optgroup label="ゴシック体">
-                            <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
-                            <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
-                            <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
-                            <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
-                            <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
-                            <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
-                        </optgroup>
-                        <optgroup label="丸ゴシック体">
-                            <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
-                            <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
-                        </optgroup>
-                        <optgroup label="手書き風">
-                            <option value="'Klee One', cursive">Klee One</option>
-                        </optgroup>
-                        <optgroup label="カリグラフィー風">
-                            <option value="'New Tegomin', serif">New Tegomin</option>
-                            <option value="'Yuji Syuku', serif">Yuji Syuku</option>
-                        </optgroup>
-                    </select>
+                    <!-- タイトル -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">ページタイトル(ブラウザのタブに表示される名前)</label>
+                        <input id="set-page-title" type="text" placeholder="静謐な執筆アーカイブ" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30">
+                        <label class="text-xs text-white/50 block mb-2">サイトタイトル(ページ上部の見出し)</label>
+                        <input id="set-site-title" type="text" placeholder="サイトタイトル" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
+                        <select id="set-site-title-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
+                            <option value="">本文と同じフォント</option>
+                            <optgroup label="明朝体">
+                                <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                                <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                                <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                                <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                                <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                            </optgroup>
+                            <optgroup label="ゴシック体">
+                                <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                                <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                                <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                                <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                                <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                            </optgroup>
+                            <optgroup label="丸ゴシック体">
+                                <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                                <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                            </optgroup>
+                            <optgroup label="手書き風">
+                                <option value="'Klee One', cursive">Klee One</option>
+                            </optgroup>
+                            <optgroup label="カリグラフィー風">
+                                <option value="'New Tegomin', serif">New Tegomin</option>
+                                <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                            </optgroup>
+                            <optgroup label="装飾体(英字のみ・日本語は表示されません)">
+                                <option value="'Fraunces', serif">Fraunces</option>
+                                <option value="'Bodoni Moda', serif">Bodoni Moda</option>
+                                <option value="'Abril Fatface', serif">Abril Fatface</option>
+                                <option value="'Grenze Gotisch', serif">Grenze Gotisch</option>
+                                <option value="'Italiana', serif">Italiana</option>
+                                <option value="'Cormorant', serif">Cormorant</option>
+                            </optgroup>
+                        </select>
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-white/40">サイズ</span>
+                                <input id="set-site-title-size" type="range" min="10" max="40" step="1" class="w-24" oninput="document.getElementById('set-site-title-size-value').textContent = this.value + 'px'">
+                                <span id="set-site-title-size-value" class="text-xs text-white/40 w-10"></span>
+                            </div>
+                            <input id="set-site-title-color" type="color" class="w-8 h-8 rounded cursor-pointer" title="サイトタイトルの色">
+                        </div>
+                        <label class="text-xs text-white/50 block mb-2">サブタイトル</label>
+                        <input id="set-site-subtitle" type="text" placeholder="記憶の集積。言葉は静かに積もっていく。" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-white/40">サイズ</span>
+                                <input id="set-site-subtitle-size" type="range" min="10" max="40" step="1" class="w-24" oninput="document.getElementById('set-site-subtitle-size-value').textContent = this.value + 'px'">
+                                <span id="set-site-subtitle-size-value" class="text-xs text-white/40 w-10"></span>
+                            </div>
+                            <input id="set-site-subtitle-color" type="color" class="w-8 h-8 rounded cursor-pointer" title="サブタイトルの色">
+                        </div>
+                    </div>
 
-                    <label class="text-xs text-white/50 block mb-1">本文フォント</label>
-                    <select id="set-card-excerpt-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30">
-                        <option value="">本文と同じフォント</option>
-                        <optgroup label="明朝体">
-                            <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
-                            <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
-                            <option value="'Noto Serif JP', serif">Noto Serif JP</option>
-                            <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
-                            <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
-                            <option value="'Kaisei Decol', serif">Kaisei Decol</option>
-                            <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
-                        </optgroup>
-                        <optgroup label="ゴシック体">
-                            <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
-                            <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
-                            <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
-                            <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
-                            <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
-                            <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
-                        </optgroup>
-                        <optgroup label="丸ゴシック体">
-                            <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
-                            <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
-                        </optgroup>
-                        <optgroup label="手書き風">
-                            <option value="'Klee One', cursive">Klee One</option>
-                        </optgroup>
-                        <optgroup label="カリグラフィー風">
-                            <option value="'New Tegomin', serif">New Tegomin</option>
-                            <option value="'Yuji Syuku', serif">Yuji Syuku</option>
-                        </optgroup>
-                    </select>
-
-                    <label class="text-xs text-white/50 block mb-1">文字色(タイトル・本文共通)</label>
-                    <input type="color" id="set-card-text-color" class="w-full h-9 bg-white/5 rounded border border-white/10">
-                </div>
-
-                <!-- タイトル -->
-                <div class="mb-6 pb-6 border-b border-white/10">
-                    <label class="text-xs text-white/50 block mb-2">ページタイトル(ブラウザのタブに表示される名前)</label>
-                    <input id="set-page-title" type="text" placeholder="静謐な執筆アーカイブ" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30">
-                    <label class="text-xs text-white/50 block mb-2">サイトタイトル(ページ上部の見出し)</label>
-                    <input id="set-site-title" type="text" placeholder="サイトタイトル" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
-                    <select id="set-site-title-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
-                        <option value="">本文と同じフォント</option>
-                        <optgroup label="明朝体">
-                            <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
-                            <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
-                            <option value="'Noto Serif JP', serif">Noto Serif JP</option>
-                            <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
-                            <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
-                            <option value="'Kaisei Decol', serif">Kaisei Decol</option>
-                            <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
-                        </optgroup>
-                        <optgroup label="ゴシック体">
-                            <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
-                            <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
-                            <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
-                            <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
-                            <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
-                            <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
-                        </optgroup>
-                        <optgroup label="丸ゴシック体">
-                            <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
-                            <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
-                        </optgroup>
-                        <optgroup label="手書き風">
-                            <option value="'Klee One', cursive">Klee One</option>
-                        </optgroup>
-                        <optgroup label="カリグラフィー風">
-                            <option value="'New Tegomin', serif">New Tegomin</option>
-                            <option value="'Yuji Syuku', serif">Yuji Syuku</option>
-                        </optgroup>
-                        <optgroup label="装飾体(英字のみ・日本語は表示されません)">
-                            <option value="'Fraunces', serif">Fraunces</option>
-                            <option value="'Bodoni Moda', serif">Bodoni Moda</option>
-                            <option value="'Abril Fatface', serif">Abril Fatface</option>
-                            <option value="'Grenze Gotisch', serif">Grenze Gotisch</option>
-                            <option value="'Italiana', serif">Italiana</option>
-                            <option value="'Cormorant', serif">Cormorant</option>
-                        </optgroup>
-                    </select>
-                    <div class="flex items-center gap-3 mb-4">
+                    <!-- メニュー -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">サイドバーメニューの文字サイズ</label>
                         <div class="flex items-center gap-2">
-                            <span class="text-xs text-white/40">サイズ</span>
-                            <input id="set-site-title-size" type="range" min="10" max="40" step="1" class="w-24" oninput="document.getElementById('set-site-title-size-value').textContent = this.value + 'px'">
-                            <span id="set-site-title-size-value" class="text-xs text-white/40 w-10"></span>
+                            <input id="set-menu-font-size" type="range" min="10" max="28" step="1" class="w-24" oninput="document.getElementById('set-menu-font-size-value').textContent = this.value + 'px'">
+                            <span id="set-menu-font-size-value" class="text-xs text-white/40 w-10"></span>
                         </div>
-                        <input id="set-site-title-color" type="color" class="w-8 h-8 rounded cursor-pointer" title="サイトタイトルの色">
                     </div>
-                    <label class="text-xs text-white/50 block mb-2">サブタイトル</label>
-                    <input id="set-site-subtitle" type="text" placeholder="記憶の集積。言葉は静かに積もっていく。" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-white/40">サイズ</span>
-                            <input id="set-site-subtitle-size" type="range" min="10" max="40" step="1" class="w-24" oninput="document.getElementById('set-site-subtitle-size-value').textContent = this.value + 'px'">
-                            <span id="set-site-subtitle-size-value" class="text-xs text-white/40 w-10"></span>
+
+                    <!-- 背景色 -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">背景色</label>
+                        <div class="flex gap-2 mb-3 items-center">
+                            <input type="color" id="set-bg-color" class="w-12 h-12 rounded cursor-pointer" onchange="document.getElementById('set-bg-color-value').textContent = this.value; checkSetContrast()">
+                            <span id="set-bg-color-value" class="text-xs text-white/50 font-mono"></span>
                         </div>
-                        <input id="set-site-subtitle-color" type="color" class="w-8 h-8 rounded cursor-pointer" title="サブタイトルの色">
+                        <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                            <button onclick="pickColor('set-bg-color', '#6b7278')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#6b7278;" title="石板色"></button>
+                            <button onclick="pickColor('set-bg-color', '#2c3e50')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#2c3e50;" title="深紺"></button>
+                            <button onclick="pickColor('set-bg-color', '#1a1f24')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#1a1f24;" title="漆黒"></button>
+                            <button onclick="pickColor('set-bg-color', '#3d5a5d')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#3d5a5d;" title="緑青"></button>
+                            <button onclick="pickColor('set-bg-color', '#5a4a3a')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#5a4a3a;" title="茶色"></button>
+                            <button onclick="pickColor('set-bg-color', '#f5f2ea')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#f5f2ea;" title="生成り(明)"></button>
+                            <button onclick="pickColor('set-bg-color', '#ffffff')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#ffffff;" title="白"></button>
+                            <button onclick="pickColor('set-bg-color', '#e8e2d0')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#e8e2d0;" title="砂紙"></button>
+                            <button onclick="pickColor('set-bg-color', '#dfe6e0')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#dfe6e0;" title="薄青磁"></button>
+                        </div>
+                        <label class="text-xs text-white/50 block mb-2 mt-4">グラデーション背景(テスト機能。上の背景色の代わりに使われます)</label>
+                        <select id="set-gradient-bg-style" onchange="toggleBgImageUpload()" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30 mb-3">
+                            <option value="">使わない(通常の背景色)</option>
+                            <option value="gray">グレー(画像・粒状ノイズ、タイル状)</option>
+                            <option value="dark">ダーク(画像・上から下へ黒くフェード)</option>
+                            <option value="svg">プログラム生成(SVGノイズ、軽量)</option>
+                            <option value="silver">シルバー(写真由来の細かいグレイン)</option>
+                            <option value="smooth">スムース(ノイズなしの滑らかな光沢、5パターンからランダム表示)</option>
+                            <option value="custom">画像をアップロードして使う</option>
+                        </select>
+                        <div id="bg-image-upload-row" class="hidden">
+                            <div class="flex gap-2 mb-2">
+                                <input id="set-bg-image-url" type="text" placeholder="https://..." class="flex-1 bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                                <button onclick="uploadBgImage()" class="px-3 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap">📷 アップロード</button>
+                            </div>
+                            <p class="text-xs text-white/30">アップロードした画像はタイル状に敷き詰めて表示されます。継ぎ目のない模様やテクスチャ系の画像だと綺麗に見えます(人物や風景など柄が一目でわかる写真は、繰り返しの境目が目立つことがあります)。</p>
+                        </div>
+                        <div class="mt-3">
+                            <div class="flex justify-between text-xs text-white/50 mb-1"><span>シルバー背景の暗さ</span><span id="set-silver-darkness-value"></span></div>
+                            <input type="range" id="set-silver-darkness" min="0" max="0.6" step="0.05" class="w-full" oninput="document.getElementById('set-silver-darkness-value').textContent = this.value">
+                        </div>
                     </div>
-                </div>
 
-                <!-- メニュー -->
-                <div class="mb-6 pb-6 border-b border-white/10">
-                    <label class="text-xs text-white/50 block mb-2">サイドバーメニューの文字サイズ</label>
-                    <div class="flex items-center gap-2">
-                        <input id="set-menu-font-size" type="range" min="10" max="28" step="1" class="w-24" oninput="document.getElementById('set-menu-font-size-value').textContent = this.value + 'px'">
-                        <span id="set-menu-font-size-value" class="text-xs text-white/40 w-10"></span>
+                    <!-- タイトルの台形装飾(テスト機能) -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="text-xs text-white/50">タイトル横の台形装飾(テスト機能)</label>
+                            <label class="flex items-center gap-2 text-xs text-white/50">
+                                <input type="checkbox" id="set-title-shape-enabled" class="rounded">
+                                表示する
+                            </label>
+                        </div>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-3">
+                            <div>
+                                <div class="flex justify-between text-xs text-white/50 mb-1"><span>幅</span><span id="set-title-shape-width-value"></span></div>
+                                <input type="range" id="set-title-shape-width" min="80" max="400" step="5" class="w-full" oninput="document.getElementById('set-title-shape-width-value').textContent = this.value + 'px'">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-white/50 mb-1"><span>高さ</span><span id="set-title-shape-height-value"></span></div>
+                                <input type="range" id="set-title-shape-height" min="80" max="400" step="5" class="w-full" oninput="document.getElementById('set-title-shape-height-value').textContent = this.value + 'px'">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-white/50 mb-1"><span>縦位置(上に重なる量)</span><span id="set-title-shape-top-value"></span></div>
+                                <input type="range" id="set-title-shape-top" min="-150" max="50" step="5" class="w-full" oninput="document.getElementById('set-title-shape-top-value').textContent = this.value + 'px'">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-white/50 mb-1"><span>不透明度</span><span id="set-title-shape-opacity-value"></span></div>
+                                <input type="range" id="set-title-shape-opacity" min="0" max="1" step="0.05" class="w-full" oninput="document.getElementById('set-title-shape-opacity-value').textContent = this.value">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-white/50 mb-1"><span>線の太さ</span><span id="set-title-shape-stroke-width-value"></span></div>
+                                <input type="range" id="set-title-shape-stroke-width" min="0.5" max="4" step="0.5" class="w-full" oninput="document.getElementById('set-title-shape-stroke-width-value').textContent = this.value + 'px'">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-white/50 mb-1"><span>形のランダム度(読み込むたび)</span><span id="set-title-shape-jitter-value"></span></div>
+                                <input type="range" id="set-title-shape-jitter" min="0" max="40" step="1" class="w-full" oninput="document.getElementById('set-title-shape-jitter-value').textContent = this.value">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-white/50 mb-1"><span>常時の揺れ幅</span><span id="set-title-shape-wobble-value"></span></div>
+                                <input type="range" id="set-title-shape-wobble" min="0" max="20" step="1" class="w-full" oninput="document.getElementById('set-title-shape-wobble-value').textContent = this.value">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-white/50 mb-1"><span>ホバー時の反応の強さ</span><span id="set-title-shape-hover-intensity-value"></span></div>
+                                <input type="range" id="set-title-shape-hover-intensity" min="0" max="3" step="0.1" class="w-full" oninput="document.getElementById('set-title-shape-hover-intensity-value').textContent = this.value">
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                <!-- フォント -->
-                <div class="mb-6">
-                    <label class="text-xs text-white/50 block mb-2">本文フォント</label>
-                    <select id="set-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
-                        <optgroup label="明朝体">
-                            <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
-                            <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
-                            <option value="'Noto Serif JP', serif">Noto Serif JP</option>
-                            <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
-                            <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
-                            <option value="'Kaisei Decol', serif">Kaisei Decol</option>
-                            <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
-                        </optgroup>
-                        <optgroup label="ゴシック体">
-                            <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
-                            <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
-                            <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
-                            <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
-                            <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
-                            <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
-                        </optgroup>
-                        <optgroup label="丸ゴシック体">
-                            <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
-                            <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
-                        </optgroup>
-                        <optgroup label="手書き風">
-                            <option value="'Klee One', cursive">Klee One</option>
-                        </optgroup>
-                        <optgroup label="カリグラフィー風">
-                            <option value="'New Tegomin', serif">New Tegomin</option>
-                            <option value="'Yuji Syuku', serif">Yuji Syuku</option>
-                        </optgroup>
-                        <optgroup label="装飾体(英字のみ・日本語は表示されません)">
-                            <option value="'Fraunces', serif">Fraunces</option>
-                            <option value="'Bodoni Moda', serif">Bodoni Moda</option>
-                            <option value="'Abril Fatface', serif">Abril Fatface</option>
-                            <option value="'Grenze Gotisch', serif">Grenze Gotisch</option>
-                            <option value="'Italiana', serif">Italiana</option>
-                            <option value="'Cormorant', serif">Cormorant</option>
-                        </optgroup>
-                    </select>
-                </div>
-
-                <!-- 文字組み -->
-                <div class="mb-6 pb-6 border-b border-white/10">
-                    <label class="text-xs text-white/50 block mb-3">文字組み</label>
-                    <div class="flex flex-col gap-4">
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1">
-                                <span>文字サイズ</span><span id="set-font-size-value"></span>
+                    <!-- テキスト選択時のハイライト色 -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">テキスト選択時のハイライト色</label>
+                        <div class="flex items-center gap-6">
+                            <div class="flex items-center gap-2">
+                                <input id="set-selection-bg-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                                <span class="text-xs text-white/40">背景色</span>
                             </div>
-                            <input type="range" id="set-font-size" min="10" max="40" step="1" class="w-full" oninput="document.getElementById('set-font-size-value').textContent = this.value + 'px'">
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1">
-                                <span>行間</span><span id="set-line-height-value"></span>
+                            <div class="flex items-center gap-2">
+                                <input id="set-selection-text-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                                <span class="text-xs text-white/40">文字色</span>
                             </div>
-                            <input type="range" id="set-line-height" min="1.0" max="10" step="0.1" class="w-full" oninput="document.getElementById('set-line-height-value').textContent = this.value">
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1">
-                                <span>文字間隔</span><span id="set-letter-spacing-value"></span>
-                            </div>
-                            <input type="range" id="set-letter-spacing" min="-0.05" max="0.6" step="0.01" class="w-full" oninput="document.getElementById('set-letter-spacing-value').textContent = this.value + 'em'">
-                        </div>
-                        <div>
-                            <label class="text-xs text-white/50 block mb-1">文字揃え</label>
-                            <select id="set-text-align" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
-                                <option value="left">左揃え</option>
-                                <option value="center">中央揃え</option>
-                                <option value="right">右揃え</option>
-                                <option value="justify">両端揃え</option>
-                            </select>
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1">
-                                <span>頭出し行数(閉じているときに見える行数)</span><span id="set-preview-lines-value"></span>
-                            </div>
-                            <input type="range" id="set-preview-lines" min="1" max="20" step="1" class="w-full" oninput="document.getElementById('set-preview-lines-value').textContent = this.value + '行'">
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1">
-                                <span>本文の表示幅</span><span id="set-content-width-value"></span>
-                            </div>
-                            <input type="range" id="set-content-width" min="280" max="1600" step="20" class="w-full" oninput="document.getElementById('set-content-width-value').textContent = this.value + 'px'">
                         </div>
                     </div>
                 </div>
 
-                <!-- 背景色 -->
-                <div class="mb-6">
-                    <label class="text-xs text-white/50 block mb-2">背景色</label>
-                    <div class="flex gap-2 mb-3 items-center">
-                        <input type="color" id="set-bg-color" class="w-12 h-12 rounded cursor-pointer" onchange="document.getElementById('set-bg-color-value').textContent = this.value; checkSetContrast()">
-                        <span id="set-bg-color-value" class="text-xs text-white/50 font-mono"></span>
+                <!-- 記事本文: 本文フォント、文字組み、文字色、注釈、SNSシェア既定画像など、記事の表示に関わる設定 -->
+                <div class="settings-tab-panel hidden" data-settings-panel="article">
+                    <!-- フォント -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">本文フォント</label>
+                        <select id="set-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                            <optgroup label="明朝体">
+                                <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                                <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                                <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                                <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                                <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                            </optgroup>
+                            <optgroup label="ゴシック体">
+                                <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                                <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                                <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                                <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                                <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                            </optgroup>
+                            <optgroup label="丸ゴシック体">
+                                <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                                <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                            </optgroup>
+                            <optgroup label="手書き風">
+                                <option value="'Klee One', cursive">Klee One</option>
+                            </optgroup>
+                            <optgroup label="カリグラフィー風">
+                                <option value="'New Tegomin', serif">New Tegomin</option>
+                                <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                            </optgroup>
+                            <optgroup label="装飾体(英字のみ・日本語は表示されません)">
+                                <option value="'Fraunces', serif">Fraunces</option>
+                                <option value="'Bodoni Moda', serif">Bodoni Moda</option>
+                                <option value="'Abril Fatface', serif">Abril Fatface</option>
+                                <option value="'Grenze Gotisch', serif">Grenze Gotisch</option>
+                                <option value="'Italiana', serif">Italiana</option>
+                                <option value="'Cormorant', serif">Cormorant</option>
+                            </optgroup>
+                        </select>
                     </div>
-                    <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                        <button onclick="pickColor('set-bg-color', '#6b7278')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#6b7278;" title="石板色"></button>
-                        <button onclick="pickColor('set-bg-color', '#2c3e50')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#2c3e50;" title="深紺"></button>
-                        <button onclick="pickColor('set-bg-color', '#1a1f24')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#1a1f24;" title="漆黒"></button>
-                        <button onclick="pickColor('set-bg-color', '#3d5a5d')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#3d5a5d;" title="緑青"></button>
-                        <button onclick="pickColor('set-bg-color', '#5a4a3a')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#5a4a3a;" title="茶色"></button>
-                        <button onclick="pickColor('set-bg-color', '#f5f2ea')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#f5f2ea;" title="生成り(明)"></button>
-                        <button onclick="pickColor('set-bg-color', '#ffffff')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#ffffff;" title="白"></button>
-                        <button onclick="pickColor('set-bg-color', '#e8e2d0')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#e8e2d0;" title="砂紙"></button>
-                        <button onclick="pickColor('set-bg-color', '#dfe6e0')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#dfe6e0;" title="薄青磁"></button>
+
+                    <!-- 文字組み -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-3">文字組み</label>
+                        <div class="flex flex-col gap-4">
+                            <div>
+                                <div class="flex justify-between text-xs text-white/50 mb-1">
+                                    <span>文字サイズ</span><span id="set-font-size-value"></span>
+                                </div>
+                                <input type="range" id="set-font-size" min="10" max="40" step="1" class="w-full" oninput="document.getElementById('set-font-size-value').textContent = this.value + 'px'">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-white/50 mb-1">
+                                    <span>行間</span><span id="set-line-height-value"></span>
+                                </div>
+                                <input type="range" id="set-line-height" min="1.0" max="10" step="0.1" class="w-full" oninput="document.getElementById('set-line-height-value').textContent = this.value">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-white/50 mb-1">
+                                    <span>文字間隔</span><span id="set-letter-spacing-value"></span>
+                                </div>
+                                <input type="range" id="set-letter-spacing" min="-0.05" max="0.6" step="0.01" class="w-full" oninput="document.getElementById('set-letter-spacing-value').textContent = this.value + 'em'">
+                            </div>
+                            <div>
+                                <label class="text-xs text-white/50 block mb-1">文字揃え</label>
+                                <select id="set-text-align" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                                    <option value="left">左揃え</option>
+                                    <option value="center">中央揃え</option>
+                                    <option value="right">右揃え</option>
+                                    <option value="justify">両端揃え</option>
+                                </select>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-white/50 mb-1">
+                                    <span>頭出し行数(閉じているときに見える行数)</span><span id="set-preview-lines-value"></span>
+                                </div>
+                                <input type="range" id="set-preview-lines" min="1" max="20" step="1" class="w-full" oninput="document.getElementById('set-preview-lines-value').textContent = this.value + '行'">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-white/50 mb-1">
+                                    <span>本文の表示幅</span><span id="set-content-width-value"></span>
+                                </div>
+                                <input type="range" id="set-content-width" min="280" max="1600" step="20" class="w-full" oninput="document.getElementById('set-content-width-value').textContent = this.value + 'px'">
+                            </div>
+                        </div>
                     </div>
-                    <label class="text-xs text-white/50 block mb-2 mt-4">グラデーション背景(テスト機能。上の背景色の代わりに使われます)</label>
-                    <select id="set-gradient-bg-style" onchange="toggleBgImageUpload()" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30 mb-3">
-                        <option value="">使わない(通常の背景色)</option>
-                        <option value="gray">グレー(画像・粒状ノイズ、タイル状)</option>
-                        <option value="dark">ダーク(画像・上から下へ黒くフェード)</option>
-                        <option value="svg">プログラム生成(SVGノイズ、軽量)</option>
-                        <option value="silver">シルバー(写真由来の細かいグレイン)</option>
-                        <option value="smooth">スムース(ノイズなしの滑らかな光沢、5パターンからランダム表示)</option>
-                        <option value="custom">画像をアップロードして使う</option>
-                    </select>
-                    <div id="bg-image-upload-row" class="hidden">
+
+                    <!-- 文字色 -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">文字色</label>
+                        <div class="flex gap-2 mb-3 items-center">
+                            <input type="color" id="set-text-color" class="w-12 h-12 rounded cursor-pointer" onchange="document.getElementById('set-text-color-value').textContent = this.value; checkSetContrast()">
+                            <span id="set-text-color-value" class="text-xs text-white/50 font-mono"></span>
+                        </div>
+                        <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                            <button onclick="pickColor('set-text-color', '#ffffff')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#ffffff;" title="白"></button>
+                            <button onclick="pickColor('set-text-color', '#e8e4d8')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#e8e4d8;" title="生成り"></button>
+                            <button onclick="pickColor('set-text-color', '#d4c9a8')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#d4c9a8;" title="砂色"></button>
+                            <button onclick="pickColor('set-text-color', '#111111')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#111111;" title="漆黒"></button>
+                            <button onclick="pickColor('set-text-color', '#3a2f28')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#3a2f28;" title="焦茶"></button>
+                        </div>
+                        <div id="set-contrast-warning" class="hidden text-xs mt-3 leading-relaxed" style="color:#f0b429;">⚠ 背景色とのコントラストが低く、文字が読みにくくなっています</div>
+                    </div>
+
+                    <!-- 注釈 -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">注釈番号の色</label>
+                        <input id="set-footnote-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                    </div>
+
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">SNSシェア時の既定画像(記事に画像がない場合に使われます)</label>
                         <div class="flex gap-2 mb-2">
-                            <input id="set-bg-image-url" type="text" placeholder="https://..." class="flex-1 bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
-                            <button onclick="uploadBgImage()" class="px-3 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap">📷 アップロード</button>
+                            <input id="set-og-image" type="text" placeholder="https://..." class="flex-1 bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                            <button onclick="uploadOgImage()" class="px-3 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap">📷 アップロード</button>
                         </div>
-                        <p class="text-xs text-white/30">アップロードした画像はタイル状に敷き詰めて表示されます。継ぎ目のない模様やテクスチャ系の画像だと綺麗に見えます(人物や風景など柄が一目でわかる写真は、繰り返しの境目が目立つことがあります)。</p>
-                    </div>
-                    <div class="mt-3">
-                        <div class="flex justify-between text-xs text-white/50 mb-1"><span>シルバー背景の暗さ</span><span id="set-silver-darkness-value"></span></div>
-                        <input type="range" id="set-silver-darkness" min="0" max="0.6" step="0.05" class="w-full" oninput="document.getElementById('set-silver-darkness-value').textContent = this.value">
+                        <p class="text-xs text-white/30">記事ごとに紹介リンクは設定できますが、シェアカードの画像は本文中の1枚目の画像、なければこれが使われます。</p>
                     </div>
                 </div>
 
-                <!-- タイトルの台形装飾(テスト機能) -->
-                <div class="mb-6 pb-6 border-b border-white/10">
-                    <div class="flex items-center justify-between mb-3">
-                        <label class="text-xs text-white/50">タイトル横の台形装飾(テスト機能)</label>
-                        <label class="flex items-center gap-2 text-xs text-white/50">
-                            <input type="checkbox" id="set-title-shape-enabled" class="rounded">
-                            表示する
-                        </label>
-                    </div>
-                    <div class="grid grid-cols-2 gap-x-4 gap-y-3">
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1"><span>幅</span><span id="set-title-shape-width-value"></span></div>
-                            <input type="range" id="set-title-shape-width" min="80" max="400" step="5" class="w-full" oninput="document.getElementById('set-title-shape-width-value').textContent = this.value + 'px'">
+                <!-- カード表示(パターンC)のカード内文字設定 -->
+                <div class="settings-tab-panel hidden" data-settings-panel="card">
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">パターンCのカード文字設定</label>
+                        <div class="flex justify-between text-xs text-white/50 mb-1">
+                            <span>文字サイズ</span><span id="card-font-scale-value"></span>
                         </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1"><span>高さ</span><span id="set-title-shape-height-value"></span></div>
-                            <input type="range" id="set-title-shape-height" min="80" max="400" step="5" class="w-full" oninput="document.getElementById('set-title-shape-height-value').textContent = this.value + 'px'">
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1"><span>縦位置(上に重なる量)</span><span id="set-title-shape-top-value"></span></div>
-                            <input type="range" id="set-title-shape-top" min="-150" max="50" step="5" class="w-full" oninput="document.getElementById('set-title-shape-top-value').textContent = this.value + 'px'">
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1"><span>不透明度</span><span id="set-title-shape-opacity-value"></span></div>
-                            <input type="range" id="set-title-shape-opacity" min="0" max="1" step="0.05" class="w-full" oninput="document.getElementById('set-title-shape-opacity-value').textContent = this.value">
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1"><span>線の太さ</span><span id="set-title-shape-stroke-width-value"></span></div>
-                            <input type="range" id="set-title-shape-stroke-width" min="0.5" max="4" step="0.5" class="w-full" oninput="document.getElementById('set-title-shape-stroke-width-value').textContent = this.value + 'px'">
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1"><span>形のランダム度(読み込むたび)</span><span id="set-title-shape-jitter-value"></span></div>
-                            <input type="range" id="set-title-shape-jitter" min="0" max="40" step="1" class="w-full" oninput="document.getElementById('set-title-shape-jitter-value').textContent = this.value">
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1"><span>常時の揺れ幅</span><span id="set-title-shape-wobble-value"></span></div>
-                            <input type="range" id="set-title-shape-wobble" min="0" max="20" step="1" class="w-full" oninput="document.getElementById('set-title-shape-wobble-value').textContent = this.value">
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1"><span>ホバー時の反応の強さ</span><span id="set-title-shape-hover-intensity-value"></span></div>
-                            <input type="range" id="set-title-shape-hover-intensity" min="0" max="3" step="0.1" class="w-full" oninput="document.getElementById('set-title-shape-hover-intensity-value').textContent = this.value">
-                        </div>
+                        <input type="range" id="set-card-font-scale" min="0.7" max="1.4" step="0.05" class="w-full mb-4" oninput="document.getElementById('card-font-scale-value').textContent = this.value">
+
+                        <label class="text-xs text-white/50 block mb-1">タイトルフォント</label>
+                        <select id="set-card-title-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30">
+                            <option value="">本文と同じフォント</option>
+                            <optgroup label="明朝体">
+                                <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                                <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                                <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                                <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                                <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                            </optgroup>
+                            <optgroup label="ゴシック体">
+                                <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                                <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                                <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                                <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                                <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                            </optgroup>
+                            <optgroup label="丸ゴシック体">
+                                <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                                <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                            </optgroup>
+                            <optgroup label="手書き風">
+                                <option value="'Klee One', cursive">Klee One</option>
+                            </optgroup>
+                            <optgroup label="カリグラフィー風">
+                                <option value="'New Tegomin', serif">New Tegomin</option>
+                                <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                            </optgroup>
+                        </select>
+
+                        <label class="text-xs text-white/50 block mb-1">本文フォント</label>
+                        <select id="set-card-excerpt-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-4 focus:outline-none focus:border-white/30">
+                            <option value="">本文と同じフォント</option>
+                            <optgroup label="明朝体">
+                                <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                                <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                                <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                                <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                                <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                            </optgroup>
+                            <optgroup label="ゴシック体">
+                                <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                                <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                                <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                                <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                                <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                            </optgroup>
+                            <optgroup label="丸ゴシック体">
+                                <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                                <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                            </optgroup>
+                            <optgroup label="手書き風">
+                                <option value="'Klee One', cursive">Klee One</option>
+                            </optgroup>
+                            <optgroup label="カリグラフィー風">
+                                <option value="'New Tegomin', serif">New Tegomin</option>
+                                <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                            </optgroup>
+                        </select>
+
+                        <label class="text-xs text-white/50 block mb-1">文字色(タイトル・本文共通)</label>
+                        <input type="color" id="set-card-text-color" class="w-full h-9 bg-white/5 rounded border border-white/10">
                     </div>
                 </div>
 
-                <!-- 文字色 -->
-                <div class="mb-6">
-                    <label class="text-xs text-white/50 block mb-2">文字色</label>
-                    <div class="flex gap-2 mb-3 items-center">
-                        <input type="color" id="set-text-color" class="w-12 h-12 rounded cursor-pointer" onchange="document.getElementById('set-text-color-value').textContent = this.value; checkSetContrast()">
-                        <span id="set-text-color-value" class="text-xs text-white/50 font-mono"></span>
-                    </div>
-                    <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                        <button onclick="pickColor('set-text-color', '#ffffff')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#ffffff;" title="白"></button>
-                        <button onclick="pickColor('set-text-color', '#e8e4d8')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#e8e4d8;" title="生成り"></button>
-                        <button onclick="pickColor('set-text-color', '#d4c9a8')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#d4c9a8;" title="砂色"></button>
-                        <button onclick="pickColor('set-text-color', '#111111')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#111111;" title="漆黒"></button>
-                        <button onclick="pickColor('set-text-color', '#3a2f28')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#3a2f28;" title="焦茶"></button>
-                    </div>
-                    <div id="set-contrast-warning" class="hidden text-xs mt-3 leading-relaxed" style="color:#f0b429;">⚠ 背景色とのコントラストが低く、文字が読みにくくなっています</div>
-                </div>
-
-                <!-- ハッシュタグ -->
-                <div class="mb-6 pb-6 border-b border-white/10">
-                    <label class="text-xs text-white/50 block mb-2">ハッシュタグの配色・サイズ</label>
-                    <div class="flex items-center gap-6 mb-4">
-                        <div class="flex items-center gap-2">
-                            <input id="set-tag-bg-color" type="color" class="w-10 h-10 rounded cursor-pointer">
-                            <span class="text-xs text-white/40">背景色</span>
+                <!-- タグ表示: ハッシュタグの配色・サイズ、タグページの説明文、一覧ページの見出しなど -->
+                <div class="settings-tab-panel hidden" data-settings-panel="tag">
+                    <!-- ハッシュタグ -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">ハッシュタグの配色・サイズ</label>
+                        <div class="flex items-center gap-6 mb-4">
+                            <div class="flex items-center gap-2">
+                                <input id="set-tag-bg-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                                <span class="text-xs text-white/40">背景色</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input id="set-tag-text-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                                <span class="text-xs text-white/40">文字色</span>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <input id="set-tag-text-color" type="color" class="w-10 h-10 rounded cursor-pointer">
-                            <span class="text-xs text-white/40">文字色</span>
+                        <div class="flex items-center gap-2 mb-4">
+                            <span class="text-xs text-white/40">文字サイズ</span>
+                            <input id="set-tag-font-size" type="range" min="8" max="24" step="1" class="flex-1" oninput="document.getElementById('set-tag-font-size-value').textContent = this.value + 'px'">
+                            <span id="set-tag-font-size-value" class="text-xs text-white/40 w-10"></span>
                         </div>
+                        <select id="set-tag-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                            <option value="">本文と同じフォント</option>
+                            <optgroup label="明朝体">
+                                <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                                <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                                <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                                <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                                <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                            </optgroup>
+                            <optgroup label="ゴシック体">
+                                <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                                <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                                <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                                <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                                <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                            </optgroup>
+                            <optgroup label="丸ゴシック体">
+                                <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                                <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                            </optgroup>
+                            <optgroup label="手書き風">
+                                <option value="'Klee One', cursive">Klee One</option>
+                            </optgroup>
+                            <optgroup label="カリグラフィー風">
+                                <option value="'New Tegomin', serif">New Tegomin</option>
+                                <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                            </optgroup>
+                            <optgroup label="装飾体(英字のみ・日本語は表示されません)">
+                                <option value="'Fraunces', serif">Fraunces</option>
+                                <option value="'Bodoni Moda', serif">Bodoni Moda</option>
+                                <option value="'Abril Fatface', serif">Abril Fatface</option>
+                                <option value="'Grenze Gotisch', serif">Grenze Gotisch</option>
+                                <option value="'Italiana', serif">Italiana</option>
+                                <option value="'Cormorant', serif">Cormorant</option>
+                            </optgroup>
+                        </select>
                     </div>
-                    <div class="flex items-center gap-2 mb-4">
-                        <span class="text-xs text-white/40">文字サイズ</span>
-                        <input id="set-tag-font-size" type="range" min="8" max="24" step="1" class="flex-1" oninput="document.getElementById('set-tag-font-size-value').textContent = this.value + 'px'">
-                        <span id="set-tag-font-size-value" class="text-xs text-white/40 w-10"></span>
-                    </div>
-                    <select id="set-tag-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
-                        <option value="">本文と同じフォント</option>
-                        <optgroup label="明朝体">
-                            <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
-                            <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
-                            <option value="'Noto Serif JP', serif">Noto Serif JP</option>
-                            <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
-                            <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
-                            <option value="'Kaisei Decol', serif">Kaisei Decol</option>
-                            <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
-                        </optgroup>
-                        <optgroup label="ゴシック体">
-                            <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
-                            <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
-                            <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
-                            <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
-                            <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
-                            <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
-                        </optgroup>
-                        <optgroup label="丸ゴシック体">
-                            <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
-                            <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
-                        </optgroup>
-                        <optgroup label="手書き風">
-                            <option value="'Klee One', cursive">Klee One</option>
-                        </optgroup>
-                        <optgroup label="カリグラフィー風">
-                            <option value="'New Tegomin', serif">New Tegomin</option>
-                            <option value="'Yuji Syuku', serif">Yuji Syuku</option>
-                        </optgroup>
-                        <optgroup label="装飾体(英字のみ・日本語は表示されません)">
-                            <option value="'Fraunces', serif">Fraunces</option>
-                            <option value="'Bodoni Moda', serif">Bodoni Moda</option>
-                            <option value="'Abril Fatface', serif">Abril Fatface</option>
-                            <option value="'Grenze Gotisch', serif">Grenze Gotisch</option>
-                            <option value="'Italiana', serif">Italiana</option>
-                            <option value="'Cormorant', serif">Cormorant</option>
-                        </optgroup>
-                    </select>
-                </div>
 
-                <!-- タグページの説明文 -->
-                <div class="mb-6 pb-6 border-b border-white/10">
-                    <label class="text-xs text-white/50 block mb-2">タグページの説明文の色・サイズ(/tag/スラッグ で表示されるタグの説明)</label>
-                    <div class="flex items-center gap-4">
-                        <input id="set-tag-description-color" type="color" class="w-10 h-10 rounded cursor-pointer">
-                        <input id="set-tag-description-size" type="range" min="8" max="24" step="1" class="flex-1" oninput="document.getElementById('set-tag-description-size-value').textContent = this.value + 'px'">
-                        <span id="set-tag-description-size-value" class="text-xs text-white/40 w-10"></span>
-                    </div>
-                </div>
-
-                <!-- 一覧ページ(/list)の見出し(Article List / Tag)の配色 -->
-                <div class="mb-6 pb-6 border-b border-white/10">
-                    <label class="text-xs text-white/50 block mb-2">一覧ページの見出し(Article List / Tag)の配色</label>
-                    <div class="flex items-center gap-6">
-                        <div class="flex items-center gap-2">
-                            <input id="set-list-heading-bg-color" type="color" class="w-10 h-10 rounded cursor-pointer">
-                            <span class="text-xs text-white/40">背景色</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input id="set-list-heading-text-color" type="color" class="w-10 h-10 rounded cursor-pointer">
-                            <span class="text-xs text-white/40">文字色</span>
+                    <!-- タグページの説明文 -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">タグページの説明文の色・サイズ(/tag/スラッグ で表示されるタグの説明)</label>
+                        <div class="flex items-center gap-4">
+                            <input id="set-tag-description-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                            <input id="set-tag-description-size" type="range" min="8" max="24" step="1" class="flex-1" oninput="document.getElementById('set-tag-description-size-value').textContent = this.value + 'px'">
+                            <span id="set-tag-description-size-value" class="text-xs text-white/40 w-10"></span>
                         </div>
                     </div>
-                </div>
 
-                <!-- 注釈 -->
-                <div class="mb-6 pb-6 border-b border-white/10">
-                    <label class="text-xs text-white/50 block mb-2">注釈番号の色</label>
-                    <input id="set-footnote-color" type="color" class="w-10 h-10 rounded cursor-pointer">
-                </div>
-
-                <!-- テキスト選択時のハイライト色 -->
-                <div class="mb-6 pb-6 border-b border-white/10">
-                    <label class="text-xs text-white/50 block mb-2">テキスト選択時のハイライト色</label>
-                    <div class="flex items-center gap-6">
-                        <div class="flex items-center gap-2">
-                            <input id="set-selection-bg-color" type="color" class="w-10 h-10 rounded cursor-pointer">
-                            <span class="text-xs text-white/40">背景色</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input id="set-selection-text-color" type="color" class="w-10 h-10 rounded cursor-pointer">
-                            <span class="text-xs text-white/40">文字色</span>
+                    <!-- 一覧ページ(/list)の見出し(Article List / Tag)の配色 -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">一覧ページの見出し(Article List / Tag)の配色</label>
+                        <div class="flex items-center gap-6">
+                            <div class="flex items-center gap-2">
+                                <input id="set-list-heading-bg-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                                <span class="text-xs text-white/40">背景色</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input id="set-list-heading-text-color" type="color" class="w-10 h-10 rounded cursor-pointer">
+                                <span class="text-xs text-white/40">文字色</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- アバウトページ -->
-                <div class="mb-6 pb-6 border-b border-white/10">
-                    <label class="text-xs text-white/50 block mb-2">アバウトページの内容(/about に表示されます)</label>
-                    <textarea id="set-about-content" rows="6" placeholder="サイトや運営者についての紹介文" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30 mb-4"></textarea>
-                    <label class="text-xs text-white/50 block mb-2">アバウトページの内容(英語。空欄なら英語表示でも日本語のまま)</label>
-                    <textarea id="set-about-content-en" rows="6" placeholder="About the site, in English" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30 mb-4"></textarea>
-                    <label class="text-xs text-white/50 block mb-2">SNSリンク(空欄なら非表示。アバウトページ本文の下にアイコンで表示されます)</label>
-                    <div class="flex flex-col gap-2">
-                        <input id="set-sns-x-url" type="text" placeholder="XのプロフィールURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
-                        <input id="set-sns-instagram-url" type="text" placeholder="InstagramのプロフィールURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
-                        <input id="set-sns-website-url" type="text" placeholder="WebサイトのURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                <!-- Aboutページ -->
+                <div class="settings-tab-panel hidden" data-settings-panel="about">
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">アバウトページの内容(/about に表示されます)</label>
+                        <textarea id="set-about-content" rows="6" placeholder="サイトや運営者についての紹介文" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30 mb-4"></textarea>
+                        <label class="text-xs text-white/50 block mb-2">アバウトページの内容(英語。空欄なら英語表示でも日本語のまま)</label>
+                        <textarea id="set-about-content-en" rows="6" placeholder="About the site, in English" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30 mb-4"></textarea>
+                        <label class="text-xs text-white/50 block mb-2">SNSリンク(空欄なら非表示。アバウトページ本文の下にアイコンで表示されます)</label>
+                        <div class="flex flex-col gap-2">
+                            <input id="set-sns-x-url" type="text" placeholder="XのプロフィールURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                            <input id="set-sns-instagram-url" type="text" placeholder="InstagramのプロフィールURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                            <input id="set-sns-website-url" type="text" placeholder="WebサイトのURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                        </div>
                     </div>
-                </div>
-
-                <div class="mb-6 pb-6 border-b border-white/10">
-                    <label class="text-xs text-white/50 block mb-2">SNSシェア時の既定画像(記事に画像がない場合に使われます)</label>
-                    <div class="flex gap-2 mb-2">
-                        <input id="set-og-image" type="text" placeholder="https://..." class="flex-1 bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
-                        <button onclick="uploadOgImage()" class="px-3 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap">📷 アップロード</button>
-                    </div>
-                    <p class="text-xs text-white/30">記事ごとに紹介リンクは設定できますが、シェアカードの画像は本文中の1枚目の画像、なければこれが使われます。</p>
                 </div>
 
                 <div class="flex gap-3 pt-4 border-t border-white/10">
@@ -2418,6 +2446,17 @@
             const bg = document.getElementById('set-bg-color').value;
             const fg = document.getElementById('set-text-color').value;
             document.getElementById('set-contrast-warning').classList.toggle('hidden', contrastRatio(bg, fg) >= 3);
+        }
+
+        // 表示設定画面のタブ切り替え(全体設定/記事本文/カード表示/タグ表示/About)。
+        // 単にどのパネルを表示するかを切り替えるだけで、保存・読み込みのロジックには影響しない
+        function switchSettingsTab(tab) {
+            document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.settingsTab === tab);
+            });
+            document.querySelectorAll('.settings-tab-panel').forEach(panel => {
+                panel.classList.toggle('hidden', panel.dataset.settingsPanel !== tab);
+            });
         }
 
         async function loadSiteSettings() {
