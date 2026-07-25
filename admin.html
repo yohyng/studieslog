@@ -886,7 +886,7 @@
         </div>
     </div>
 
-    <div id="toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
+    <div id="toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50" style="max-width: min(90vw, 32rem); text-align: center; white-space: pre-wrap;">保存されました</div>
 
     <!-- 注釈入力モーダル -->
     <div id="footnote-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onmousedown="if(event.target === this) closeFootnoteModal()">
@@ -915,9 +915,10 @@
         let selectedTagIds = new Set();
         let siteTypography = null;
 
-        function showToast(msg) {
+        function showToast(msg, durationMs = 2000) {
             const t = document.getElementById('toast'); t.textContent = msg; t.style.opacity = '1';
-            setTimeout(() => t.style.opacity = '0', 2000);
+            clearTimeout(showToast._hideTimer);
+            showToast._hideTimer = setTimeout(() => t.style.opacity = '0', durationMs);
         }
 
         // --- 認証 ---
@@ -2423,7 +2424,7 @@
             const { data, error } = await sb.from('site_settings').select('*').eq('id', 1).single();
             if (error || !data) {
                 console.error(error);
-                showToast('表示設定の読み込みに失敗しました');
+                showToast(`表示設定の読み込みに失敗しました: ${error ? (error.code || '') + ' ' + (error.message || error) : ''}`, 8000);
                 return;
             }
             document.getElementById('set-homepage-layout').value = data.homepage_layout || 'timeline';
@@ -2563,7 +2564,7 @@
             const { error } = await sb.from('site_settings').update(payload).eq('id', 1);
             if (error) {
                 console.error(error);
-                showToast('保存に失敗しました');
+                showToast(`保存に失敗しました: ${error.code || ''} ${error.message || error}`, 8000);
                 return;
             }
             siteTypography = payload;
