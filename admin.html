@@ -23,7 +23,6 @@
         .content-editor blockquote { border-left: 2px solid rgba(255,255,255,0.3); padding-left: 1em; margin: 1em 0; opacity: 0.8; font-style: italic; }
         .content-editor h2 { font-size: 1.2em; margin: 1em 0 0.5em; }
         .content-editor .footnote-ref { color: #7dd3fc; cursor: default; }
-        .content-editor .footnote-note { font-size: 0.8em; opacity: 0.65; border-bottom: 1px dotted currentColor; padding: 0 0.3em; }
         .article-preview { max-height: 3.2em; overflow: hidden; }
         /* ブラウザ既定のドロップダウン展開部は背景が白になることが多く、継承した白文字のままだと見えなくなるため明示的に指定する */
         select option, select optgroup { color: #1a1a1a; background-color: #ffffff; }
@@ -157,6 +156,13 @@
                 </div>
                 <div id="edit-content" class="content-editor bg-white/5 border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
                 <div id="edit-char-count" class="tw-hide text-xs text-white/30 mt-1 text-right">0文字</div>
+
+                <!-- 本文中には[番号]の印だけを残し、実際の注釈文はここでまとめて編集する(閲覧ページの
+                     見た目と同じく、注釈は記事の最後にまとまる。data-note属性が実際に保存される値) -->
+                <div id="footnote-list-panel" class="tw-hide hidden mt-4 pt-4 border-t border-white/10">
+                    <label class="text-xs text-white/50 block mb-2">注釈(本文中の[番号]に対応する内容)</label>
+                    <div id="footnote-list-items" class="flex flex-col gap-2"></div>
+                </div>
 
                 <div class="tw-hide flex items-center justify-between mt-6 mb-1">
                     <label class="text-xs text-white/50 block">本文(英語。空欄なら英語表示でも日本語のまま。装飾ツールバーはなく、太字/斜体などはCtrl+B/Ctrl+Iなどのブラウザ標準ショートカットのみ対応)</label>
@@ -1331,6 +1337,10 @@
                 if (article.pinned) {
                     badgeHtml += '<span class="text-xs px-1.5 py-0.5 rounded bg-white/15 text-white/80">📌 ピン留め</span>';
                 }
+                const hasTranslation = !!(article.title_en || '').trim() || !!stripHtml(article.content_en || '').trim();
+                if (hasTranslation) {
+                    badgeHtml += '<span class="text-xs px-1.5 py-0.5 rounded bg-emerald-400/20 text-emerald-200/80">英訳☑</span>';
+                }
                 card.innerHTML = `
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
@@ -1519,6 +1529,7 @@
             document.getElementById('edit-content').innerHTML = '<p></p>';
             document.getElementById('edit-content-en').innerHTML = '<p></p>';
             updateCharCount();
+            renderFootnoteListPanel();
             document.getElementById('delete-btn').classList.add('hidden');
             document.getElementById('edit-status-label').textContent = '下書き';
             document.getElementById('edit-scheduled-at').value = '';
@@ -1675,7 +1686,10 @@
             document.getElementById('edit-title-en').value = article.title_en || '';
             document.getElementById('edit-category').value = article.category || '';
             document.getElementById('edit-pinned').checked = !!article.pinned;
-            document.getElementById('edit-content').innerHTML = article.content;
+            const editor = document.getElementById('edit-content');
+            editor.innerHTML = article.content;
+            migrateInlineFootnoteNotes(editor);
+            renderFootnoteListPanel();
             document.getElementById('edit-content-en').innerHTML = article.content_en || '<p></p>';
             updateCharCount();
             document.getElementById('delete-btn').classList.remove('hidden');
@@ -2429,7 +2443,49 @@
             sel.removeAllRanges();
             if (range) sel.addRange(range);
             const num = editor.querySelectorAll('.footnote-ref').length + 1;
-            document.execCommand('insertHTML', false, `<sup class="footnote-ref" data-note="${escapeAttr(note)}">[${num}]</sup><span class="footnote-note">${escapeAttr(note)}</span>`);
+            // 本文中には[番号]の印だけを残す。実際の注釈文はdata-note属性に持たせ、
+            // 一覧はrenderFootnoteListPanel()が本文の最後(見た目上は別パネル)にまとめて表示する
+            document.execCommand('insertHTML', false, `<sup class="footnote-ref" data-note="${escapeAttr(note)}">[${num}]</sup>`);
+            renderFootnoteListPanel();
+        }
+
+        // 旧形式(注釈記号のすぐ後ろに注釈文がそのまま本文中に入っている)の記事を開いたときは、
+        // data-noteへ文字を移してから本文中の表示テキストを取り除き、新形式(印だけ)に揃える
+        function migrateInlineFootnoteNotes(editor) {
+            editor.querySelectorAll('.footnote-ref').forEach(ref => {
+                const next = ref.nextElementSibling;
+                if (next && next.classList.contains('footnote-note')) {
+                    if (!ref.dataset.note) ref.dataset.note = next.textContent;
+                    next.remove();
+                }
+            });
+        }
+
+        // 本文中の注釈記号(data-note属性)を、閲覧ページと同じく記事の最後にまとめて一覧表示する。
+        // ここで編集した内容はそのままdata-note属性(=実際に保存される値)に書き戻す
+        function renderFootnoteListPanel() {
+            const editor = document.getElementById('edit-content');
+            const panel = document.getElementById('footnote-list-panel');
+            const list = document.getElementById('footnote-list-items');
+            const refs = Array.from(editor.querySelectorAll('.footnote-ref'));
+            if (refs.length === 0) {
+                panel.classList.add('hidden');
+                list.innerHTML = '';
+                return;
+            }
+            panel.classList.remove('hidden');
+            list.innerHTML = refs.map((ref, i) => `
+                <div class="flex items-start gap-2">
+                    <span class="text-xs text-white/40 pt-2 shrink-0">[${i + 1}]</span>
+                    <textarea rows="1" class="flex-1 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30 resize-none" style="overflow: hidden;" oninput="updateFootnoteNoteFromPanel(${i}, this.value); this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';">${escapeAttr(ref.dataset.note || '')}</textarea>
+                </div>
+            `).join('');
+            list.querySelectorAll('textarea').forEach(t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; });
+        }
+
+        function updateFootnoteNoteFromPanel(index, value) {
+            const ref = document.getElementById('edit-content').querySelectorAll('.footnote-ref')[index];
+            if (ref) ref.dataset.note = value;
         }
 
         // 本文全体を書式なしのプレーンテキストに変換する(画像・太字・見出しなどは全て失われます)
@@ -2875,6 +2931,7 @@
             twEditor.addEventListener(evt, () => requestAnimationFrame(repositionCaretTypewriter));
         });
         twEditor.addEventListener('input', updateCharCount);
+        twEditor.addEventListener('input', renderFootnoteListPanel);
     </script>
 </body>
 </html>
