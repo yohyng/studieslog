@@ -59,8 +59,14 @@
 
         @media (max-width: 640px) {
             :root { --line-height-scale: 0.75; --font-size-scale: 0.85; --letter-spacing-scale: 0.5; }
-            /* 狭い画面では1カラム表示になりカード自体が横幅いっぱいまで広がって大きくなりすぎるため、
-               左右に追加の余白を取ってカード自体の横幅(ひいてはaspect-ratio:1/1の高さやcqi基準の文字サイズ)を抑える */
+        }
+
+        /* 狭い画面(700px未満、wide-page-activeの可変ガターが始まる直前まで)では1カラム表示になり
+           カード自体が横幅いっぱいまで広がって大きくなりすぎるため、左右に追加の余白を取って
+           カードの横幅(ひいてはaspect-ratio:1/1の高さやcqi基準の文字サイズ)を抑える。
+           699pxで区切ることで700px以上のwide-page-active側のガター(--wide-gutter)との間に
+           隙間(どちらの余白ルールも効かない帯域)ができないようにする */
+        @media (max-width: 699px) {
             #card-view, #tag-view {
                 padding-left: 1.75rem;
                 padding-right: 1.75rem;
