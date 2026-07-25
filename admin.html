@@ -117,17 +117,6 @@
                     <input id="edit-title" type="text" placeholder="記事のタイトル" class="w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1 mb-4">
                     <label class="tw-hide text-xs text-white/50 block mb-1">タイトル(英語。空欄なら英語表示でも日本語のまま)</label>
                     <input id="edit-title-en" type="text" placeholder="Article title in English" class="tw-hide w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1 mb-4">
-                    <label class="tw-hide text-xs text-white/50 block mb-1">カテゴリ(ジャンル。タグと違い1つだけ選ぶ)</label>
-                    <select id="edit-category" class="tw-hide w-40 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
-                        <option value="">未設定</option>
-                        <option value="エッセイ">エッセイ</option>
-                        <option value="ノート">ノート</option>
-                        <option value="試論">試論</option>
-                    </select>
-                    <label class="tw-hide flex items-center gap-2 mt-3 text-sm text-white/70 cursor-pointer w-fit">
-                        <input id="edit-pinned" type="checkbox" class="accent-white/80">
-                        ピン留め
-                    </label>
                 </div>
 
                 <label class="tw-hide text-xs text-white/50 block mb-1">本文</label>
@@ -178,6 +167,20 @@
                         <input id="new-tag-name" type="text" placeholder="新しいタグ名" class="flex-1 bg-white/5 text-xs rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30" onkeydown="if(event.key==='Enter'){event.preventDefault(); createTagFromEditor();}">
                         <button onclick="createTagFromEditor()" class="px-3 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap">＋ 追加</button>
                     </div>
+                </div>
+
+                <div class="tw-hide mt-6">
+                    <label class="text-xs text-white/50 block mb-1">カテゴリ(ジャンル。タグと違い1つだけ選ぶ)</label>
+                    <select id="edit-category" class="w-40 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
+                        <option value="">未設定</option>
+                        <option value="エッセイ">エッセイ</option>
+                        <option value="ノート">ノート</option>
+                        <option value="試論">試論</option>
+                    </select>
+                    <label class="flex items-center gap-2 mt-3 text-sm text-white/70 cursor-pointer w-fit">
+                        <input id="edit-pinned" type="checkbox" class="accent-white/80">
+                        ピン留め
+                    </label>
                 </div>
 
                 <div id="image-resize-toolbar" class="hidden fixed z-50 bg-[#2f3438] border border-white/20 rounded shadow-lg px-2 py-1 flex items-center gap-1 text-xs">
@@ -1466,21 +1469,22 @@
             const dateEl = document.getElementById('edit-date');
             const t = currentPreviewTypography();
             if (t) {
+                // 閲覧ページの本文はcontent-body(text-sm=0.875rem)、タイトルはarticle-title(text-lg=1.125rem)、
+                // 日付はtext-xs(0.75rem)で、remはt.font_size(=ルートのフォントサイズ)基準なので、
+                // ここも同じ比率で計算してpx指定すれば閲覧ページと同じ実寸になる
                 editor.style.fontFamily = t.font;
-                editor.style.fontSize = t.font_size + 'px';
+                editor.style.fontSize = (t.font_size * 0.875) + 'px';
                 editor.style.lineHeight = t.line_height;
                 editor.style.letterSpacing = t.letter_spacing + 'em';
                 editor.style.textAlign = t.text_align;
 
-                // 閲覧ページのタイトル・日付は本文とフォント/文字間隔だけ共有し、サイズは独自(text-lg/text-xs)なので、
-                // ここも本文のフォント設定を使いつつサイズだけ見出し・キャプション相当に近づける
                 titleEl.style.fontFamily = t.font;
                 titleEl.style.letterSpacing = t.letter_spacing + 'em';
-                titleEl.style.fontSize = '1.25rem';
+                titleEl.style.fontSize = (t.font_size * 1.125) + 'px';
 
                 dateEl.style.fontFamily = t.font;
                 dateEl.style.letterSpacing = t.letter_spacing + 'em';
-                dateEl.style.fontSize = '0.75rem';
+                dateEl.style.fontSize = (t.font_size * 0.75) + 'px';
             }
             if (siteTypography) {
                 editor.style.color = siteTypography.text_color;
@@ -2582,15 +2586,16 @@
             list.innerHTML = refs.map((ref, i) => `
                 <div class="flex items-start gap-2">
                     <span class="text-xs text-white/40 pt-2 shrink-0">[${i + 1}]</span>
-                    <textarea rows="3" class="flex-1 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30" oninput="updateFootnoteNoteFromPanel(${i}, this.value); autoGrowTextarea(this);">${escapeAttr(ref.dataset.note || '')}</textarea>
+                    <textarea rows="3" style="min-height: 4.5em;" class="flex-1 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30" oninput="updateFootnoteNoteFromPanel(${i}, this.value); autoGrowTextarea(this);">${escapeAttr(ref.dataset.note || '')}</textarea>
                 </div>
             `).join('');
             list.querySelectorAll('textarea').forEach(autoGrowTextarea);
         }
 
+        // CSS側のmin-heightが最低3行分を保証するので、ここでは内容がそれより長い場合にだけ伸ばす
         function autoGrowTextarea(t) {
             t.style.height = 'auto';
-            t.style.height = Math.max(t.scrollHeight, t.offsetHeight) + 'px';
+            t.style.height = t.scrollHeight + 'px';
         }
 
         function updateFootnoteNoteFromPanel(index, value) {
