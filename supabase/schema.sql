@@ -204,8 +204,9 @@ alter table public.site_settings add column if not exists sns_x_url text not nul
 alter table public.site_settings add column if not exists sns_instagram_url text not null default '';
 alter table public.site_settings add column if not exists sns_website_url text not null default '';
 
--- 注釈文(本文最後の注釈リストの説明文)の色。空文字なら本文色に従う
+-- 注釈文(本文最後の注釈リストの説明文)の色・フォント。空文字なら本文の設定に従う
 alter table public.site_settings add column if not exists footnote_text_color text not null default '';
+alter table public.site_settings add column if not exists footnote_text_font text not null default '';
 
 -- ハッシュタグ
 create table if not exists public.tags (

@@ -17,8 +17,9 @@
         .content-editor { min-height: 300px; line-height: 1.9; transition: outline-color 0.15s ease; }
         .content-editor:focus { outline: none; }
         .content-editor.drag-over { outline: 2px dashed rgba(255,255,255,0.5); outline-offset: -2px; }
-        .content-editor img { display: block; max-width: 100%; max-height: 70vh; width: auto; height: auto; object-fit: contain; border-radius: 4px; margin: 1em auto; cursor: pointer; }
+        .content-editor img { display: block; max-width: 100%; max-height: 70vh; width: auto; height: auto; object-fit: contain; border-radius: 0; margin: 1em auto; cursor: pointer; }
         .content-editor img.img-selected { outline: 2px solid rgba(255,255,255,0.6); outline-offset: 2px; }
+        .content-editor .book-link-card, .content-editor .book-link-card img { border-radius: 0 !important; }
         .content-editor blockquote { border-left: 2px solid rgba(255,255,255,0.3); padding-left: 1em; margin: 1em 0; opacity: 0.8; font-style: italic; }
         .content-editor h2 { font-size: 1.2em; margin: 1em 0 0.5em; }
         .content-editor .footnote-ref { color: #7dd3fc; cursor: default; }
@@ -775,6 +776,52 @@
                     </div>
 
                     <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">注釈文のフォント(空欄なら本文フォントと同じ)</label>
+                        <select id="set-footnote-text-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                            <option value="">本文と同じフォント</option>
+                            <optgroup label="明朝体">
+                                <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                                <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                                <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                                <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                                <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                            </optgroup>
+                            <optgroup label="ゴシック体">
+                                <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                                <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                <option value="'Zen Kaku Gothic Antique', sans-serif">Zen Kaku Gothic Antique</option>
+                                <option value="'Murecho', sans-serif">Murecho</option>
+                                <option value="'RocknRoll One', sans-serif">RocknRoll One</option>
+                                <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                                <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                                <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                                <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                            </optgroup>
+                            <optgroup label="丸ゴシック体">
+                                <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                                <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                            </optgroup>
+                            <optgroup label="手書き風">
+                                <option value="'Klee One', cursive">Klee One</option>
+                            </optgroup>
+                            <optgroup label="カリグラフィー風">
+                                <option value="'New Tegomin', serif">New Tegomin</option>
+                                <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                            </optgroup>
+                            <optgroup label="装飾体(英字のみ・日本語は表示されません)">
+                                <option value="'Fraunces', serif">Fraunces</option>
+                                <option value="'Bodoni Moda', serif">Bodoni Moda</option>
+                                <option value="'Abril Fatface', serif">Abril Fatface</option>
+                                <option value="'Grenze Gotisch', serif">Grenze Gotisch</option>
+                                <option value="'Italiana', serif">Italiana</option>
+                                <option value="'Cormorant', serif">Cormorant</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div class="mb-6 pb-6 border-b border-white/10">
                         <label class="text-xs text-white/50 block mb-2">SNSシェア時の既定画像(記事に画像がない場合に使われます)</label>
                         <div class="flex gap-2 mb-2">
                             <input id="set-og-image" type="text" placeholder="https://..." class="flex-1 bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
@@ -1396,7 +1443,7 @@
             const label = preview.title || url.trim();
             const domain = preview.domain || '';
             const image = preview.image || '';
-            const cardHtml = `<a href="${escapeAttr(url.trim())}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="book-link-card" style="display:flex; align-items:stretch; gap:0.5rem; border:1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius:0.5rem; overflow:hidden; text-decoration:none; color:inherit; margin:1em 0;">
+            const cardHtml = `<a href="${escapeAttr(url.trim())}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="book-link-card" style="display:flex; align-items:stretch; gap:0.5rem; border:1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius:0; overflow:hidden; text-decoration:none; color:inherit; margin:1em 0;">
                 <span style="flex:1; min-width:0; padding:0.5rem 0.7rem; display:flex; flex-direction:column; justify-content:center; gap:0.1rem;">
                     <span style="font-size:0.7rem; font-weight:500; line-height:1.4;">${escapeAttr(label)}</span>
                     ${domain ? `<span style="font-size:0.6rem; opacity:0.5;">${escapeAttr(domain)}</span>` : ''}
@@ -2606,6 +2653,7 @@
             document.getElementById('set-tag-description-size-value').textContent = data.tag_description_size + 'px';
             document.getElementById('set-footnote-color').value = data.footnote_color;
             document.getElementById('set-footnote-text-color').value = data.footnote_text_color || data.text_color;
+            document.getElementById('set-footnote-text-font').value = data.footnote_text_font || '';
             document.getElementById('set-selection-bg-color').value = data.selection_bg_color;
             document.getElementById('set-selection-text-color').value = data.selection_text_color;
             document.getElementById('set-about-content').value = data.about_content || '';
@@ -2665,6 +2713,7 @@
                 tag_description_size: Number(document.getElementById('set-tag-description-size').value),
                 footnote_color: document.getElementById('set-footnote-color').value,
                 footnote_text_color: document.getElementById('set-footnote-text-color').value,
+                footnote_text_font: document.getElementById('set-footnote-text-font').value,
                 selection_bg_color: document.getElementById('set-selection-bg-color').value,
                 selection_text_color: document.getElementById('set-selection-text-color').value,
                 about_content: document.getElementById('set-about-content').value.trim(),
