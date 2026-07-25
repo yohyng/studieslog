@@ -658,11 +658,12 @@
             </svg>
         </div>
         <h1 id="site-title" class="font-medium tracking-widest cursor-pointer inline-block relative z-10" onclick="goHome()">fragments</h1>
-        <!-- サブタイトルは英語が上、日本語が下。どちらも未入力なら各行ごと非表示にする -->
+        <!-- サブタイトルは英語(上)・日本語(下)を同じ<p>内の連続したテキストとして流し込む。
+             英文が1行に収まるときだけ<br>で強制改行し、英文が折り返すときはその折り返した
+             最後の位置から日本語がそのまま続く(updateSubtitleBreak()が幅に応じて<br>を切替) -->
         <!-- 帯(背景)は<p>ではなく中の<span>に敷く。<p>に敷くと折り返して短くなった行でも
              ブロックの幅いっぱいまで色が伸びてしまうが、インラインの<span>なら行ごとに文字幅で止まる -->
-        <p id="site-subtitle-en" class="mt-4 relative z-10"><span></span></p>
-        <p id="site-subtitle" class="relative z-10"><span>空間にまつわる議論をプロトタイプする</span></p>
+        <p id="site-subtitle" class="mt-4 relative z-10"><span id="site-subtitle-en"></span><br id="site-subtitle-break" style="display:none"><span id="site-subtitle-ja">空間にまつわる議論をプロトタイプする</span></p>
     </header>
 
     <main id="article-list" class="w-full content-width flex flex-col gap-16 relative"></main>
@@ -946,14 +947,16 @@
             if (data.content_width) document.documentElement.style.setProperty('--content-width', data.content_width + 'px');
             if (data.page_title) document.title = data.page_title;
             const titleEl = document.getElementById('site-title');
-            const subtitleEl = document.getElementById('site-subtitle');
             if (data.site_title) titleEl.textContent = data.site_title;
             titleEl.style.fontFamily = data.site_title_font || data.font;
             document.documentElement.style.setProperty('--site-title-font', data.site_title_font || data.font);
             titleEl.style.fontSize = (data.site_title_size || 14) + 'px';
             titleEl.style.color = data.site_title_color || data.text_color;
-            // サブタイトルは英語(上)・日本語(下)の2行。未入力の行は詰めて表示しない
+            // サブタイトルは英語(上)・日本語(下)を同じ<p>内で連続したテキストとして扱う。
+            // 未入力の言語はその<span>だけ非表示にする(改行の要否はupdateSubtitleBreak()が決める)
+            const subtitleWrapEl = document.getElementById('site-subtitle');
             const subtitleEnEl = document.getElementById('site-subtitle-en');
+            const subtitleJaEl = document.getElementById('site-subtitle-ja');
             const subtitleSize = (data.site_subtitle_size || 12) + 'px';
             const subtitleColor = data.site_subtitle_color || data.text_color;
             // 空欄なら本文フォントに従う
@@ -961,20 +964,21 @@
             const subtitleBg = data.site_subtitle_bg_color || '';
             // 白帯に重なった部分の台形の線を反転させる(syncTitleShapeOverlays)ときの線色に使う
             document.documentElement.style.setProperty('--subtitle-text-color', subtitleColor);
-            [[subtitleEnEl, data.site_subtitle_en], [subtitleEl, data.site_subtitle]].forEach(([el, text], i) => {
-                if (!el) return;
-                const inner = el.querySelector('span');
-                if (!inner) return;
-                if (text) inner.textContent = text;
-                el.style.fontSize = subtitleSize;
-                el.style.color = subtitleColor;
-                el.style.fontFamily = subtitleFont;
+            if (subtitleWrapEl && subtitleEnEl && subtitleJaEl) {
+                if (data.site_subtitle_en) subtitleEnEl.textContent = data.site_subtitle_en;
+                if (data.site_subtitle) subtitleJaEl.textContent = data.site_subtitle;
+                subtitleWrapEl.style.fontSize = subtitleSize;
+                subtitleWrapEl.style.color = subtitleColor;
+                subtitleWrapEl.style.fontFamily = subtitleFont;
                 // 帯は<p>ではなくインラインの<span>に敷き、折り返した行も文字幅で止まるようにする
-                inner.style.background = subtitleBg;
-                el.style.display = inner.textContent.trim() ? '' : 'none';
-                // 英語が非表示のときは日本語側が先頭に来るので、上の余白はそちらに移す
-                if (i === 1) el.classList.toggle('mt-4', subtitleEnEl ? subtitleEnEl.style.display === 'none' : true);
-            });
+                subtitleEnEl.style.background = subtitleBg;
+                subtitleJaEl.style.background = subtitleBg;
+                const enHasText = !!subtitleEnEl.textContent.trim();
+                const jaHasText = !!subtitleJaEl.textContent.trim();
+                subtitleEnEl.style.display = enHasText ? '' : 'none';
+                subtitleJaEl.style.display = jaHasText ? '' : 'none';
+                subtitleWrapEl.style.display = (enHasText || jaHasText) ? '' : 'none';
+            }
             scheduleAlignHeaderToCards();
             siteAboutContent = data.about_content || '';
             siteAboutContentEn = data.about_content_en || '';
@@ -1824,7 +1828,25 @@
             // 同じ量だけleftをずらして、タイトルと一緒にカードの左端へ追従させる
             const shapeWrap = document.getElementById('title-rect-wrap');
             if (shapeWrap) shapeWrap.style.left = headerPad ? headerPad + 'px' : '';
+            updateSubtitleBreak();
             syncTitleShapeOverlays();
+        }
+
+        // 英語のサブタイトルが1行に収まる幅では、日本語をその下に改行して始める。
+        // 英語が折り返すほど幅が狭いときは、逆に<br>を消して英語の折り返し位置から日本語を続ける。
+        // 幅が変わるたびに折り返し状況も変わるので、<br>を一旦消してから測り直す
+        function updateSubtitleBreak() {
+            const enEl = document.getElementById('site-subtitle-en');
+            const jaEl = document.getElementById('site-subtitle-ja');
+            const br = document.getElementById('site-subtitle-break');
+            if (!br) return;
+            if (!enEl || !jaEl || enEl.style.display === 'none' || jaEl.style.display === 'none') {
+                br.style.display = 'none';
+                return;
+            }
+            br.style.display = 'none';
+            const wraps = enEl.getClientRects().length > 1;
+            br.style.display = wraps ? 'none' : '';
         }
 
         // サブタイトルに白帯を敷くと、その上を通る台形の白い線が白同士で見えなくなってしまう。
@@ -1840,12 +1862,10 @@
             const wrapRect = wrap.getBoundingClientRect();
             if (!wrapRect.width || !wrapRect.height) return;
             const stroke = getComputedStyle(document.documentElement).getPropertyValue('--subtitle-text-color').trim();
-            ['site-subtitle-en', 'site-subtitle'].forEach(id => {
-                const line = document.getElementById(id);
-                if (!line || line.style.display === 'none') return;
-                const inner = line.querySelector('span');
+            ['site-subtitle-en', 'site-subtitle-ja'].forEach(id => {
+                const inner = document.getElementById(id);
                 // 帯(背景)が無い行は、線を反転させる必要がない
-                if (!inner || !inner.textContent.trim() || !inner.style.background) return;
+                if (!inner || inner.style.display === 'none' || !inner.textContent.trim() || !inner.style.background) return;
                 // 折り返している場合、帯は行ごとに文字幅で途切れる。getClientRects()は行ごとの矩形を
                 // 返すので、1行ぶんずつ切り抜いたコピーを作れば帯の形どおりに線が反転する
                 Array.from(inner.getClientRects()).forEach(r => {
