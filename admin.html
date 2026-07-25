@@ -1791,7 +1791,17 @@
             await syncArticleTags(data.id);
             clearAutosaveDraft();
             showToast(status === 'draft' ? '下書き保存しました' : status === 'scheduled' ? '予約投稿を設定しました' : '公開しました');
-            backToList();
+
+            // 一覧には戻らず、その場で保存後の状態(ステータス表示・削除ボタン・SNS共有欄など)に切り替える
+            editingId = data.id;
+            const idx = articles.findIndex(a => a.id === data.id);
+            if (idx >= 0) articles[idx] = data; else articles.unshift(data);
+
+            document.getElementById('delete-btn').classList.remove('hidden');
+            document.getElementById('edit-status-label').textContent = formatStatusLabel(data);
+            document.getElementById('edit-scheduled-at').value = data.scheduled_at ? toDatetimeLocalValue(data.scheduled_at) : '';
+            document.getElementById('social-share-panel').classList.remove('hidden');
+            renderSocialDrafts(data);
         }
 
         async function deleteCurrentArticle() {
