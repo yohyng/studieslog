@@ -443,7 +443,7 @@
         /* テスト実装: タイトルに重なる不定形の台形の線。読み込むたびに少し形が変わり、カーソルを乗せて動かすとゆらゆら揺れる。 */
         .title-rect-wrap { position: absolute; left: 0; z-index: 20; perspective: 500px; }
         .title-rect { width: 100%; height: 100%; overflow: visible; transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
-        .title-rect polygon { fill: none; stroke: currentColor; stroke-miterlimit: 10; }
+        .title-rect polygon { fill: none; stroke: rgba(255, 255, 255, 0.75); stroke-miterlimit: 10; }
 
         .article-title { color: var(--text-color-solid); opacity: 0.85; line-height: inherit !important; transition: opacity 0.8s ease, color 0.5s ease; font-family: var(--article-title-font, inherit); }
         /* コピペした本文の段落タグなどに行間のインラインスタイルが残っていても、必ずサイト設定の行間が効くようにする */
