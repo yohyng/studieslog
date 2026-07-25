@@ -1401,6 +1401,9 @@
                     const label = d.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
                     badgeHtml = `<span class="text-xs px-1.5 py-0.5 rounded bg-sky-400/20 text-sky-200/80">予約 ${label}</span>`;
                 }
+                if (article.pinned) {
+                    badgeHtml += '<span class="text-xs px-1.5 py-0.5 rounded bg-white/15 text-white/80">📌 ピン留め</span>';
+                }
                 card.innerHTML = `
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
