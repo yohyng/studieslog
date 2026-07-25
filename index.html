@@ -73,9 +73,11 @@
         .content-width { max-width: var(--content-width); }
 
 
-        /* ヘッダー・フッターの構成(幅・余白・サブタイトル非表示など)は全ページ共通にしたいので、
-           bodyには常時card-homeクラスを付けている(index.html <body>参照)。カードグリッドは
-           auto-fill で列数が自然に変わるので、メディアクエリなしでそのままレスポンシブになる。
+        /* カード一覧の横幅拡張(#card-view/header/footer)は、実際にカードグリッドを表示している
+           ときだけ付くcard-page-activeクラスに限定する(card-homeは全ページ常時付いているため、
+           ここをcard-homeにすると記事ページ・About等でもheader/footerだけ広がってしまい、
+           本文(content-width基準、672px)側と左端が揃わなくなる)。カードグリッドはauto-fillで
+           列数が自然に変わるので、メディアクエリなしでそのままレスポンシブになる。
            ある程度の幅があれば#card-view自体の横幅を広げて、並ぶ列数を増やす。
            タイトル(header)・最下段の区切り線(footer)も同じ幅に揃えることで、左端が一致するようにする
            (揃えないと、header/footer側だけ細い列のまま中央寄せされ、カード一覧より内側に見えてしまう)。
@@ -83,13 +85,13 @@
            1023pxのウィンドウ幅では#card-viewが672px固定のままになり、auto-fillが2列にしかならず
            カードが大きくなりすぎていた。700pxからvwベースで広げることでこの帯を解消する */
         @media (min-width: 700px) {
-            body.card-home #card-view {
+            body.card-page-active #card-view {
                 max-width: min(1700px, 97vw);
             }
-            body.card-home header {
+            body.card-page-active header {
                 max-width: min(1700px, 97vw);
             }
-            body.card-home footer {
+            body.card-page-active footer {
                 max-width: min(1700px, 97vw);
             }
         }
@@ -248,7 +250,7 @@
         body.card-home #card-fixed-footer-bar { display: block; }
         body.card-home #hamburger-btn {
             top: auto;
-            bottom: 0.15rem;
+            bottom: 0.125rem;
             left: 1.5rem;
             right: auto;
             border: none;
@@ -262,7 +264,7 @@
             display: inline-flex;
             position: fixed;
             right: 1.5rem;
-            bottom: 0.15rem;
+            bottom: 0.5rem;
             z-index: 40;
             margin-bottom: 0;
         }
@@ -421,7 +423,7 @@
         /* 実験: タイトル文字の背景を白にして、その上に台形の白い線が重なると交差部分だけ暗く見える */
         #site-title { background: #ffffff; color: #666666 !important; padding: 0.1em 0.5em; }
 
-        .article-title { color: var(--text-color-solid); opacity: 0.85; line-height: inherit !important; transition: opacity 0.8s ease, color 0.5s ease; }
+        .article-title { color: var(--text-color-solid); opacity: 0.85; line-height: inherit !important; transition: opacity 0.8s ease, color 0.5s ease; font-family: var(--article-title-font, inherit); }
         /* コピペした本文の段落タグなどに行間のインラインスタイルが残っていても、必ずサイト設定の行間が効くようにする */
         .content-body, .content-body * { line-height: inherit !important; }
         .group:hover .article-title { opacity: 1; }
@@ -483,7 +485,7 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500&family=Shippori+Mincho+B1:wght@400;500&family=Noto+Serif+JP:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&family=Kaisei+Tokumin:wght@400;500;700&family=Kaisei+Decol:wght@400;700&family=BIZ+UDPMincho:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=BIZ+UDPGothic:wght@400;700&family=Sawarabi+Gothic&family=M+PLUS+1p:wght@400;500;700&family=Kosugi+Maru&family=Zen+Maru+Gothic:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;500;700&family=Klee+One:wght@400;600&family=New+Tegomin&family=Yuji+Syuku&family=Fraunces:wght@400;600;700&family=Bodoni+Moda:wght@400;500;700&family=Abril+Fatface&family=Grenze+Gotisch:wght@400;600;700&family=Italiana&family=Cormorant:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500&family=Shippori+Mincho+B1:wght@400;500&family=Noto+Serif+JP:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&family=Kaisei+Tokumin:wght@400;500;700&family=Kaisei+Decol:wght@400;700&family=BIZ+UDPMincho:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Kaku+Gothic+Antique:wght@400;500;700&family=Murecho:wght@400;500;700&family=RocknRoll+One&family=BIZ+UDPGothic:wght@400;700&family=Sawarabi+Gothic&family=M+PLUS+1p:wght@400;500;700&family=Kosugi+Maru&family=Zen+Maru+Gothic:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;500;700&family=Klee+One:wght@400;600&family=New+Tegomin&family=Yuji+Syuku&family=Fraunces:wght@400;600;700&family=Bodoni+Moda:wght@400;500;700&family=Abril+Fatface&family=Grenze+Gotisch:wght@400;600;700&family=Italiana&family=Cormorant:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="min-h-screen flex flex-col items-center py-24 px-5 min-[450px]:px-8 md:px-12 lg:px-0 card-home">
 
@@ -505,7 +507,7 @@
     </div>
 
     <!-- パターンCだけ: ハンバーガーメニュー(右、CSSで移動)を乗せる固定フッター -->
-    <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 1.4rem; background: color-mix(in srgb, var(--bg-color) 40%, transparent); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%); border-top: 1px solid color-mix(in srgb, white 15%, transparent);"></div>
+    <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 2rem; background: color-mix(in srgb, var(--bg-color) 25%, transparent); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%); border-top: 1px solid color-mix(in srgb, white 15%, transparent);"></div>
 
     <!-- パターンCだけ: Filter。.fade-inの中(transformを持つ祖先)に置くとposition:fixedが効かなくなるため、
          他の固定UIと同じくbody直下に常設し、中身(カテゴリ/タグ行)だけrenderCardPage()が差し替える -->
@@ -779,6 +781,12 @@
             siteFontSize = data.font_size;
             document.documentElement.style.setProperty('--base-font-size', data.font_size + 'px');
             document.body.style.fontFamily = data.font;
+            // 記事タイトルのフォント(空欄なら本文フォントに従う)
+            if (data.title_font) {
+                document.documentElement.style.setProperty('--article-title-font', data.title_font);
+            } else {
+                document.documentElement.style.removeProperty('--article-title-font');
+            }
             siteLineHeight = data.line_height;
             document.documentElement.style.setProperty('--base-line-height', data.line_height);
             document.documentElement.style.setProperty('--base-letter-spacing', data.letter_spacing + 'em');
@@ -883,7 +891,7 @@
                 : '';
             const related = relatedArticles(article, 3);
             const relatedHtml = related.length > 0
-                ? `<div class="text-left mb-5"><div class="text-xs opacity-40 mb-3">関連記事</div><div class="card-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));" onclick="event.stopPropagation()">${related.map(a => articleCardHtml(a)).join('')}</div></div>`
+                ? `<div class="text-left mt-8 pt-8" style="border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);"><div class="text-xs opacity-40 mb-3">関連記事</div><div class="card-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));" onclick="event.stopPropagation()">${related.map(a => articleCardHtml(a)).join('')}</div></div>`
                 : '';
             const backlinks = backlinkArticles(article, 5);
             const backlinkHtml = backlinks.length > 0
@@ -900,7 +908,6 @@
                         <div class="article-snippet text-sm opacity-70 content-body">${applyFootnoteStyling(content, article.id)}</div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
-                        ${relatedHtml}
                         ${backlinkHtml}
                         <div class="flex items-center justify-center gap-3 mb-4">
                             <a href="https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="Xでシェア" aria-label="Xでシェア">${SHARE_ICONS.x}</a>
@@ -910,6 +917,7 @@
                             <button onclick="event.stopPropagation(); openSubscribeModal()" class="glass-chip hover:opacity-90 transition-opacity px-3 py-1.5" style="background: color-mix(in srgb, var(--subscribe-bg-color) 55%, transparent); color: var(--subscribe-text-color); font-size: 0.6rem;" title="更新をメールで受け取る" aria-label="購読">Subscribe</button>
                         </div>
                         <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;" onclick="closeArticle(this.parentElement.previousElementSibling)">↑ 閉じる</span>
+                        ${relatedHtml}
                     </div>
                 </article>`;
         }

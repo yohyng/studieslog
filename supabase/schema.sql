@@ -196,6 +196,9 @@ create policy "site_settings_auth_update" on public.site_settings
 alter table public.site_settings add column if not exists about_content text not null default '';
 alter table public.site_settings add column if not exists about_content_en text not null default '';
 
+-- 記事タイトルのフォント(空文字なら本文フォントに従う)
+alter table public.site_settings add column if not exists title_font text not null default '';
+
 -- アバウトページに表示するSNSリンク(空文字なら非表示)
 alter table public.site_settings add column if not exists sns_x_url text not null default '';
 alter table public.site_settings add column if not exists sns_instagram_url text not null default '';
