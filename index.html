@@ -16,6 +16,11 @@
     <!-- 自前のCSSをTailwind(CDN版、読み込み・生成が非同期で少し遅れる)より先に置き、
          最低限の見た目(背景色・中央寄せ・余白)がすぐ効くようにしておく -->
     <style>
+        /* 各ビュー(card-view/hub-view/search-viewなど)の表示切り替えはTailwindの.hiddenクラスの
+           着脱に頼っているが、Tailwind CDNが未読込/読込遅延の環境だとこのクラス自体が何もしなくなり、
+           本来隠れているはずの要素(検索・購読フォームなど)が最初から表示されてしまう。
+           header/box-sizingで既に対策している箇所と同じ理由で、自前でも指定しておく */
+        .hidden { display: none; }
         :root {
             --bg-color: #828282;
             --text-color: rgba(255, 255, 255, 0.9);
@@ -141,6 +146,13 @@
         body.story-view-active #article-list {
             padding-left: 1.5rem !important;
             padding-right: 1.5rem !important;
+        }
+        /* タイトル・台形アイコン・サブタイトル・記事タイトル・本文を全部ひとまわり小さくする。
+           台形アイコンは文字サイズに連動しない固定サイズのため、font-sizeだけでなくzoomで
+           レイアウト全体を縮小する(transformだと台形の3D揺れ用transformと競合するため使わない) */
+        body.story-view-active header,
+        body.story-view-active #article-list {
+            zoom: 0.85;
         }
         /* フェードの開始/終了位置(行数ベース)はJS側でmax-height・mask-imageを一緒に計算して
            inline styleで入れる(何行目からフェードするかを変えても、この2つがズレないようにするため) */
