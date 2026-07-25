@@ -1442,14 +1442,31 @@
 
         // --- 本文欄を閲覧ページと同じ文字組み・配色にして、公開時の見え方をある程度推測できるようにする ---
         async function loadSiteTypographyForPreview() {
+            // 本文プレビューに必須の基本項目(古くからある列なので確実に存在する)を先に取得する。
+            // これが失敗すると編集画面のフォント・文字サイズが本番と合わなくなるため、
+            // 後から追加した列(Instagramストーリー用など)の取得失敗と切り分けて調べられるようにする
             const { data, error } = await sb.from('site_settings')
-                .select('font, font_size, line_height, letter_spacing, text_align, bg_color, text_color, site_title, site_title_font, site_title_color, site_subtitle, site_subtitle_en, site_subtitle_font, site_subtitle_color, article_tag_bg_color, article_tag_text_color, article_tag_font')
+                .select('font, font_size, line_height, letter_spacing, text_align, bg_color, text_color')
                 .eq('id', 1).single();
-            if (!error && data) {
-                siteTypography = data;
-                document.body.style.backgroundColor = data.bg_color;
-                applyEditorPreviewStyle();
+            if (error || !data) {
+                console.error('サイト設定(基本項目)の取得に失敗しました', error);
+                showToast('サイト設定の取得に失敗しました(編集画面のフォントが本番と異なる場合があります)');
+                return;
             }
+            siteTypography = data;
+            document.body.style.backgroundColor = data.bg_color;
+            applyEditorPreviewStyle();
+
+            // Instagramストーリー用の追加項目。schema.sqlを最新まで実行していない環境では
+            // 列が無くて失敗することがあるが、その場合でも上の基本プレビューには影響させない
+            const extra = await sb.from('site_settings')
+                .select('site_title, site_title_font, site_title_color, site_subtitle, site_subtitle_en, site_subtitle_font, site_subtitle_color, article_tag_bg_color, article_tag_text_color, article_tag_font')
+                .eq('id', 1).single();
+            if (extra.error || !extra.data) {
+                console.error('サイト設定(Instagramストーリー用項目)の取得に失敗しました', extra.error);
+                return;
+            }
+            Object.assign(siteTypography, extra.data);
         }
 
         function currentPreviewTypography() {
