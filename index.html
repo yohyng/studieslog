@@ -136,6 +136,12 @@
         /* headerには margin-bottom: var(--header-spacing, 18rem) というインラインstyleが直接付いている
            ため、通常のクラスセレクタでは勝てない。!importantで上書きする */
         body.story-view-active header { margin-bottom: 5rem !important; }
+        /* この画面だけ左右の余白を広めにとる */
+        body.story-view-active header,
+        body.story-view-active #article-list {
+            padding-left: 1.5rem !important;
+            padding-right: 1.5rem !important;
+        }
         /* フェードの開始/終了位置(行数ベース)はJS側でmax-height・mask-imageを一緒に計算して
            inline styleで入れる(何行目からフェードするかを変えても、この2つがズレないようにするため) */
         .story-excerpt {
@@ -1189,11 +1195,11 @@
                 : '';
             const plainText = stripHtml(content);
             const lineHeight = siteLineHeight * currentLineHeightScale();
-            // 6行目あたりからフェードが始まり、12行目までになめらかに消える(続きを読みたくなる見せ方)。
+            // 3行目あたりからフェードが始まり、7行目までになめらかに消える(続きを読みたくなる見せ方)。
             // 表示しきれない分はmask-image+overflow:hiddenで見た目上切るだけなので、
             // 「…」を付けず全文を流し込んでおく
-            const fadeStartLine = 6;
-            const fadeEndLine = 12;
+            const fadeStartLine = 3;
+            const fadeEndLine = 7;
             const fadeStartPct = (fadeStartLine / fadeEndLine) * 100;
             const maskStyle = `linear-gradient(to bottom, black 0%, black ${fadeStartPct}%, transparent 100%)`;
             container.innerHTML = `
