@@ -129,7 +129,7 @@
            (記事本文の狭い幅の中に置かれるため、5列固定にすると不自然に小さくなってしまう) */
         .related-articles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
         /* 記事下部のSNSシェアアイコンはすりガラス背景を無くし、白い丸線のみのフラット表示にする */
-        .share-icon-flat { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; border-color: color-mix(in srgb, white 60%, transparent); }
+        .glass-icon.share-icon-flat { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; border-color: color-mix(in srgb, white 60%, transparent); }
         .article-card {
             display: block;
             overflow: hidden;
@@ -966,7 +966,7 @@
                             <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="glass-icon share-icon-flat opacity-70 hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>
                             <button onclick="shareToInstagram(${article.id})" class="glass-icon share-icon-flat opacity-70 hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)" aria-label="リンクをコピー(Instagram用)">${SHARE_ICONS.instagram}</button>
                             <button onclick="shareArticle(${article.id})" class="glass-icon share-icon-flat opacity-70 hover:opacity-100 transition-opacity" title="共有" aria-label="共有">${SHARE_ICONS.share}</button>
-                            <button onclick="event.stopPropagation(); openSubscribeModal()" class="glass-chip hover:opacity-90 transition-opacity px-3 py-1.5" style="background: color-mix(in srgb, var(--article-subscribe-bg-color) 55%, transparent); color: var(--article-subscribe-text-color); font-size: 0.6rem;" title="更新をメールで受け取る" aria-label="購読">Subscribe</button>
+                            <button onclick="event.stopPropagation(); openSubscribeModal()" class="glass-chip hover:opacity-90 transition-opacity px-3 py-1.5" style="background: var(--article-subscribe-bg-color); color: var(--article-subscribe-text-color); font-size: 0.6rem; box-shadow: none;" title="更新をメールで受け取る" aria-label="購読">Subscribe</button>
                         </div>
                     </div>
                 </article>
