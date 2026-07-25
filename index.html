@@ -570,10 +570,10 @@
             <div class="h-full p-5" style="background: color-mix(in srgb, var(--bg-color) 5%, transparent); backdrop-filter: blur(10px) saturate(190%); -webkit-backdrop-filter: blur(10px) saturate(190%); color: var(--text-color); border-right: 1px solid color-mix(in srgb, currentColor 30%, transparent); box-shadow: inset -1px 0 0 color-mix(in srgb, white 25%, transparent), 4px 0 16px color-mix(in srgb, black 10%, transparent);">
                 <div id="sidebar-title" onclick="toggleMenu(); goHome();" class="cursor-pointer opacity-90 hover:opacity-100 transition-opacity mb-8 font-medium tracking-widest" style="font-size: var(--menu-font-size); font-family: var(--site-title-font, inherit);">fragments</div>
                 <nav class="flex flex-col gap-3" style="font-size: var(--menu-font-size); font-family: var(--site-title-font, inherit);">
-                    <a href="/about" onclick="toggleMenu(); return goToSection('about', '/about');" data-i18n="nav_about" class="opacity-80 hover:opacity-100 transition-opacity">About</a>
-                    <a href="/contact" onclick="toggleMenu(); return goToSection('contact', '/contact');" data-i18n="nav_contact" class="opacity-80 hover:opacity-100 transition-opacity">Contact</a>
-                    <a href="/tags" onclick="toggleMenu(); return goToSection('tag-list', '/tags');" data-i18n="nav_tag" class="opacity-80 hover:opacity-100 transition-opacity">Tag</a>
-                    <a href="/search" onclick="toggleMenu(); return goToSection('search', '/search');" data-i18n="nav_search" class="opacity-80 hover:opacity-100 transition-opacity">Search</a>
+                    <a href="/about" onclick="toggleMenu(); return goToSection('about', '/about');" data-i18n="nav_about" class="opacity-80 hover:opacity-100 transition-opacity">about</a>
+                    <a href="/contact" onclick="toggleMenu(); return goToSection('contact', '/contact');" data-i18n="nav_contact" class="opacity-80 hover:opacity-100 transition-opacity">contact</a>
+                    <a href="/tags" onclick="toggleMenu(); return goToSection('tag-list', '/tags');" data-i18n="nav_tag" class="opacity-80 hover:opacity-100 transition-opacity">tag</a>
+                    <a href="/search" onclick="toggleMenu(); return goToSection('search', '/search');" data-i18n="nav_search" class="opacity-80 hover:opacity-100 transition-opacity">search</a>
                     <button onclick="toggleMenu(); openSubscribeModal();" data-i18n="nav_subscribe" class="glass-chip self-start -ml-2.5 -mt-1.5 px-2.5 py-1 hover:opacity-90 transition-opacity" style="background: var(--subscribe-bg-color); color: var(--subscribe-text-color); font-size: 0.75em; font-family: inherit; box-shadow: none;">Subscribe</button>
                     <div class="flex gap-2 mt-2 pt-3" style="border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent); font-size: 0.75em;">
                         <span id="locale-btn-ja" onclick="setLocale('ja')" class="cursor-pointer opacity-100 hover:opacity-100 transition-opacity" style="text-decoration: underline;">JP</span>
@@ -612,7 +612,7 @@
     <main id="tag-view" class="hidden w-full content-width relative"></main>
 
     <main id="search-view" class="hidden w-full content-width relative">
-        <h2 id="search-page-heading" class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">Search</h2>
+        <h2 id="search-page-heading" class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">search</h2>
         <div class="relative mb-10">
             <input id="search-input" type="text" placeholder="タイトル・本文・タグで検索" class="w-full bg-transparent border text-sm px-3 py-2.5 pr-9 focus:outline-none" style="border-color: color-mix(in srgb, currentColor 30%, transparent); border-radius: 0;">
             <button id="search-clear" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100 transition-opacity leading-none" aria-label="検索をクリア">×</button>
@@ -686,7 +686,7 @@
         let currentLocale = localStorage.getItem('siteLocale') === 'en' ? 'en' : 'ja';
         const I18N = {
             ja: {
-                nav_about: 'About', nav_contact: 'Contact', nav_tag: 'Tag', nav_search: 'Search', nav_subscribe: 'Subscribe',
+                nav_about: 'about', nav_contact: 'contact', nav_tag: 'tag', nav_search: 'search', nav_subscribe: 'Subscribe',
                 search_placeholder: 'タイトル・本文・タグで検索',
                 subscribe_title: '購読する',
                 subscribe_desc: '新着記事をメールで受け取れます(週1回、更新があった週だけ届きます)',
@@ -700,7 +700,7 @@
                 search_no_results: '見つかりませんでした。',
             },
             en: {
-                nav_about: 'About', nav_contact: 'Contact', nav_tag: 'Tag', nav_search: 'Search', nav_subscribe: 'Subscribe',
+                nav_about: 'about', nav_contact: 'contact', nav_tag: 'tag', nav_search: 'search', nav_subscribe: 'Subscribe',
                 search_placeholder: 'Search by title, body, or tag',
                 subscribe_title: 'Subscribe',
                 subscribe_desc: 'Get new posts by email (sent at most once a week, only when there’s an update).',
@@ -1207,7 +1207,7 @@
                 : '<p class="text-xs opacity-40">まだタグがありません。</p>';
 
             listView.innerHTML = `
-                <h2 class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">Tag</h2>
+                <h2 class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">tag</h2>
                 ${tagsHtml}
             `;
         }
@@ -1783,7 +1783,7 @@
                 snsRow('Web', siteSnsWebsiteUrl, SHARE_ICONS.website),
             ].filter(Boolean).join('');
             const snsHtml = snsLinks ? `<div class="flex flex-col gap-3 mt-8 fade-in max-w-sm">${snsLinks}</div>` : '';
-            const heading = `<h2 id="about-page-heading" class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">About</h2>`;
+            const heading = `<h2 id="about-page-heading" class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">about</h2>`;
             return `${heading}<div class="text-sm opacity-90 fade-in" style="line-height: ${lineHeight} !important;">${body}</div>${snsHtml}`;
         }
 
@@ -1803,7 +1803,7 @@
             if (currentLocale === 'en') {
                 return `
                     <div class="opacity-90 fade-in" style="font-size: 0.68rem; line-height: 1.9;">
-                        <h2 class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">Contact</h2>
+                        <h2 class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">contact</h2>
                         <form onsubmit="return submitInquiry(event)" class="flex flex-col gap-3">
                             <input id="inquiry-email" type="email" required placeholder="you@example.com" class="bg-transparent border-b px-2 py-1.5 focus:outline-none" style="font-size: 0.72rem; border-color: color-mix(in srgb, currentColor 30%, transparent);">
                             <textarea id="inquiry-message" required rows="4" placeholder="Your message" class="bg-transparent border px-2 py-1.5 focus:outline-none resize-none" style="font-size: 0.72rem; border-color: color-mix(in srgb, currentColor 30%, transparent);"></textarea>
@@ -1822,7 +1822,7 @@
             }
             return `
                 <div class="opacity-90 fade-in" style="font-size: 0.68rem; line-height: 1.9;">
-                    <h2 class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">Contact</h2>
+                    <h2 class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">contact</h2>
                     <form onsubmit="return submitInquiry(event)" class="flex flex-col gap-3">
                         <input id="inquiry-email" type="email" required placeholder="you@example.com" class="bg-transparent border-b px-2 py-1.5 focus:outline-none" style="font-size: 0.72rem; border-color: color-mix(in srgb, currentColor 30%, transparent);">
                         <textarea id="inquiry-message" required rows="4" placeholder="お問い合わせ内容" class="bg-transparent border px-2 py-1.5 focus:outline-none resize-none" style="font-size: 0.72rem; border-color: color-mix(in srgb, currentColor 30%, transparent);"></textarea>
