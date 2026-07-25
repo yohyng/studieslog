@@ -899,7 +899,7 @@
             let notesHtml = '';
             if (notes.length > 0) {
                 notesHtml = `<ol class="footnote-list">${notes.map((text, i) => `
-                    <li id="fn-${articleId}-${i + 1}"><span style="color:${siteFootnoteColor};">[${i + 1}]</span><span style="color:${siteFootnoteTextColor}; font-family:${siteFootnoteTextFont};">${escapeHtml(text)}<a href="#fnref-${articleId}-${i + 1}" class="footnote-back">↩</a></span></li>
+                    <li id="fn-${articleId}-${i + 1}"><span class="footnote-ref" style="color:${siteFootnoteColor};">[${i + 1}]</span><span style="color:${siteFootnoteTextColor}; font-family:${siteFootnoteTextFont};">${escapeHtml(text)}<a href="#fnref-${articleId}-${i + 1}" class="footnote-back">↩</a></span></li>
                 `).join('')}</ol>`;
             }
             return container.innerHTML + notesHtml;
