@@ -970,9 +970,9 @@
                 subtitleWrapEl.style.fontSize = subtitleSize;
                 subtitleWrapEl.style.color = subtitleColor;
                 subtitleWrapEl.style.fontFamily = subtitleFont;
-                // 帯は<p>ではなくインラインの<span>に敷き、折り返した行も文字幅で止まるようにする
-                subtitleEnEl.style.background = subtitleBg;
-                subtitleJaEl.style.background = subtitleBg;
+                // 帯はrenderSubtitleBandBg()がRangeのgetClientRects()を使って描く(選択時のハイライトと
+                // 同じく、最後の行以外は折り返し位置まで塗られた見た目にするため)。色はdatasetに預ける
+                subtitleWrapEl.dataset.bg = subtitleBg;
                 const enHasText = !!subtitleEnEl.textContent.trim();
                 const jaHasText = !!subtitleJaEl.textContent.trim();
                 subtitleEnEl.style.display = enHasText ? '' : 'none';
@@ -1829,6 +1829,7 @@
             const shapeWrap = document.getElementById('title-rect-wrap');
             if (shapeWrap) shapeWrap.style.left = headerPad ? headerPad + 'px' : '';
             updateSubtitleBreak();
+            renderSubtitleBandBg();
             syncTitleShapeOverlays();
         }
 
@@ -1849,6 +1850,44 @@
             br.style.display = wraps ? 'none' : '';
         }
 
+        // サブタイトル全体(英語+日本語)をRangeで選択したときのgetClientRects()を使う。
+        // テキスト選択時のハイライトと同じ仕組みなので、折り返した行のうち最後の行以外は
+        // 折り返し位置(行末)まで含んだ矩形になり、選択したときのような帯の見た目を再現できる
+        function getSubtitleLineRects() {
+            const wrapEl = document.getElementById('site-subtitle');
+            if (!wrapEl || wrapEl.style.display === 'none') return [];
+            const range = document.createRange();
+            range.selectNodeContents(wrapEl);
+            return Array.from(range.getClientRects()).filter(r => r.width && r.height);
+        }
+
+        // 帯(背景)はCSSのbackgroundを<span>に敷くと行ごとに実際の文字幅で途切れてしまうため、
+        // getSubtitleLineRects()の矩形をそのままheaderに重ねたdivとして描く
+        function renderSubtitleBandBg() {
+            document.querySelectorAll('.subtitle-bg-rect').forEach(el => el.remove());
+            const header = document.querySelector('header');
+            const wrapEl = document.getElementById('site-subtitle');
+            if (!header || !wrapEl) return;
+            const bg = wrapEl.dataset.bg || '';
+            if (!bg) return;
+            const rects = getSubtitleLineRects();
+            if (!rects.length) return;
+            const headerRect = header.getBoundingClientRect();
+            rects.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'subtitle-bg-rect';
+                div.style.position = 'absolute';
+                div.style.left = (r.left - headerRect.left) + 'px';
+                div.style.top = (r.top - headerRect.top) + 'px';
+                div.style.width = r.width + 'px';
+                div.style.height = r.height + 'px';
+                div.style.background = bg;
+                div.style.zIndex = '1';
+                div.style.pointerEvents = 'none';
+                header.appendChild(div);
+            });
+        }
+
         // サブタイトルに白帯を敷くと、その上を通る台形の白い線が白同士で見えなくなってしまう。
         // CSSの合成モードは「背景に対して一意の変換」しかできず、"灰色の上では白・白の上では灰色"を
         // 同時には作れないため、帯の範囲だけに切り抜いたグレーの線のコピーを上に重ねて反転を表現する。
@@ -1861,28 +1900,24 @@
             if (!wrap || wrap.style.display === 'none') return;
             const wrapRect = wrap.getBoundingClientRect();
             if (!wrapRect.width || !wrapRect.height) return;
+            const wrapEl = document.getElementById('site-subtitle');
+            if (!wrapEl || !wrapEl.dataset.bg) return;
             const stroke = getComputedStyle(document.documentElement).getPropertyValue('--subtitle-text-color').trim();
-            ['site-subtitle-en', 'site-subtitle-ja'].forEach(id => {
-                const inner = document.getElementById(id);
-                // 帯(背景)が無い行は、線を反転させる必要がない
-                if (!inner || inner.style.display === 'none' || !inner.textContent.trim() || !inner.style.background) return;
-                // 折り返している場合、帯は行ごとに文字幅で途切れる。getClientRects()は行ごとの矩形を
-                // 返すので、1行ぶんずつ切り抜いたコピーを作れば帯の形どおりに線が反転する
-                Array.from(inner.getClientRects()).forEach(r => {
-                    if (!r.width || r.bottom <= wrapRect.top || r.top >= wrapRect.bottom) return;
-                    const copy = wrap.cloneNode(true);
-                    copy.removeAttribute('id');
-                    copy.removeAttribute('onclick');
-                    copy.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-                    copy.classList.add('title-rect-overlay');
-                    copy.style.zIndex = '21';
-                    copy.style.pointerEvents = 'none';
-                    // 帯と重なる矩形だけを残すよう切り抜く
-                    copy.style.clipPath = `inset(${r.top - wrapRect.top}px ${wrapRect.right - r.right}px ${wrapRect.bottom - r.bottom}px ${r.left - wrapRect.left}px)`;
-                    const poly = copy.querySelector('polygon');
-                    if (poly && stroke) poly.style.stroke = stroke;
-                    header.appendChild(copy);
-                });
+            // 帯(renderSubtitleBandBg)と同じ矩形を使うことで、帯の形どおりに線を反転できる
+            getSubtitleLineRects().forEach(r => {
+                if (!r.width || r.bottom <= wrapRect.top || r.top >= wrapRect.bottom) return;
+                const copy = wrap.cloneNode(true);
+                copy.removeAttribute('id');
+                copy.removeAttribute('onclick');
+                copy.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+                copy.classList.add('title-rect-overlay');
+                copy.style.zIndex = '21';
+                copy.style.pointerEvents = 'none';
+                // 帯と重なる矩形だけを残すよう切り抜く
+                copy.style.clipPath = `inset(${r.top - wrapRect.top}px ${wrapRect.right - r.right}px ${wrapRect.bottom - r.bottom}px ${r.left - wrapRect.left}px)`;
+                const poly = copy.querySelector('polygon');
+                if (poly && stroke) poly.style.stroke = stroke;
+                header.appendChild(copy);
             });
         }
 
