@@ -1868,7 +1868,7 @@
 
             if (error) {
                 console.error(error);
-                showToast('保存に失敗しました');
+                showToast(`保存に失敗しました: ${error.code || ''} ${error.message || error}`, 8000);
                 return;
             }
             await syncArticleTags(data.id);
