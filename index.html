@@ -418,10 +418,7 @@
            不要なら #title-rect-wrap のdivとCSS、JSのsetupTitleRectSway()/randomizeTitleShape()呼び出しを削除すれば元に戻ります */
         .title-rect-wrap { position: absolute; left: 0; z-index: 20; perspective: 500px; }
         .title-rect { width: 100%; height: 100%; overflow: visible; transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
-        /* 実験: タイトル文字の白背景と交差した部分だけ、mix-blend-modeで線の色が変わって見えるようにする */
-        .title-rect polygon { fill: none; stroke: currentColor; stroke-miterlimit: 10; mix-blend-mode: difference; }
-        /* 実験: タイトル文字の背景を白にして、その上に台形の白い線が重なると交差部分だけ暗く見える */
-        #site-title { background: #ffffff; color: #666666 !important; padding: 0.1em 0.5em; }
+        .title-rect polygon { fill: none; stroke: currentColor; stroke-miterlimit: 10; }
 
         .article-title { color: var(--text-color-solid); opacity: 0.85; line-height: inherit !important; transition: opacity 0.8s ease, color 0.5s ease; font-family: var(--article-title-font, inherit); }
         /* コピペした本文の段落タグなどに行間のインラインスタイルが残っていても、必ずサイト設定の行間が効くようにする */
