@@ -483,7 +483,9 @@
                             </div>
                             <input id="set-site-title-color" type="color" class="w-8 h-8 rounded cursor-pointer" title="サイトタイトルの色">
                         </div>
-                        <label class="text-xs text-white/50 block mb-2">サブタイトル</label>
+                        <label class="text-xs text-white/50 block mb-2">サブタイトル(英語・上の行。空欄なら非表示)</label>
+                        <input id="set-site-subtitle-en" type="text" placeholder="Prototyping discussions on space." class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
+                        <label class="text-xs text-white/50 block mb-2">サブタイトル(日本語・下の行。空欄なら非表示)</label>
                         <input id="set-site-subtitle" type="text" placeholder="記憶の集積。言葉は静かに積もっていく。" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
                         <div class="flex items-center gap-3">
                             <div class="flex items-center gap-2">
@@ -2704,6 +2706,7 @@
             document.getElementById('set-site-title-size').value = data.site_title_size;
             document.getElementById('set-site-title-size-value').textContent = data.site_title_size + 'px';
             document.getElementById('set-site-title-color').value = data.site_title_color;
+            document.getElementById('set-site-subtitle-en').value = data.site_subtitle_en || '';
             document.getElementById('set-site-subtitle').value = data.site_subtitle || '';
             document.getElementById('set-site-subtitle-size').value = data.site_subtitle_size;
             document.getElementById('set-site-subtitle-size-value').textContent = data.site_subtitle_size + 'px';
@@ -2796,6 +2799,7 @@
                 site_title_font: document.getElementById('set-site-title-font').value,
                 site_title_size: Number(document.getElementById('set-site-title-size').value),
                 site_title_color: document.getElementById('set-site-title-color').value,
+                site_subtitle_en: document.getElementById('set-site-subtitle-en').value.trim(),
                 site_subtitle: document.getElementById('set-site-subtitle').value.trim(),
                 site_subtitle_size: Number(document.getElementById('set-site-subtitle-size').value),
                 site_subtitle_color: document.getElementById('set-site-subtitle-color').value,

@@ -656,7 +656,9 @@
             </svg>
         </div>
         <h1 id="site-title" class="font-medium tracking-widest cursor-pointer inline-block relative z-10" onclick="goHome()">fragments</h1>
-        <p id="site-subtitle" class="mt-4 relative z-10">空間にまつわる議論をプロトタイプする</p>
+        <!-- サブタイトルは英語が上、日本語が下。どちらも未入力なら各行ごと非表示にする -->
+        <p id="site-subtitle-en" class="mt-4 relative z-10"></p>
+        <p id="site-subtitle" class="relative z-10">空間にまつわる議論をプロトタイプする</p>
     </header>
 
     <main id="article-list" class="w-full content-width flex flex-col gap-16 relative"></main>
@@ -946,9 +948,19 @@
             document.documentElement.style.setProperty('--site-title-font', data.site_title_font || data.font);
             titleEl.style.fontSize = (data.site_title_size || 14) + 'px';
             titleEl.style.color = data.site_title_color || data.text_color;
-            if (data.site_subtitle) subtitleEl.textContent = data.site_subtitle;
-            subtitleEl.style.fontSize = (data.site_subtitle_size || 12) + 'px';
-            subtitleEl.style.color = data.site_subtitle_color || data.text_color;
+            // サブタイトルは英語(上)・日本語(下)の2行。未入力の行は詰めて表示しない
+            const subtitleEnEl = document.getElementById('site-subtitle-en');
+            const subtitleSize = (data.site_subtitle_size || 12) + 'px';
+            const subtitleColor = data.site_subtitle_color || data.text_color;
+            [[subtitleEnEl, data.site_subtitle_en], [subtitleEl, data.site_subtitle]].forEach(([el, text], i) => {
+                if (!el) return;
+                if (text) el.textContent = text;
+                el.style.fontSize = subtitleSize;
+                el.style.color = subtitleColor;
+                el.style.display = el.textContent.trim() ? '' : 'none';
+                // 英語が非表示のときは日本語側が先頭に来るので、上の余白はそちらに移す
+                if (i === 1) el.classList.toggle('mt-4', subtitleEnEl ? subtitleEnEl.style.display === 'none' : true);
+            });
             siteAboutContent = data.about_content || '';
             siteAboutContentEn = data.about_content_en || '';
             siteSnsXUrl = data.sns_x_url || '';
