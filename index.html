@@ -571,8 +571,8 @@
                  スライド元なので、このボタンもabsoluteにしておけばパネルと一緒にスライドする -->
             <button onclick="toggleMenu()" class="absolute z-10 opacity-50 hover:opacity-100 transition-opacity text-lg leading-none" style="left: 1.5rem; bottom: 2.25rem;" aria-label="閉じる">×</button>
             <div class="h-full p-5" style="background: color-mix(in srgb, var(--bg-color) 5%, transparent); backdrop-filter: blur(10px) saturate(190%); -webkit-backdrop-filter: blur(10px) saturate(190%); color: var(--text-color); border-right: 1px solid color-mix(in srgb, currentColor 30%, transparent); box-shadow: inset -1px 0 0 color-mix(in srgb, white 25%, transparent), 4px 0 16px color-mix(in srgb, black 10%, transparent);">
-                <div id="sidebar-title" onclick="toggleMenu(); goHome();" class="cursor-pointer opacity-90 hover:opacity-100 transition-opacity mb-8 font-medium tracking-widest" style="font-size: var(--menu-font-size);">fragments</div>
-                <nav class="flex flex-col gap-3" style="font-size: var(--menu-font-size);">
+                <div id="sidebar-title" onclick="toggleMenu(); goHome();" class="cursor-pointer opacity-90 hover:opacity-100 transition-opacity mb-8 font-medium tracking-widest" style="font-size: var(--menu-font-size); font-family: var(--site-title-font, inherit);">fragments</div>
+                <nav class="flex flex-col gap-3" style="font-size: var(--menu-font-size); font-family: var(--site-title-font, inherit);">
                     <a href="/about" onclick="toggleMenu(); return goToSection('about', '/about');" data-i18n="nav_about" class="opacity-80 hover:opacity-100 transition-opacity">About</a>
                     <a href="/contact" onclick="toggleMenu(); return goToSection('contact', '/contact');" data-i18n="nav_contact" class="opacity-80 hover:opacity-100 transition-opacity">Contact</a>
                     <a href="/tags" onclick="toggleMenu(); return goToSection('tag-list', '/tags');" data-i18n="nav_tag" class="opacity-80 hover:opacity-100 transition-opacity">Tag</a>
@@ -825,8 +825,8 @@
             document.documentElement.style.setProperty('--tag-description-color', data.tag_description_color || data.text_color);
             document.documentElement.style.setProperty('--footnote-color', data.footnote_color || data.text_color);
             siteFootnoteColor = data.footnote_color || data.text_color;
-            // 注釈番号の背景色(空欄なら注釈番号の色を薄くした自動生成の背景に従う)
-            document.documentElement.style.setProperty('--footnote-bg-color', data.footnote_bg_color || 'color-mix(in srgb, var(--footnote-color) 18%, transparent)');
+            // 注釈番号の背景色(空欄ならハッシュタグ・Subscribeボタンと同じ真っ白に揃える)
+            document.documentElement.style.setProperty('--footnote-bg-color', data.footnote_bg_color || '#ffffff');
             document.documentElement.style.setProperty('--footnote-text-color', data.footnote_text_color || data.text_color);
             siteFootnoteTextColor = data.footnote_text_color || data.text_color;
             siteFootnoteTextFont = data.footnote_text_font || 'inherit';
@@ -1785,7 +1785,7 @@
                 snsRow('Web', siteSnsWebsiteUrl, SHARE_ICONS.website),
             ].filter(Boolean).join('');
             const snsHtml = snsLinks ? `<div class="flex flex-col gap-3 mt-8 fade-in max-w-sm">${snsLinks}</div>` : '';
-            const heading = `<h2 id="about-page-heading" class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">about</h2>`;
+            const heading = `<h2 id="about-page-heading" class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">About</h2>`;
             return `${heading}<div class="text-sm opacity-90 fade-in" style="line-height: ${lineHeight} !important;">${body}</div>${snsHtml}`;
         }
 
@@ -1814,7 +1814,7 @@
                         </form>
                         <p id="inquiry-status" class="opacity-50 mt-2 hidden" style="font-size: 0.68rem;"></p>
                     </div>
-                    <div class="mt-10 pt-8 opacity-50 fade-in" style="font-size: 0.68rem; line-height: 1.9; border-top: 1px solid currentColor;">
+                    <div class="mt-10 pt-8 opacity-50 fade-in" style="font-size: 0.68rem; line-height: 1.9; border-top: 0.5px solid var(--divider-color);">
                         <h2 class="opacity-90 mb-3" style="letter-spacing: 0.05em;">Privacy Policy</h2>
                         <p>This site's newsletter subscription form collects your email address solely to send update notifications. We do not provide or sell your information to any third party.</p>
                         <p class="mt-3">We use Resend to send emails and Supabase to store data. We also load Google Fonts to display text, which causes your browser to communicate with Google's servers.</p>
@@ -1833,7 +1833,7 @@
                     </form>
                     <p id="inquiry-status" class="opacity-50 mt-2 hidden" style="font-size: 0.68rem;"></p>
                 </div>
-                <div class="mt-10 pt-8 opacity-50 fade-in" style="font-size: 0.68rem; line-height: 1.9; border-top: 1px solid currentColor;">
+                <div class="mt-10 pt-8 opacity-50 fade-in" style="font-size: 0.68rem; line-height: 1.9; border-top: 0.5px solid var(--divider-color);">
                     <h2 class="opacity-90 mb-3" style="letter-spacing: 0.05em;">プライバシーポリシー</h2>
                     <p>当サイトのニュースレター購読フォームでは、更新通知の送信のみを目的としてメールアドレスをお預かりしています。取得した情報を第三者に提供・販売することはありません。</p>
                     <p class="mt-3">メールの送信にはResend、データの保管にはSupabaseを利用しています。また、文字表示のためGoogle Fontsを読み込んでおり、その際にご利用のブラウザからGoogleのサーバーへ通信が発生します。</p>
