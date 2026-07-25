@@ -153,6 +153,13 @@
             position: relative;
             overflow: hidden;
         }
+        .story-image {
+            display: block;
+            width: 100%;
+            max-height: 45vh;
+            object-fit: cover;
+            margin-bottom: 1.25rem;
+        }
         /* ページ最上部からタイトルまでの余白と、タイトルから本文(カード一覧など)までの余白を
            揃え(どちらも6rem)、タイトル+台形アイコンがその間で均等な位置に来るようにする。
            bodyのpy-24(6rem)のうち上側だけ4remに詰め、headerの元々のpt-8(2rem)と合わせて上6remにする */
@@ -1214,6 +1221,7 @@
             const tagsHtml = (article.tags && article.tags.length > 0)
                 ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<span class="glass-chip tag-chip px-2 py-0.5" style="background: color-mix(in srgb, var(--article-tag-bg-color) 55%, transparent); color: var(--article-tag-text-color); font-size: calc(var(--article-tag-font-size) * ${STORY_SCALE}); font-family: var(--article-tag-font);">#${escapeHtml(t.name)}</span>`).join('')}</div>`
                 : '';
+            const imageUrl = getFirstImageUrl(content);
             const plainText = stripHtml(content);
             const fontSize = siteFontSize * currentFontSizeScale();
             const lineHeight = siteLineHeight * currentLineHeightScale();
@@ -1229,6 +1237,7 @@
                     <div class="text-xs opacity-40 mb-2" style="font-size: ${0.75 * fontSize * STORY_SCALE}px;">${article.date}</div>
                     <h2 class="font-normal mb-4 article-title" style="font-size: ${1.125 * fontSize * STORY_SCALE}px;">${escapeHtml(title)}</h2>
                     ${tagsHtml}
+                    ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" class="story-image">` : ''}
                     <div class="content-body story-excerpt" style="font-size: ${0.875 * fontSize * STORY_SCALE}px; line-height: ${lineHeight} !important; max-height: ${fadeEndLine * lineHeight}em; mask-image: ${maskStyle}; -webkit-mask-image: ${maskStyle};">${escapeHtml(plainText)}</div>
                 </article>
                 <p class="text-xs opacity-30 mt-4 text-center">${articleShareUrl(article.id)}</p>
