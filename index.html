@@ -615,6 +615,7 @@
     <main id="tag-view" class="hidden w-full content-width relative"></main>
 
     <main id="search-view" class="hidden w-full content-width relative">
+        <h2 id="search-page-heading" class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">Search</h2>
         <div class="relative mb-10">
             <input id="search-input" type="text" placeholder="タイトル・本文・タグで検索" class="w-full bg-transparent border text-sm px-3 py-2.5 pr-9 focus:outline-none" style="border-color: color-mix(in srgb, currentColor 30%, transparent); border-radius: 0;">
             <button id="search-clear" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100 transition-opacity leading-none" aria-label="検索をクリア">×</button>
@@ -679,6 +680,7 @@
         let siteAboutContent = '';
         let siteAboutContentEn = '';
         let siteSnsXUrl = '';
+        let siteSnsFacebookUrl = '';
         let siteSnsInstagramUrl = '';
         let siteSnsWebsiteUrl = '';
 
@@ -859,6 +861,7 @@
             const subtitleEl = document.getElementById('site-subtitle');
             if (data.site_title) titleEl.textContent = data.site_title;
             titleEl.style.fontFamily = data.site_title_font || data.font;
+            document.documentElement.style.setProperty('--site-title-font', data.site_title_font || data.font);
             titleEl.style.fontSize = (data.site_title_size || 14) + 'px';
             titleEl.style.color = data.site_title_color || data.text_color;
             if (data.site_subtitle) subtitleEl.textContent = data.site_subtitle;
@@ -867,6 +870,7 @@
             siteAboutContent = data.about_content || '';
             siteAboutContentEn = data.about_content_en || '';
             siteSnsXUrl = data.sns_x_url || '';
+            siteSnsFacebookUrl = data.sns_facebook_url || '';
             siteSnsInstagramUrl = data.sns_instagram_url || '';
             siteSnsWebsiteUrl = data.sns_website_url || '';
             // パターンA/Bは廃止しパターンC固定にしたため、DBのhomepage_layout設定は読まない
@@ -1776,11 +1780,12 @@
             `;
             const snsLinks = [
                 snsRow('X', siteSnsXUrl, SHARE_ICONS.x),
+                snsRow('Facebook', siteSnsFacebookUrl, SHARE_ICONS.facebook),
                 snsRow('Instagram', siteSnsInstagramUrl, SHARE_ICONS.instagram),
                 snsRow('Web', siteSnsWebsiteUrl, SHARE_ICONS.website),
             ].filter(Boolean).join('');
             const snsHtml = snsLinks ? `<div class="flex flex-col gap-3 mt-8 fade-in max-w-sm">${snsLinks}</div>` : '';
-            const heading = `<h2 class="self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: transparent; border: 1px solid #ffffff; color: #ffffff;">about</h2>`;
+            const heading = `<h2 id="about-page-heading" class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">about</h2>`;
             return `${heading}<div class="text-sm opacity-90 fade-in" style="line-height: ${lineHeight} !important;">${body}</div>${snsHtml}`;
         }
 

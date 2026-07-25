@@ -202,6 +202,7 @@ alter table public.site_settings add column if not exists title_font text not nu
 
 -- アバウトページに表示するSNSリンク(空文字なら非表示)
 alter table public.site_settings add column if not exists sns_x_url text not null default '';
+alter table public.site_settings add column if not exists sns_facebook_url text not null default '';
 alter table public.site_settings add column if not exists sns_instagram_url text not null default '';
 alter table public.site_settings add column if not exists sns_website_url text not null default '';
 
