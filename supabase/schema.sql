@@ -45,16 +45,20 @@ create policy "articles_public_read" on public.articles
   );
 
 -- ログイン済み(管理者)は下書きも含めて全部読める
+drop policy if exists "articles_authenticated_read_all" on public.articles;
 create policy "articles_authenticated_read_all" on public.articles
   for select to authenticated using (true);
 
 -- 作成・更新・削除はログイン済みユーザーのみ
+drop policy if exists "articles_auth_insert" on public.articles;
 create policy "articles_auth_insert" on public.articles
   for insert to authenticated with check (true);
 
+drop policy if exists "articles_auth_update" on public.articles;
 create policy "articles_auth_update" on public.articles
   for update to authenticated using (true) with check (true);
 
+drop policy if exists "articles_auth_delete" on public.articles;
 create policy "articles_auth_delete" on public.articles
   for delete to authenticated using (true);
 
@@ -63,12 +67,15 @@ insert into storage.buckets (id, name, public)
 values ('article-images', 'article-images', true)
 on conflict (id) do nothing;
 
+drop policy if exists "article_images_public_read" on storage.objects;
 create policy "article_images_public_read" on storage.objects
   for select using (bucket_id = 'article-images');
 
+drop policy if exists "article_images_auth_insert" on storage.objects;
 create policy "article_images_auth_insert" on storage.objects
   for insert to authenticated with check (bucket_id = 'article-images');
 
+drop policy if exists "article_images_auth_delete" on storage.objects;
 create policy "article_images_auth_delete" on storage.objects
   for delete to authenticated using (bucket_id = 'article-images');
 
@@ -192,10 +199,12 @@ on conflict (id) do nothing;
 alter table public.site_settings enable row level security;
 
 -- 閲覧は誰でも可能(公開ページが表示に使う)
+drop policy if exists "site_settings_public_read" on public.site_settings;
 create policy "site_settings_public_read" on public.site_settings
   for select using (true);
 
 -- 更新はログイン済みユーザーのみ
+drop policy if exists "site_settings_auth_update" on public.site_settings;
 create policy "site_settings_auth_update" on public.site_settings
   for update to authenticated using (id = 1) with check (id = 1);
 
@@ -245,15 +254,19 @@ create table if not exists public.tags (
 
 alter table public.tags enable row level security;
 
+drop policy if exists "tags_public_read" on public.tags;
 create policy "tags_public_read" on public.tags
   for select using (true);
 
+drop policy if exists "tags_auth_insert" on public.tags;
 create policy "tags_auth_insert" on public.tags
   for insert to authenticated with check (true);
 
+drop policy if exists "tags_auth_update" on public.tags;
 create policy "tags_auth_update" on public.tags
   for update to authenticated using (true) with check (true);
 
+drop policy if exists "tags_auth_delete" on public.tags;
 create policy "tags_auth_delete" on public.tags
   for delete to authenticated using (true);
 
@@ -266,12 +279,15 @@ create table if not exists public.article_tags (
 
 alter table public.article_tags enable row level security;
 
+drop policy if exists "article_tags_public_read" on public.article_tags;
 create policy "article_tags_public_read" on public.article_tags
   for select using (true);
 
+drop policy if exists "article_tags_auth_insert" on public.article_tags;
 create policy "article_tags_auth_insert" on public.article_tags
   for insert to authenticated with check (true);
 
+drop policy if exists "article_tags_auth_delete" on public.article_tags;
 create policy "article_tags_auth_delete" on public.article_tags
   for delete to authenticated using (true);
 
@@ -289,15 +305,19 @@ alter table public.subscribers add column if not exists is_admin_test boolean no
 
 alter table public.subscribers enable row level security;
 
+drop policy if exists "subscribers_public_insert" on public.subscribers;
 create policy "subscribers_public_insert" on public.subscribers
   for insert with check (true);
 
+drop policy if exists "subscribers_auth_select" on public.subscribers;
 create policy "subscribers_auth_select" on public.subscribers
   for select to authenticated using (true);
 
+drop policy if exists "subscribers_auth_delete" on public.subscribers;
 create policy "subscribers_auth_delete" on public.subscribers
   for delete to authenticated using (true);
 
+drop policy if exists "subscribers_auth_update" on public.subscribers;
 create policy "subscribers_auth_update" on public.subscribers
   for update to authenticated using (true) with check (true);
 
@@ -313,6 +333,7 @@ on conflict (id) do nothing;
 
 alter table public.newsletter_state enable row level security;
 
+drop policy if exists "newsletter_state_auth_all" on public.newsletter_state;
 create policy "newsletter_state_auth_all" on public.newsletter_state
   for all to authenticated using (true) with check (true);
 
@@ -327,11 +348,14 @@ create table if not exists public.inquiries (
 
 alter table public.inquiries enable row level security;
 
+drop policy if exists "inquiries_public_insert" on public.inquiries;
 create policy "inquiries_public_insert" on public.inquiries
   for insert with check (true);
 
+drop policy if exists "inquiries_auth_select" on public.inquiries;
 create policy "inquiries_auth_select" on public.inquiries
   for select to authenticated using (true);
 
+drop policy if exists "inquiries_auth_delete" on public.inquiries;
 create policy "inquiries_auth_delete" on public.inquiries
   for delete to authenticated using (true);
