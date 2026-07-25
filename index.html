@@ -152,7 +152,10 @@
            カードが216px程度まで縮み小さすぎたため、240pxに引き上げて強制的に2列にしている。
            2列になるとカード自体は330px前後まで大きくなるので、代わりにgapを広げて余白を確保している。
            元に戻すときはこの値を--card-minと同じにし、gapも0.75remに戻せばよい */
-        :root { --card-min: 280px; --card-max: 350px; --related-card-min: 240px; }
+        /* --related-card-max: 関連記事だけの上限。ウィンドウ幅を最小まで狭めて1列表示になったときは
+           記事本文幅いっぱいまでカードを大きく見せたいため、通常カードの上限(350px)よりだいぶ広くとる。
+           記事本文の幅(--content-width)自体が実質の天井になるので、これより大きな値でも害はない */
+        :root { --card-min: 280px; --card-max: 350px; --related-card-min: 240px; --related-card-max: 640px; }
         .card-grid,
         .related-articles-grid {
             display: flex;
@@ -215,10 +218,10 @@
             }
         }
         .card-excerpt {
-            /* clampで上下限を切ると、カード幅によって文字量の見え方が変わってしまうため、
-               あえて上限・下限を設けずcqiだけに比例させ、カードの大きさに関わらず
-               文字量(密度)が常に一定に見えるようにする */
-            font-size: calc(4cqi * var(--card-font-scale, 1) * var(--user-font-scale, 1));
+            /* 基本はcqiに比例させ、カードの大きさに関わらず文字量(密度)が一定に見えるようにする。
+               ただしカード自体の上限を上げた結果、文字だけが記事本文より大きくなると不自然なため、
+               記事本文と同じtext-sm(0.875rem)を上限としてmin()で頭打ちにする */
+            font-size: min(0.875rem, calc(4cqi * var(--card-font-scale, 1) * var(--user-font-scale, 1)));
             font-family: var(--card-excerpt-font, inherit);
             color: var(--text-color-solid);
             opacity: var(--body-text-opacity);
@@ -230,7 +233,9 @@
         /* 枠線を引かず、文字組みだけで見えない枠を感じさせる。タイトルは両端揃えだが最後の行だけ右揃えにする
            (本文の方は最後の行まで均等に伸ばす。card-excerptの均等揃えと使い分ける) */
         .card-title {
-            font-size: calc(4.5cqi * var(--card-font-scale, 1) * var(--user-font-scale, 1));
+            /* 記事タイトルと同じtext-lg(1.125rem)を上限にして、カードが大きくなっても
+               記事本文を開いたときのタイトルより大きく見えないようにする */
+            font-size: min(1.125rem, calc(4.5cqi * var(--card-font-scale, 1) * var(--user-font-scale, 1)));
             font-family: var(--card-title-font, inherit);
             color: var(--text-color-solid);
             opacity: var(--title-text-opacity);
@@ -1797,6 +1802,7 @@
             const cardMax = parseFloat(rootStyle.getPropertyValue('--card-max')) || 350;
             const cardMin = parseFloat(rootStyle.getPropertyValue('--card-min')) || 280;
             const relatedCardMin = parseFloat(rootStyle.getPropertyValue('--related-card-min')) || cardMin;
+            const relatedCardMax = parseFloat(rootStyle.getPropertyValue('--related-card-max')) || cardMax;
             let headerPad = 0;
             document.querySelectorAll('.card-grid, .related-articles-grid').forEach(grid => {
                 grid.style.paddingLeft = '';
@@ -1804,13 +1810,15 @@
                 const width = grid.clientWidth;
                 if (!width) return;
                 const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
-                // 関連記事は置かれる幅が狭く端数が出やすいため、専用の下限で枚数を決める
-                const minWidth = grid.classList.contains('card-grid') ? cardMin : relatedCardMin;
+                // 関連記事は置かれる幅が狭く端数が出やすいため、専用の下限・上限で枚数と大きさを決める
+                const isCardGrid = grid.classList.contains('card-grid');
+                const minWidth = isCardGrid ? cardMin : relatedCardMin;
+                const maxWidth = isCardGrid ? cardMax : relatedCardMax;
                 const perRow = Math.max(1, Math.floor((width + gap) / (minWidth + gap)));
-                const cardWidth = Math.min(cardMax, (width - (perRow - 1) * gap) / perRow);
+                const cardWidth = Math.min(maxWidth, (width - (perRow - 1) * gap) / perRow);
                 grid.style.setProperty('--card-w', cardWidth + 'px');
                 // 中央に寄せるのは一覧ページのカードだけ。関連記事は記事本文の左端に揃えたいので寄せない
-                if (!grid.classList.contains('card-grid')) return;
+                if (!isCardGrid) return;
                 const pad = Math.max(0, (width - (perRow * cardWidth + (perRow - 1) * gap)) / 2);
                 if (pad > 0.5) {
                     grid.style.paddingLeft = pad + 'px';
