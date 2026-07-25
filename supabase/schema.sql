@@ -219,6 +219,11 @@ alter table public.site_settings add column if not exists article_tag_font text 
 alter table public.site_settings add column if not exists article_subscribe_bg_color text not null default '';
 alter table public.site_settings add column if not exists article_subscribe_text_color text not null default '';
 
+-- 本文・タイトルの不透明度。記事本文(content-body)とカード表示(card-excerpt/card-title)の
+-- 両方に共通で適用され、見た目の印象を揃える
+alter table public.site_settings add column if not exists body_text_opacity numeric not null default 0.75;
+alter table public.site_settings add column if not exists title_text_opacity numeric not null default 1;
+
 -- ハッシュタグ
 create table if not exists public.tags (
   id bigint generated always as identity primary key,

@@ -17,6 +17,10 @@
             --bg-color: #828282;
             --text-color: rgba(255, 255, 255, 0.9);
             --text-color-solid: #ffffff;
+            /* 本文・タイトルの不透明度。記事本文(content-body)とカード表示(card-excerpt/card-title)の
+               両方に共通で適用し、見た目の印象を揃える */
+            --body-text-opacity: 0.75;
+            --title-text-opacity: 1;
             /* 引用文の縦線と同じ太さ・色味(1px、text-color-solidの70%)を、記事カードの枠線や
                各種区切り線など、サイト全体の「線」に共通で使う */
             --divider-color: rgba(255, 255, 255, 0.75);
@@ -180,8 +184,8 @@
                文字量(密度)が常に一定に見えるようにする */
             font-size: calc(4cqi * var(--card-font-scale, 1));
             font-family: var(--card-excerpt-font, inherit);
-            color: var(--card-text-color, #ffffff);
-            opacity: 0.5;
+            color: var(--text-color-solid);
+            opacity: var(--body-text-opacity);
             line-height: 1.6;
             text-align: justify;
             text-align-last: justify;
@@ -192,7 +196,8 @@
         .card-title {
             font-size: calc(4.5cqi * var(--card-font-scale, 1));
             font-family: var(--card-title-font, inherit);
-            color: var(--card-text-color, color-mix(in srgb, white 95%, transparent));
+            color: var(--text-color-solid);
+            opacity: var(--title-text-opacity);
             text-align: justify;
             text-align-last: left;
             text-justify: inter-character;
@@ -446,9 +451,10 @@
         .title-rect { width: 100%; height: 100%; overflow: visible; transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
         .title-rect polygon { fill: none; stroke: #ffffff; stroke-miterlimit: 10; }
 
-        .article-title { color: var(--text-color-solid); opacity: 0.85; line-height: inherit !important; transition: opacity 0.8s ease, color 0.5s ease; font-family: var(--article-title-font, inherit); }
+        .article-title { color: var(--text-color-solid); opacity: var(--title-text-opacity); line-height: inherit !important; transition: opacity 0.8s ease, color 0.5s ease; font-family: var(--article-title-font, inherit); }
         /* コピペした本文の段落タグなどに行間のインラインスタイルが残っていても、必ずサイト設定の行間が効くようにする */
         .content-body, .content-body * { line-height: inherit !important; }
+        .content-body { opacity: var(--body-text-opacity); }
         .group:hover .article-title { opacity: 1; }
 
         .article-snippet {
@@ -865,7 +871,8 @@
             document.documentElement.style.setProperty('--card-font-scale', data.card_font_scale || 1);
             if (data.card_title_font) document.documentElement.style.setProperty('--card-title-font', data.card_title_font);
             if (data.card_excerpt_font) document.documentElement.style.setProperty('--card-excerpt-font', data.card_excerpt_font);
-            if (data.card_text_color) document.documentElement.style.setProperty('--card-text-color', data.card_text_color);
+            document.documentElement.style.setProperty('--body-text-opacity', data.body_text_opacity != null ? data.body_text_opacity : 0.75);
+            document.documentElement.style.setProperty('--title-text-opacity', data.title_text_opacity != null ? data.title_text_opacity : 1);
             const footerTitle = data.site_title || document.getElementById('site-title').textContent;
             document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} ${footerTitle}`;
         }
@@ -972,7 +979,7 @@
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
                         <h2 class="text-lg font-normal mb-4 article-title">${title}</h2>
                         ${tagsHtml}
-                        <div class="article-snippet text-sm opacity-50 content-body">${applyFootnoteStyling(content, article.id)}</div>
+                        <div class="article-snippet text-sm content-body">${applyFootnoteStyling(content, article.id)}</div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
                         ${backlinkHtml}
@@ -1265,7 +1272,7 @@
                 : '';
             const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
             return `
-                <div class="content-body text-sm opacity-50" style="${overrideStyle} line-height: ${lineHeight} !important;">${applyFootnoteStyling(article.content, article.id)}</div>
+                <div class="content-body text-sm" style="${overrideStyle} line-height: ${lineHeight} !important;">${applyFootnoteStyling(article.content, article.id)}</div>
                 <a href="/article/${article.id}" class="text-xs opacity-40 hover:opacity-80 transition-opacity mt-3 inline-block">→ ページで開く</a>
             `;
         }

@@ -764,6 +764,18 @@
                         <div id="set-contrast-warning" class="hidden text-xs mt-3 leading-relaxed" style="color:#f0b429;">⚠ 背景色とのコントラストが低く、文字が読みにくくなっています</div>
                     </div>
 
+                    <!-- 本文・タイトルの不透明度(記事本文とカード表示の両方に共通で適用される) -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <div class="flex justify-between text-xs text-white/50 mb-1">
+                            <span>本文文字の不透明度(記事・カード共通)</span><span id="body-text-opacity-value"></span>
+                        </div>
+                        <input type="range" id="set-body-text-opacity" min="0.2" max="1" step="0.05" class="w-full mb-4" oninput="document.getElementById('body-text-opacity-value').textContent = Math.round(this.value * 100) + '%'">
+                        <div class="flex justify-between text-xs text-white/50 mb-1">
+                            <span>タイトル文字の不透明度(記事・カード共通)</span><span id="title-text-opacity-value"></span>
+                        </div>
+                        <input type="range" id="set-title-text-opacity" min="0.2" max="1" step="0.05" class="w-full" oninput="document.getElementById('title-text-opacity-value').textContent = Math.round(this.value * 100) + '%'">
+                    </div>
+
                     <!-- 注釈 -->
                     <div class="mb-6 pb-6 border-b border-white/10">
                         <label class="text-xs text-white/50 block mb-2">注釈番号の色</label>
@@ -993,9 +1005,6 @@
                                 <option value="'Yuji Syuku', serif">Yuji Syuku</option>
                             </optgroup>
                         </select>
-
-                        <label class="text-xs text-white/50 block mb-1">文字色(タイトル・本文共通)</label>
-                        <input type="color" id="set-card-text-color" class="w-full h-9 bg-white/5 rounded border border-white/10">
                     </div>
                 </div>
 
@@ -2671,7 +2680,12 @@
             document.getElementById('card-font-scale-value').textContent = cardFontScale;
             document.getElementById('set-card-title-font').value = data.card_title_font || '';
             document.getElementById('set-card-excerpt-font').value = data.card_excerpt_font || '';
-            document.getElementById('set-card-text-color').value = data.card_text_color || '#ffffff';
+            const bodyTextOpacity = data.body_text_opacity != null ? data.body_text_opacity : 0.75;
+            document.getElementById('set-body-text-opacity').value = bodyTextOpacity;
+            document.getElementById('body-text-opacity-value').textContent = Math.round(bodyTextOpacity * 100) + '%';
+            const titleTextOpacity = data.title_text_opacity != null ? data.title_text_opacity : 1;
+            document.getElementById('set-title-text-opacity').value = titleTextOpacity;
+            document.getElementById('title-text-opacity-value').textContent = Math.round(titleTextOpacity * 100) + '%';
             document.getElementById('set-page-title').value = data.page_title || '';
             document.getElementById('set-site-title').value = data.site_title || '';
             document.getElementById('set-site-title-font').value = data.site_title_font || '';
@@ -2761,7 +2775,8 @@
                 card_font_scale: parseFloat(document.getElementById('set-card-font-scale').value) || 1,
                 card_title_font: document.getElementById('set-card-title-font').value,
                 card_excerpt_font: document.getElementById('set-card-excerpt-font').value,
-                card_text_color: document.getElementById('set-card-text-color').value,
+                body_text_opacity: Number(document.getElementById('set-body-text-opacity').value),
+                title_text_opacity: Number(document.getElementById('set-title-text-opacity').value),
                 page_title: document.getElementById('set-page-title').value.trim(),
                 site_title: document.getElementById('set-site-title').value.trim(),
                 site_title_font: document.getElementById('set-site-title-font').value,
