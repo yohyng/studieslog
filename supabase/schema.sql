@@ -30,6 +30,10 @@ alter table public.articles add column if not exists category text not null defa
 -- パターンBのArticle一覧の上部に固定表示するためのピン留め(目安3件程度、件数上限は特に強制しない)
 alter table public.articles add column if not exists pinned boolean not null default false;
 
+-- 日英対応。空文字の場合は英語表示時も日本語の値にフォールバックする
+alter table public.articles add column if not exists title_en text not null default '';
+alter table public.articles add column if not exists content_en text not null default '';
+
 alter table public.articles enable row level security;
 
 -- 閲覧は誰でも可能(公開ブログのため)。下書きは常に隠すが、
@@ -190,6 +194,7 @@ create policy "site_settings_auth_update" on public.site_settings
 
 -- アバウトページの内容
 alter table public.site_settings add column if not exists about_content text not null default '';
+alter table public.site_settings add column if not exists about_content_en text not null default '';
 
 -- アバウトページに表示するSNSリンク(空文字なら非表示)
 alter table public.site_settings add column if not exists sns_x_url text not null default '';
