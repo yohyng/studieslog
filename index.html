@@ -132,18 +132,23 @@
         /* カードは正方形(aspect-ratio:1/1)なので、横幅がそのまま高さになる。画面幅に応じて余白を
            足し引きしてカードサイズを間接的に抑えようとすると、幅の帯域ごとに破綻して収拾がつかない。
            そこでカード自体の最小・最大サイズをここで直接決め、1行に何枚並ぶかはブラウザに任せる。
-           minmaxの上限を1frではなく--card-maxにすることで、どんな画面幅でもカードはこの幅を超えない */
+           トラックの上限を1frにすることで、カードは行の余りを分け合って--card-min〜--card-maxの間で
+           伸び縮みする(余った幅が端の空白として残らず、詰まって見える)。上限--card-maxはカード自身の
+           max-widthで担保する。minmaxの下限をmin(--card-min, 100%)にしているのは、カード1枚分の幅も
+           ない狭い画面で横にはみ出すのを防ぐため */
         :root { --card-min: 240px; --card-max: 350px; }
-        @media (max-width: 480px) {
-            /* 1カラムしか置けない狭い幅では、最小値が大きすぎると横がはみ出すため下限を下げる */
-            :root { --card-min: 0px; }
-        }
         .card-grid,
         .related-articles-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(var(--card-min), var(--card-max)));
+            grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min), 100%), 1fr));
             justify-content: center;
             gap: 0.75rem;
+        }
+        .card-grid > .article-card,
+        .related-articles-grid > .article-card {
+            max-width: var(--card-max);
+            margin-inline: auto;
+            width: 100%;
         }
         /* 関連記事セクションの下の区切り線は、この後にまだ記事が続く場合だけ表示する
            (単体記事ページのように後に何も続かない場合は区切り線が浮いて見えるため出さない) */
