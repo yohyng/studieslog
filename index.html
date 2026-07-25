@@ -133,7 +133,7 @@
         /* iPad 13インチ(ポートレート1024px〜ランドスケープ1366px)のあたりは、上のclampだと
            余白が控えめでカードが大きく見えるため、この帯域だけ余白を大きめに上書きする */
         @media (min-width: 1000px) and (max-width: 1450px) {
-            :root { --wide-gutter: 8rem; }
+            :root { --wide-gutter: 11rem; }
         }
         /* 「更新をメールで受け取る」は一旦非表示にする */
         body.card-home #subscribe-cta { display: none; }
@@ -571,7 +571,7 @@
     </div>
 
     <!-- パターンCだけ: ハンバーガーメニュー(右、CSSで移動)を乗せる固定フッター -->
-    <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 2rem; background: color-mix(in srgb, var(--bg-color) 25%, transparent); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%); border-top: 0.5px solid var(--divider-color); transform: translateZ(0); -webkit-transform: translateZ(0); will-change: transform;"></div>
+    <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 2rem; background: color-mix(in srgb, var(--bg-color) 70%, transparent); border-top: 0.5px solid var(--divider-color); transform: translateZ(0); -webkit-transform: translateZ(0); will-change: transform;"></div>
 
     <!-- パターンCだけ: Filter。.fade-inの中(transformを持つ祖先)に置くとposition:fixedが効かなくなるため、
          他の固定UIと同じくbody直下に常設し、中身(カテゴリ/タグ行)だけrenderCardPage()が差し替える -->
