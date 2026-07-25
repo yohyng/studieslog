@@ -131,24 +131,28 @@
         body.card-home #site-subtitle { display: none; }
         /* カードは正方形(aspect-ratio:1/1)なので、横幅がそのまま高さになる。画面幅に応じて余白を
            足し引きしてカードサイズを間接的に抑えようとすると、幅の帯域ごとに破綻して収拾がつかない。
-           そこでカード自体の最小・最大サイズをここで直接決め、1行に何枚並ぶかはブラウザに任せる。
-           トラックの上限を1frにすることで、カードは行の余りを分け合って--card-min〜--card-maxの間で
-           伸び縮みする(余った幅が端の空白として残らず、詰まって見える)。上限--card-maxはカード自身の
-           max-widthで担保する。minmaxの下限をmin(--card-min, 100%)にしているのは、カード1枚分の幅も
-           ない狭い画面で横にはみ出すのを防ぐため */
+           そこでカード自体の最小・最大サイズを直接決め、1行に何枚並ぶかはブラウザに任せる。
+
+           Gridのrepeat(auto-fill, minmax(...))は使わない。1frのトラックを作るとカードはトラック内で
+           中央寄せになり、余りが「左端・カード間・右端」に分散して、2列のときだけ中央の隙間が
+           両隣ぶん合算されて極端に広く見えてしまうため(実際にその不具合が出た)。
+           Flexboxならカードは行の余りを分け合って--card-min〜--card-maxの間で伸び縮みし、
+           全カードが上限に達して余った分だけがjustify-content:centerで行の外側に出るので、
+           カード同士の間隔は常にgapのまま一定になる */
         :root { --card-min: 280px; --card-max: 350px; }
         .card-grid,
         .related-articles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min), 100%), 1fr));
+            display: flex;
+            flex-wrap: wrap;
             justify-content: center;
             gap: 0.75rem;
         }
         .card-grid > .article-card,
         .related-articles-grid > .article-card {
+            flex: 1 1 var(--card-min);
             max-width: var(--card-max);
-            margin-inline: auto;
-            width: 100%;
+            /* flexアイテムの既定(min-width:auto)だと中身の最小幅より縮めず、狭い画面で横にはみ出す */
+            min-width: 0;
         }
         /* 関連記事セクションの下の区切り線は、この後にまだ記事が続く場合だけ表示する
            (単体記事ページのように後に何も続かない場合は区切り線が浮いて見えるため出さない) */
