@@ -205,7 +205,7 @@
             /* clampで上下限を切ると、カード幅によって文字量の見え方が変わってしまうため、
                あえて上限・下限を設けずcqiだけに比例させ、カードの大きさに関わらず
                文字量(密度)が常に一定に見えるようにする */
-            font-size: calc(4cqi * var(--card-font-scale, 1));
+            font-size: calc(4cqi * var(--card-font-scale, 1) * var(--user-font-scale, 1));
             font-family: var(--card-excerpt-font, inherit);
             color: var(--text-color-solid);
             opacity: var(--body-text-opacity);
@@ -217,7 +217,7 @@
         /* 枠線を引かず、文字組みだけで見えない枠を感じさせる。タイトルは両端揃えだが最後の行だけ右揃えにする
            (本文の方は最後の行まで均等に伸ばす。card-excerptの均等揃えと使い分ける) */
         .card-title {
-            font-size: calc(4.5cqi * var(--card-font-scale, 1));
+            font-size: calc(4.5cqi * var(--card-font-scale, 1) * var(--user-font-scale, 1));
             font-family: var(--card-title-font, inherit);
             color: var(--text-color-solid);
             opacity: var(--title-text-opacity);
@@ -558,7 +558,7 @@
     <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
 
     <!-- ハンバーガーメニュー -->
-    <button id="hamburger-btn" onclick="toggleMenu()" class="fixed top-6 z-40 glass-icon opacity-80 hover:opacity-100 transition-opacity" title="メニュー" aria-label="メニュー">
+    <button id="hamburger-btn" onclick="toggleMenu()" class="fixed top-6 z-40 glass-icon opacity-80 hover:opacity-100 transition-opacity" style="transform: translateZ(0); -webkit-transform: translateZ(0); will-change: transform;" title="メニュー" aria-label="メニュー">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#ffffff" stroke-width="1.3" stroke-linecap="round" aria-hidden="true">
             <line x1="3" y1="8" x2="21" y2="8" />
             <line x1="3" y1="16" x2="21" y2="16" />
@@ -571,7 +571,7 @@
     </div>
 
     <!-- パターンCだけ: ハンバーガーメニュー(右、CSSで移動)を乗せる固定フッター -->
-    <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 2rem; background: color-mix(in srgb, var(--bg-color) 25%, transparent); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%); border-top: 0.5px solid var(--divider-color);"></div>
+    <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 2rem; background: color-mix(in srgb, var(--bg-color) 25%, transparent); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%); border-top: 0.5px solid var(--divider-color); transform: translateZ(0); -webkit-transform: translateZ(0); will-change: transform;"></div>
 
     <!-- パターンCだけ: Filter。.fade-inの中(transformを持つ祖先)に置くとposition:fixedが効かなくなるため、
          他の固定UIと同じくbody直下に常設し、中身(カテゴリ/タグ行)だけrenderCardPage()が差し替える -->
@@ -589,7 +589,7 @@
 
     <div id="menu-overlay" class="fixed inset-0 z-50 pointer-events-none">
         <div id="menu-catcher" class="absolute inset-0 pointer-events-none opacity-0" onclick="toggleMenu()"></div>
-        <div id="menu-panel" class="absolute top-0 left-0 h-full w-36 max-w-[55vw] pointer-events-auto transform -translate-x-full transition-transform duration-300 ease-out">
+        <div id="menu-panel" class="absolute top-0 left-0 h-full w-32 max-w-[55vw] pointer-events-auto transform -translate-x-full transition-transform duration-300 ease-out">
             <!-- backdrop-filterはtransformと同じ要素に付けるとSafariで正しくぼけない(透けて見えなくなる)ため、
                  スライドさせる外側とガラス表現(ぼかし)の内側を別要素に分けている -->
             <!-- 閉じる(×)ボタンは、フッター左下のハンバーガーメニューの真上に来るよう固定配置にする
