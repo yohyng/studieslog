@@ -148,7 +148,10 @@
            余りはグリッド自体の左右paddingとしてalignHeaderToCards()がJSで入れる。
            こうすると「全体は中央に置かれる/どの行も同じ左端から始まる」が両立し、同じ量のpaddingを
            タイトル(header)にも入れることでタイトルの左端もカードの左端に揃う */
-        :root { --card-min: 280px; --card-max: 350px; }
+        /* --related-card-min: 関連記事だけの下限。記事本文(約650px)という中途半端な幅では、下限280pxだと
+           1行2枚で端数が出てトップページのカードと大きさがずれる。下限を下げて枚数の自由度を上げ、
+           トップ側に近い大きさになるようにしている。元に戻すときはこの値を--card-minと同じにすればよい */
+        :root { --card-min: 280px; --card-max: 350px; --related-card-min: 200px; }
         .card-grid,
         .related-articles-grid {
             display: flex;
@@ -1788,6 +1791,7 @@
             const rootStyle = getComputedStyle(document.documentElement);
             const cardMax = parseFloat(rootStyle.getPropertyValue('--card-max')) || 350;
             const cardMin = parseFloat(rootStyle.getPropertyValue('--card-min')) || 280;
+            const relatedCardMin = parseFloat(rootStyle.getPropertyValue('--related-card-min')) || cardMin;
             let headerPad = 0;
             document.querySelectorAll('.card-grid, .related-articles-grid').forEach(grid => {
                 grid.style.paddingLeft = '';
@@ -1795,7 +1799,9 @@
                 const width = grid.clientWidth;
                 if (!width) return;
                 const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
-                const perRow = Math.max(1, Math.floor((width + gap) / (cardMin + gap)));
+                // 関連記事は置かれる幅が狭く端数が出やすいため、専用の下限で枚数を決める
+                const minWidth = grid.classList.contains('card-grid') ? cardMin : relatedCardMin;
+                const perRow = Math.max(1, Math.floor((width + gap) / (minWidth + gap)));
                 const cardWidth = Math.min(cardMax, (width - (perRow - 1) * gap) / perRow);
                 grid.style.setProperty('--card-w', cardWidth + 'px');
                 // 中央に寄せるのは一覧ページのカードだけ。関連記事は記事本文の左端に揃えたいので寄せない
