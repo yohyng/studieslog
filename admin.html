@@ -485,6 +485,49 @@
                         </div>
                         <label class="text-xs text-white/50 block mb-2">サブタイトル(英語・上の行。空欄なら非表示)</label>
                         <input id="set-site-subtitle-en" type="text" placeholder="Prototyping discussions on space." class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
+                        <label class="text-xs text-white/50 block mb-2">サブタイトルのフォント(日英共通)</label>
+                        <select id="set-site-subtitle-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
+                            <option value="">本文と同じフォント</option>
+                            <optgroup label="明朝体">
+                                <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                                <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                                <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                                <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                                <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                            </optgroup>
+                            <optgroup label="ゴシック体">
+                                <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                                <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                <option value="'Zen Kaku Gothic Antique', sans-serif">Zen Kaku Gothic Antique</option>
+                                <option value="'Murecho', sans-serif">Murecho</option>
+                                <option value="'RocknRoll One', sans-serif">RocknRoll One</option>
+                                <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                                <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                                <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                                <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                            </optgroup>
+                            <optgroup label="丸ゴシック体">
+                                <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                                <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                            </optgroup>
+                            <optgroup label="手書き風">
+                                <option value="'Klee One', cursive">Klee One</option>
+                            </optgroup>
+                            <optgroup label="カリグラフィー風">
+                                <option value="'New Tegomin', serif">New Tegomin</option>
+                                <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                            </optgroup>
+                            <optgroup label="装飾体(英字のみ・日本語は表示されません)">
+                                <option value="'Fraunces', serif">Fraunces</option>
+                                <option value="'Bodoni Moda', serif">Bodoni Moda</option>
+                                <option value="'Abril Fatface', serif">Abril Fatface</option>
+                                <option value="'Grenze Gotisch', serif">Grenze Gotisch</option>
+                                <option value="'Italiana', serif">Italiana</option>
+                                <option value="'Cormorant', serif">Cormorant</option>
+                            </optgroup>
+                        </select>
                         <label class="text-xs text-white/50 block mb-2">サブタイトル(日本語・下の行。空欄なら非表示)</label>
                         <input id="set-site-subtitle" type="text" placeholder="記憶の集積。言葉は静かに積もっていく。" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
                         <div class="flex items-center gap-3">
@@ -2706,6 +2749,7 @@
             document.getElementById('set-site-title-size').value = data.site_title_size;
             document.getElementById('set-site-title-size-value').textContent = data.site_title_size + 'px';
             document.getElementById('set-site-title-color').value = data.site_title_color;
+            document.getElementById('set-site-subtitle-font').value = data.site_subtitle_font || '';
             document.getElementById('set-site-subtitle-en').value = data.site_subtitle_en || '';
             document.getElementById('set-site-subtitle').value = data.site_subtitle || '';
             document.getElementById('set-site-subtitle-size').value = data.site_subtitle_size;
@@ -2799,6 +2843,7 @@
                 site_title_font: document.getElementById('set-site-title-font').value,
                 site_title_size: Number(document.getElementById('set-site-title-size').value),
                 site_title_color: document.getElementById('set-site-title-color').value,
+                site_subtitle_font: document.getElementById('set-site-subtitle-font').value,
                 site_subtitle_en: document.getElementById('set-site-subtitle-en').value.trim(),
                 site_subtitle: document.getElementById('set-site-subtitle').value.trim(),
                 site_subtitle_size: Number(document.getElementById('set-site-subtitle-size').value),

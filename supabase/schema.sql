@@ -137,6 +137,8 @@ alter table public.site_settings add column if not exists site_title_font text n
 alter table public.site_settings add column if not exists site_subtitle text not null default '記憶の集積。言葉は静かに積もっていく。';
 -- サブタイトルの英語行(タイトル下、日本語行の上に表示。空文字ならその行ごと非表示)
 alter table public.site_settings add column if not exists site_subtitle_en text not null default '';
+-- サブタイトルのフォント(日英共通。空文字なら本文フォントに従う)
+alter table public.site_settings add column if not exists site_subtitle_font text not null default '';
 alter table public.site_settings add column if not exists preview_lines int not null default 3;
 alter table public.site_settings add column if not exists content_width int not null default 672;
 alter table public.site_settings add column if not exists text_align text not null default 'left';

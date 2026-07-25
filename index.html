@@ -952,11 +952,14 @@
             const subtitleEnEl = document.getElementById('site-subtitle-en');
             const subtitleSize = (data.site_subtitle_size || 12) + 'px';
             const subtitleColor = data.site_subtitle_color || data.text_color;
+            // 空欄なら本文フォントに従う
+            const subtitleFont = data.site_subtitle_font || data.font;
             [[subtitleEnEl, data.site_subtitle_en], [subtitleEl, data.site_subtitle]].forEach(([el, text], i) => {
                 if (!el) return;
                 if (text) el.textContent = text;
                 el.style.fontSize = subtitleSize;
                 el.style.color = subtitleColor;
+                el.style.fontFamily = subtitleFont;
                 el.style.display = el.textContent.trim() ? '' : 'none';
                 // 英語が非表示のときは日本語側が先頭に来るので、上の余白はそちらに移す
                 if (i === 1) el.classList.toggle('mt-4', subtitleEnEl ? subtitleEnEl.style.display === 'none' : true);
