@@ -180,7 +180,7 @@
                文字量(密度)が常に一定に見えるようにする */
             font-size: calc(4cqi * var(--card-font-scale, 1));
             font-family: var(--card-excerpt-font, inherit);
-            color: var(--card-text-color, color-mix(in srgb, white 80%, transparent));
+            color: var(--card-text-color, color-mix(in srgb, white 50%, transparent));
             line-height: 1.6;
             text-align: justify;
             text-align-last: justify;
@@ -971,7 +971,7 @@
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
                         <h2 class="text-lg font-normal mb-4 article-title">${title}</h2>
                         ${tagsHtml}
-                        <div class="article-snippet text-sm opacity-80 content-body">${applyFootnoteStyling(content, article.id)}</div>
+                        <div class="article-snippet text-sm opacity-50 content-body">${applyFootnoteStyling(content, article.id)}</div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
                         ${backlinkHtml}
@@ -1264,7 +1264,7 @@
                 : '';
             const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
             return `
-                <div class="content-body text-sm opacity-80" style="${overrideStyle} line-height: ${lineHeight} !important;">${applyFootnoteStyling(article.content, article.id)}</div>
+                <div class="content-body text-sm opacity-50" style="${overrideStyle} line-height: ${lineHeight} !important;">${applyFootnoteStyling(article.content, article.id)}</div>
                 <a href="/article/${article.id}" class="text-xs opacity-40 hover:opacity-80 transition-opacity mt-3 inline-block">→ ページで開く</a>
             `;
         }
