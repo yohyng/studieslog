@@ -2577,13 +2577,20 @@
                 return;
             }
             panel.classList.remove('hidden');
+            // rows=3を最低の高さにしつつ、それより長い内容ならさらに伸ばす(overflow:hiddenにはせず、
+            // 万一伸ばしきれなくてもスクロールで読めるようにして、内容が隠れて見えなくなるのを防ぐ)
             list.innerHTML = refs.map((ref, i) => `
                 <div class="flex items-start gap-2">
                     <span class="text-xs text-white/40 pt-2 shrink-0">[${i + 1}]</span>
-                    <textarea rows="1" class="flex-1 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30 resize-none" style="overflow: hidden;" oninput="updateFootnoteNoteFromPanel(${i}, this.value); this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';">${escapeAttr(ref.dataset.note || '')}</textarea>
+                    <textarea rows="3" class="flex-1 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30" oninput="updateFootnoteNoteFromPanel(${i}, this.value); autoGrowTextarea(this);">${escapeAttr(ref.dataset.note || '')}</textarea>
                 </div>
             `).join('');
-            list.querySelectorAll('textarea').forEach(t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; });
+            list.querySelectorAll('textarea').forEach(autoGrowTextarea);
+        }
+
+        function autoGrowTextarea(t) {
+            t.style.height = 'auto';
+            t.style.height = Math.max(t.scrollHeight, t.offsetHeight) + 'px';
         }
 
         function updateFootnoteNoteFromPanel(index, value) {
