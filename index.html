@@ -1225,7 +1225,7 @@
             const fadeStartPct = (fadeStartLine / fadeEndLine) * 100;
             const maskStyle = `linear-gradient(to bottom, black 0%, black ${fadeStartPct}%, transparent 100%)`;
             container.innerHTML = `
-                <article style="border: 0.5px solid var(--divider-color); padding: 1.5rem;">
+                <article style="border: 0.5px solid var(--divider-color); padding: 1.5rem; min-height: 70vh;">
                     <div class="text-xs opacity-40 mb-2" style="font-size: ${0.75 * fontSize * STORY_SCALE}px;">${article.date}</div>
                     <h2 class="font-normal mb-4 article-title" style="font-size: ${1.125 * fontSize * STORY_SCALE}px;">${escapeHtml(title)}</h2>
                     ${tagsHtml}
