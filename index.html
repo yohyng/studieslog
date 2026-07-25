@@ -576,7 +576,7 @@
     </div>
 
     <div id="subscribe-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.5);" onmousedown="if(event.target === this) closeSubscribeModal()">
-        <div class="w-full max-w-sm p-6 rounded-lg" style="background: var(--bg-color); color: var(--text-color); border: 1px solid color-mix(in srgb, currentColor 20%, transparent);">
+        <div class="w-full max-w-sm p-6" style="background: var(--bg-color); color: var(--text-color); border: 1px solid color-mix(in srgb, currentColor 20%, transparent);">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-sm font-medium">購読する</h2>
                 <button onclick="closeSubscribeModal()" class="opacity-50 hover:opacity-100 transition-opacity text-lg leading-none" aria-label="閉じる">×</button>
@@ -585,7 +585,7 @@
             <form onsubmit="return submitSubscribe(event)" class="flex flex-col gap-3">
                 <input id="subscribe-email" type="email" required placeholder="you@example.com" class="bg-transparent border-b text-sm px-2 py-1.5 focus:outline-none" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">
                 <input id="subscribe-hp" type="text" name="url" tabindex="-1" autocomplete="off" aria-hidden="true" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;">
-                <button type="submit" class="px-3 py-2 text-xs border rounded hover:opacity-70 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">登録する</button>
+                <button type="submit" class="px-3 py-2 text-xs border hover:opacity-70 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">登録する</button>
             </form>
             <p id="subscribe-message" class="text-xs opacity-50 mt-2 hidden"></p>
         </div>
