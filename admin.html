@@ -1443,7 +1443,7 @@
         // --- 本文欄を閲覧ページと同じ文字組み・配色にして、公開時の見え方をある程度推測できるようにする ---
         async function loadSiteTypographyForPreview() {
             const { data, error } = await sb.from('site_settings')
-                .select('font, font_size, line_height, letter_spacing, text_align, bg_color, text_color')
+                .select('font, font_size, line_height, letter_spacing, text_align, bg_color, text_color, site_title, site_title_font, site_title_color, site_subtitle, site_subtitle_en, site_subtitle_font, site_subtitle_color, article_tag_bg_color, article_tag_text_color, article_tag_font')
                 .eq('id', 1).single();
             if (!error && data) {
                 siteTypography = data;
@@ -1693,67 +1693,139 @@
                 .catch(() => showToast('コピーに失敗しました'));
         }
 
-        // --- Instagramストーリー用: 本文中の1枚目の画像を縦型(9:16)に切り出す ---
+        // --- Instagramストーリー用: サイトのタイトル・サブタイトル・記事カードをそのままブランド画像として
+        // 描画する(本文中の画像の有無に関わらず、どの記事でも同じ見た目で書き出せる)。
         // キャプションは1:1版と共通(igCaption)なので、コピーはそちらのボタンを使う
         let igStoryImageReady = false;
 
-        function prepareIgStoryImage(article) {
+        // 日本語には単語区切りが無いため、1文字ずつ測って幅に収まるところで折り返す
+        function wrapCanvasText(ctx, text, maxWidth) {
+            const lines = [];
+            let line = '';
+            for (const ch of String(text || '')) {
+                const test = line + ch;
+                if (line && ctx.measureText(test).width > maxWidth) {
+                    lines.push(line);
+                    line = ch;
+                } else {
+                    line = test;
+                }
+            }
+            if (line) lines.push(line);
+            return lines;
+        }
+
+        function roundRectPath(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+
+        async function prepareIgStoryCard(article) {
             const preview = document.getElementById('ig-story-preview');
             const empty = document.getElementById('ig-story-preview-empty');
             const canvas = document.getElementById('ig-story-canvas');
             igStoryImageReady = false;
+            empty.textContent = '画像を作成中…';
+            empty.classList.remove('hidden');
+            preview.classList.add('hidden');
 
-            const url = extractFirstImageUrl(article.content);
-            if (!url) {
-                preview.classList.add('hidden');
-                empty.textContent = '本文に画像がありません';
-                empty.classList.remove('hidden');
-                return;
-            }
+            try {
+                if (document.fonts && document.fonts.ready) await document.fonts.ready;
+                const s = siteTypography || {};
+                const W = 1080, H = 1920;
+                canvas.width = W;
+                canvas.height = H;
+                const ctx = canvas.getContext('2d');
 
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => {
-                try {
-                    const targetW = 1080;
-                    const targetH = 1920;
-                    const targetRatio = targetW / targetH;
-                    const srcRatio = img.naturalWidth / img.naturalHeight;
-                    let sx, sy, sw, sh;
-                    if (srcRatio > targetRatio) {
-                        // 元画像の方が横長: 高さいっぱいに合わせ、左右を切り取る
-                        sh = img.naturalHeight;
-                        sw = sh * targetRatio;
-                        sx = (img.naturalWidth - sw) / 2;
-                        sy = 0;
-                    } else {
-                        // 元画像の方が縦長: 幅いっぱいに合わせ、上下を切り取る
-                        sw = img.naturalWidth;
-                        sh = sw / targetRatio;
-                        sx = 0;
-                        sy = (img.naturalHeight - sh) / 2;
-                    }
-                    canvas.width = targetW;
-                    canvas.height = targetH;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
-                    preview.src = canvas.toDataURL('image/jpeg', 0.92);
-                    preview.classList.remove('hidden');
-                    empty.classList.add('hidden');
-                    igStoryImageReady = true;
-                } catch (e) {
-                    console.error(e);
-                    preview.classList.add('hidden');
-                    empty.textContent = '画像の切り出しに失敗しました';
-                    empty.classList.remove('hidden');
+                const bg = s.bg_color || '#2b2b28';
+                const text = s.text_color || '#ffffff';
+                const titleFont = s.site_title_font || s.font || "'Shippori Mincho', serif";
+                const titleColor = s.site_title_color || text;
+                const subtitleFont = s.site_subtitle_font || s.font || titleFont;
+                const subtitleColor = s.site_subtitle_color || text;
+                const bodyFont = s.font || titleFont;
+
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, W, H);
+
+                const marginX = 90;
+                let y = 220;
+                ctx.textBaseline = 'alphabetic';
+                ctx.fillStyle = titleColor;
+                ctx.font = `500 84px ${titleFont}`;
+                ctx.fillText(s.site_title || 'fragments', marginX, y);
+
+                ctx.font = `26px ${subtitleFont}`;
+                ctx.fillStyle = subtitleColor;
+                const subtitleLines = [
+                    ...(s.site_subtitle_en ? wrapCanvasText(ctx, s.site_subtitle_en, W - marginX * 2) : []),
+                    ...(s.site_subtitle ? wrapCanvasText(ctx, s.site_subtitle, W - marginX * 2) : []),
+                ];
+                y += 60;
+                subtitleLines.forEach(line => { ctx.fillText(line, marginX, y); y += 38; });
+
+                // 記事カード(枠だけ描き、高さは中身に合わせて後から決める)
+                const cardX = marginX;
+                const cardW = W - marginX * 2;
+                const cardPad = 56;
+                const cardTop = y + 100;
+                let cy = cardTop + cardPad;
+
+                ctx.font = `24px ${bodyFont}`;
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.fillText(article.date, cardX + cardPad, cy);
+                cy += 64;
+
+                ctx.font = `600 44px ${titleFont}`;
+                ctx.fillStyle = titleColor;
+                wrapCanvasText(ctx, article.title || '', cardW - cardPad * 2).forEach(line => {
+                    ctx.fillText(line, cardX + cardPad, cy);
+                    cy += 58;
+                });
+                cy += 16;
+
+                const articleTags = Array.from(selectedTagIds).map(id => tags.find(t => t.id === id)).filter(Boolean);
+                if (articleTags.length > 0) {
+                    const tagBg = s.article_tag_bg_color || 'rgba(255,255,255,0.15)';
+                    const tagText = s.article_tag_text_color || text;
+                    const tagFont = s.article_tag_font || bodyFont;
+                    ctx.font = `22px ${tagFont}`;
+                    const label = `#${articleTags[0].name}`;
+                    const chipPadX = 22, chipH = 48;
+                    const tw = ctx.measureText(label).width;
+                    ctx.fillStyle = tagBg;
+                    roundRectPath(ctx, cardX + cardPad, cy, tw + chipPadX * 2, chipH, chipH / 2);
+                    ctx.fill();
+                    ctx.fillStyle = tagText;
+                    ctx.fillText(label, cardX + cardPad + chipPadX, cy + chipH / 2 + 8);
+                    cy += chipH + 40;
                 }
-            };
-            img.onerror = () => {
-                preview.classList.add('hidden');
-                empty.textContent = '画像の読み込みに失敗しました';
+
+                ctx.font = `28px ${bodyFont}`;
+                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                const excerptLines = wrapCanvasText(ctx, stripHtml(article.content || ''), cardW - cardPad * 2).slice(0, 8);
+                excerptLines.forEach(line => { ctx.fillText(line, cardX + cardPad, cy); cy += 42; });
+
+                const cardH = cy + cardPad - cardTop;
+                ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(cardX, cardTop, cardW, cardH);
+
+                preview.src = canvas.toDataURL('image/jpeg', 0.92);
+                preview.classList.remove('hidden');
+                empty.classList.add('hidden');
+                igStoryImageReady = true;
+            } catch (e) {
+                console.error(e);
+                empty.textContent = '画像の作成に失敗しました';
                 empty.classList.remove('hidden');
-            };
-            img.src = url;
+                preview.classList.add('hidden');
+            }
         }
 
         function downloadIgStoryImage() {
@@ -1810,7 +1882,7 @@
             document.getElementById('social-share-panel').classList.remove('hidden');
             renderSocialDrafts(article);
             prepareIgImage(article);
-            prepareIgStoryImage(article);
+            prepareIgStoryCard(article);
 
             showEditorView();
         }
