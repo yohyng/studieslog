@@ -526,7 +526,7 @@
                     <a href="/contact" onclick="toggleMenu(); return goToSection('contact', '/contact');" class="opacity-80 hover:opacity-100 transition-opacity">Contact</a>
                     <a href="/tags" onclick="toggleMenu(); return goToSection('tag-list', '/tags');" class="opacity-80 hover:opacity-100 transition-opacity">Tag</a>
                     <a href="/search" onclick="toggleMenu(); return goToSection('search', '/search');" class="opacity-80 hover:opacity-100 transition-opacity">Search</a>
-                    <button onclick="toggleMenu(); openSubscribeModal();" class="glass-chip self-start -ml-2.5 -mt-1.5 px-2.5 py-1 hover:opacity-90 transition-opacity" style="background: color-mix(in srgb, var(--subscribe-bg-color) 55%, transparent); color: var(--subscribe-text-color); font-size: inherit; font-family: inherit;">Subscribe</button>
+                    <button onclick="toggleMenu(); openSubscribeModal();" class="glass-chip self-start -ml-2.5 -mt-1.5 px-2.5 py-1 hover:opacity-90 transition-opacity" style="background: color-mix(in srgb, var(--subscribe-bg-color) 55%, transparent); color: var(--subscribe-text-color); font-size: 0.75em; font-family: inherit;">Subscribe</button>
                 </nav>
             </div>
         </div>
@@ -837,7 +837,7 @@
                             <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>
                             <button onclick="shareToInstagram(${article.id})" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)" aria-label="リンクをコピー(Instagram用)">${SHARE_ICONS.instagram}</button>
                             <button onclick="shareArticle(${article.id})" class="glass-icon opacity-70 hover:opacity-100 transition-opacity" title="共有" aria-label="共有">${SHARE_ICONS.share}</button>
-                            <button onclick="event.stopPropagation(); openSubscribeModal()" class="glass-chip hover:opacity-90 transition-opacity px-3 py-1.5" style="background: color-mix(in srgb, var(--subscribe-bg-color) 55%, transparent); color: var(--subscribe-text-color); font-size: 0.65rem;" title="更新をメールで受け取る" aria-label="購読">Subscribe</button>
+                            <button onclick="event.stopPropagation(); openSubscribeModal()" class="glass-chip hover:opacity-90 transition-opacity px-3 py-1.5" style="background: color-mix(in srgb, var(--subscribe-bg-color) 55%, transparent); color: var(--subscribe-text-color); font-size: 0.6rem;" title="更新をメールで受け取る" aria-label="購読">Subscribe</button>
                         </div>
                         <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity" style="font-size: 0.65rem;" onclick="closeArticle(this.parentElement.previousElementSibling)">↑ 閉じる</span>
                     </div>
