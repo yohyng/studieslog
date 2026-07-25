@@ -581,6 +581,28 @@
         .outline-toggle { user-select: none; }
         /* 記事一覧の項目間にうっすら区切り線を入れる(最初の項目の上と最後の項目の下には出さない) */
         .outline-article-row + .outline-article-row { border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
+        /* PC(マウスカーソルがある環境)だけ、標準カーソルを丸いドットに置き換える。
+           mix-blend-mode:differenceで背景色と反転させ、白背景の上ではグレー、グレーの上では
+           白、というように背景に応じて自動で色が変わるようにする(タッチ端末には出さない) */
+        @media (hover: hover) and (pointer: fine) {
+            body { cursor: none; }
+            #custom-cursor {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background: #fff;
+                mix-blend-mode: difference;
+                pointer-events: none;
+                z-index: 9999;
+                transform: translate(-100px, -100px);
+                opacity: 0;
+                transition: opacity 0.2s ease;
+            }
+            #custom-cursor.visible { opacity: 1; }
+        }
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -599,6 +621,7 @@
     </script>
 
     <div id="scroll-progress" class="fixed top-0 left-0 h-[2px] z-50" style="width: 0%; background: var(--text-color-solid); opacity: 0.5;"></div>
+    <div id="custom-cursor" aria-hidden="true"></div>
 
     <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
 
@@ -2641,6 +2664,19 @@
         }
         window.addEventListener('scroll', updateScrollProgress, { passive: true });
         window.addEventListener('resize', updateScrollProgress);
+
+        // 実験的機能: PC(マウスカーソルがある環境)だけ、標準カーソルの代わりに丸いドットを追従させる
+        // (色の反転はCSS側のmix-blend-mode:differenceで実現しているので、ここでは位置更新だけ行う)
+        if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+            const customCursor = document.getElementById('custom-cursor');
+            if (customCursor) {
+                window.addEventListener('mousemove', (e) => {
+                    customCursor.classList.add('visible');
+                    customCursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+                }, { passive: true });
+                document.addEventListener('mouseleave', () => customCursor.classList.remove('visible'));
+            }
+        }
 
         // パターンCだけ: サイトタイトルの表示(文字・フォント・色)をそのまま複製して、
         // スクロール中に出てくる固定ヘッダーに反映する
