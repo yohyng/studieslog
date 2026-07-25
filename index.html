@@ -2088,14 +2088,12 @@
             const snippet = wrapperNode.querySelector('.article-snippet');
             snippet.classList.add('open-full');
             snippet.style.maxHeight = 'none';
-            wrapperNode.querySelector('.open-btn').classList.add('hidden');
             wrapperNode.nextElementSibling.classList.remove('hidden');
         }
 
         function closeArticle(wrapperNode) {
             const snippet = wrapperNode.querySelector('.article-snippet');
             snippet.classList.remove('open-full');
-            wrapperNode.querySelector('.open-btn').classList.remove('hidden');
             const articleEl = wrapperNode.closest('article');
             const article = articles.find(a => a.id === Number(articleEl.dataset.id));
             if (article) snippet.style.maxHeight = collapsedSnippetHeightPx(article) + 'px';
