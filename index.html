@@ -1763,10 +1763,12 @@
         // サイト運営者についての自己紹介文+SNSリンク。通常のAboutページと、パターンBのハブの
         // アウトラインの両方から呼べるよう、HTML組み立てを共通の関数にまとめている
         function aboutBodyHtml() {
-            const content = (currentLocale === 'en' && siteAboutContentEn) ? siteAboutContentEn : siteAboutContent;
-            const body = content
-                ? escapeHtml(content).replace(/\n/g, '<br>')
-                : `<p class="opacity-40">${currentLocale === 'en' ? 'Nothing here yet.' : 'まだ内容がありません。'}</p>`;
+            // 日本語の下に英文も並べて表示する(言語切り替えでの出し分けはしない)
+            const jaText = siteAboutContent ? escapeHtml(siteAboutContent).replace(/\n/g, '<br>') : '';
+            const enText = siteAboutContentEn ? escapeHtml(siteAboutContentEn).replace(/\n/g, '<br>') : '';
+            const body = (jaText || enText)
+                ? `${jaText}${enText ? `<div class="mt-6">${enText}</div>` : ''}`
+                : `<p class="opacity-40">まだ内容がありません。</p>`;
             // 記事本文と同じ行間になるよう、article本文と同じ計算式で!important付きの行間を直接指定する
             const lineHeight = siteLineHeight * currentLineHeightScale();
             const snsRow = (label, url, icon) => !url ? '' : `
