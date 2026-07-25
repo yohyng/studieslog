@@ -574,7 +574,7 @@
                     <a href="/contact" onclick="toggleMenu(); return goToSection('contact', '/contact');" data-i18n="nav_contact" class="opacity-80 hover:opacity-100 transition-opacity">contact</a>
                     <a href="/tags" onclick="toggleMenu(); return goToSection('tag-list', '/tags');" data-i18n="nav_tag" class="opacity-80 hover:opacity-100 transition-opacity">tag</a>
                     <a href="/search" onclick="toggleMenu(); return goToSection('search', '/search');" data-i18n="nav_search" class="opacity-80 hover:opacity-100 transition-opacity">search</a>
-                    <button onclick="toggleMenu(); openSubscribeModal();" data-i18n="nav_subscribe" class="glass-chip self-start -ml-2.5 -mt-1.5 px-2.5 py-1 hover:opacity-90 transition-opacity" style="background: var(--subscribe-bg-color); color: var(--subscribe-text-color); font-size: 0.75em; font-family: inherit; box-shadow: none;">Subscribe</button>
+                    <button onclick="toggleMenu(); openSubscribeModal();" data-i18n="nav_subscribe" class="glass-chip self-start -ml-2 -mt-1 px-2 py-0.5 hover:opacity-90 transition-opacity" style="background: var(--subscribe-bg-color); color: var(--subscribe-text-color); font-size: 0.75em; font-family: var(--body-font, inherit); box-shadow: none;">Subscribe</button>
                     <div class="flex gap-2 mt-2 pt-3" style="border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent); font-size: 0.75em;">
                         <span id="locale-btn-ja" onclick="setLocale('ja')" class="cursor-pointer opacity-100 hover:opacity-100 transition-opacity" style="text-decoration: underline;">JP</span>
                         <span class="opacity-40">/</span>
@@ -841,6 +841,7 @@
             siteFontSize = data.font_size;
             document.documentElement.style.setProperty('--base-font-size', data.font_size + 'px');
             document.body.style.fontFamily = data.font;
+            document.documentElement.style.setProperty('--body-font', data.font);
             // 記事タイトルのフォント(空欄なら本文フォントに従う)
             if (data.title_font) {
                 document.documentElement.style.setProperty('--article-title-font', data.title_font);
