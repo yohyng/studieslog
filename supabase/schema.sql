@@ -151,6 +151,7 @@ alter table public.site_settings add column if not exists selection_text_color t
 alter table public.site_settings add column if not exists tag_description_size int not null default 12;
 alter table public.site_settings add column if not exists tag_description_color text not null default '#ffffff';
 alter table public.site_settings add column if not exists footnote_color text not null default '#7dd3fc';
+alter table public.site_settings add column if not exists footnote_bg_color text not null default '';
 alter table public.site_settings add column if not exists menu_font_size int not null default 12;
 alter table public.site_settings add column if not exists og_image text not null default '';
 alter table public.site_settings add column if not exists gradient_bg_style text not null default '';

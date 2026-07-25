@@ -489,7 +489,7 @@
         }
         .content-body blockquote { border-left: 1px solid var(--text-color-solid); padding-left: 1.5em; margin: 2em 0; font-style: italic; opacity: 0.7; }
         .content-body h2 { font-size: 1.2em; margin: 2em 0 1em 0; opacity: 0.9; }
-        .footnote-ref { color: var(--footnote-color); background: color-mix(in srgb, var(--footnote-color) 18%, transparent); padding: 0.05em 0.35em; border-radius: 0.3em; }
+        .footnote-ref { color: var(--footnote-color); background: var(--footnote-bg-color); padding: 0.05em 0.35em; border-radius: 0.3em; }
         .footnote-ref a { color: inherit; text-decoration: none; }
         .footnote-list { margin-top: 2.5em; padding-top: 1.2em; border-top: 1px dotted color-mix(in srgb, currentColor 30%, transparent); font-size: 0.8em; list-style: none; }
         .footnote-list li { display: flex; gap: 0.5em; margin-bottom: 0.6em; }
@@ -808,6 +808,8 @@
             document.documentElement.style.setProperty('--tag-description-color', data.tag_description_color || data.text_color);
             document.documentElement.style.setProperty('--footnote-color', data.footnote_color || data.text_color);
             siteFootnoteColor = data.footnote_color || data.text_color;
+            // 注釈番号の背景色(空欄なら注釈番号の色を薄くした自動生成の背景に従う)
+            document.documentElement.style.setProperty('--footnote-bg-color', data.footnote_bg_color || 'color-mix(in srgb, var(--footnote-color) 18%, transparent)');
             document.documentElement.style.setProperty('--footnote-text-color', data.footnote_text_color || data.text_color);
             siteFootnoteTextColor = data.footnote_text_color || data.text_color;
             siteFootnoteTextFont = data.footnote_text_font || 'inherit';
@@ -938,9 +940,9 @@
                 : '';
             const relatedGroups = relatedArticlesByTag(article, 3);
             const relatedHtml = relatedGroups.length > 0
-                ? `<div id="related-${article.id}" class="hidden text-left mt-8 pt-8" style="border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);">${relatedGroups.map(g => `
+                ? `<div id="related-${article.id}" class="hidden text-left mt-8 pb-8" style="border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);">${relatedGroups.map(g => `
                     <div class="mb-8">
-                        <div class="text-xs opacity-40 mb-3">#${escapeHtml(g.tag.name)}についての関連記事</div>
+                        <div class="text-xs opacity-40 mb-3"><span class="glass-chip tag-chip inline-block px-2 py-0.5" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color);">#${escapeHtml(g.tag.name)}</span>についての関連記事</div>
                         <div class="related-articles-grid" onclick="event.stopPropagation()">${g.articles.map(a => articleCardHtml(a)).join('')}</div>
                     </div>
                 `).join('')}</div>`
