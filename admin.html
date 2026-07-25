@@ -604,6 +604,14 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- タイトル・台形アイコンのセクションと、各ページのコンテンツとの間隔 -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <div class="flex justify-between text-xs text-white/50 mb-1">
+                            <span>タイトルセクションと本文の間隔</span><span id="header-spacing-value"></span>
+                        </div>
+                        <input type="range" id="set-header-spacing" min="80" max="480" step="8" class="w-full" oninput="document.getElementById('header-spacing-value').textContent = this.value + 'px'">
+                    </div>
                 </div>
 
                 <!-- 記事本文: 本文フォント、文字組み、文字色、注釈、SNSシェア既定画像など、記事の表示に関わる設定 -->
@@ -774,14 +782,6 @@
                             <span>タイトル文字の不透明度(記事・カード共通)</span><span id="title-text-opacity-value"></span>
                         </div>
                         <input type="range" id="set-title-text-opacity" min="0.2" max="1" step="0.05" class="w-full" oninput="document.getElementById('title-text-opacity-value').textContent = Math.round(this.value * 100) + '%'">
-                    </div>
-
-                    <!-- タイトル・台形アイコンのセクションと、各ページのコンテンツとの間隔 -->
-                    <div class="mb-6 pb-6 border-b border-white/10">
-                        <div class="flex justify-between text-xs text-white/50 mb-1">
-                            <span>タイトルセクションと本文の間隔</span><span id="header-spacing-value"></span>
-                        </div>
-                        <input type="range" id="set-header-spacing" min="80" max="480" step="8" class="w-full" oninput="document.getElementById('header-spacing-value').textContent = this.value + 'px'">
                     </div>
 
                     <!-- 注釈 -->
