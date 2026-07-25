@@ -1084,7 +1084,7 @@
             const tagsHtml = (article.tags && article.tags.length > 0)
                 ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="glass-chip tag-chip px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: color-mix(in srgb, var(--article-tag-bg-color) 55%, transparent); color: var(--article-tag-text-color); font-size: var(--article-tag-font-size); font-family: var(--article-tag-font);">#${t.name}</a>`).join('')}</div>`
                 : '';
-            const relatedGroups = relatedArticlesByTag(article, 3);
+            const relatedGroups = relatedArticlesByTag(article, 2);
             const relatedHtml = relatedGroups.length > 0
                 ? `<div id="related-${article.id}" class="hidden related-section text-left mt-8 pb-8">${relatedGroups.map(g => `
                     <div class="mb-8">
@@ -1866,7 +1866,13 @@
             if (!wrapEl || wrapEl.style.display === 'none') return [];
             const range = document.createRange();
             range.selectNodeContents(wrapEl);
-            return Array.from(range.getClientRects()).filter(r => r.width && r.height);
+            const rects = Array.from(range.getClientRects()).filter(r => r.width && r.height);
+            // 行の矩形どうしの間にわずかな隙間が出ることがあるため、次の行の開始位置まで
+            // 下端を伸ばして隙間を塞ぐ(色は隣接行と同じなので、伸ばしても見た目は変わらない)
+            return rects.map((r, i) => {
+                const bottom = i < rects.length - 1 ? rects[i + 1].top : r.bottom;
+                return { left: r.left, right: r.right, top: r.top, bottom, width: r.width, height: bottom - r.top };
+            });
         }
 
         // 帯(背景)はCSSのbackgroundを<span>に敷くと行ごとに実際の文字幅で途切れてしまうため、
