@@ -550,6 +550,8 @@
 
     <main id="contact-view" class="hidden w-full content-width relative"></main>
 
+    <main id="terms-view" class="hidden w-full content-width relative"></main>
+
     <main id="tag-view" class="hidden w-full content-width relative"></main>
 
     <main id="search-view" class="hidden w-full content-width relative">
@@ -587,6 +589,7 @@
 
     <footer class="w-full content-width mt-8 pt-8 text-center opacity-30" style="border-top: 1px solid currentColor; font-size: 0.7rem;">
         <p id="footer-text">© fragments</p>
+        <p class="mt-2"><a href="/terms" class="hover:opacity-70 transition-opacity" style="text-decoration: underline;">利用規約</a></p>
     </footer>
 
     <script>
@@ -963,6 +966,10 @@
             return location.pathname.replace(/\/$/, '') === '/contact';
         }
 
+        function isTermsRoute() {
+            return location.pathname.replace(/\/$/, '') === '/terms';
+        }
+
         function getTagSlug() {
             const m = location.pathname.match(/^\/tag\/([^/]+)\/?$/);
             return m ? decodeURIComponent(m[1]) : null;
@@ -980,6 +987,7 @@
             document.getElementById('title-list-view').classList.add('hidden');
             document.getElementById('about-view').classList.add('hidden');
             document.getElementById('contact-view').classList.add('hidden');
+            document.getElementById('terms-view').classList.add('hidden');
             document.getElementById('tag-view').classList.add('hidden');
             document.getElementById('search-view').classList.add('hidden');
             document.getElementById('loading-indicator').classList.add('hidden');
@@ -1639,6 +1647,52 @@
             view.innerHTML = contactBodyHtml();
         }
 
+        // 利用規約。プライバシーポリシー(contactBodyHtml)と同様、管理画面からは編集できない静的な文章として持つ
+        function renderTermsPage() {
+            hideAllViews();
+            const view = document.getElementById('terms-view');
+            view.classList.remove('hidden');
+            view.innerHTML = `
+                <div class="text-xs opacity-90 fade-in" style="line-height: 1.9;">
+                    <h1 class="text-sm font-medium mb-8">利用規約</h1>
+
+                    <h2 class="opacity-70 mb-2" style="letter-spacing: 0.05em;">1. 適用</h2>
+                    <p class="opacity-60 mb-8">本利用規約(以下「本規約」)は、当サイトの利用条件を定めるものです。当サイトを利用されるすべての方は、本規約に同意したものとみなします。</p>
+
+                    <h2 class="opacity-70 mb-2" style="letter-spacing: 0.05em;">2. 本サイトの目的</h2>
+                    <p class="opacity-60 mb-8">当サイトは、空間・デザイン・建築にまつわる試論やノートを個人の研究・執筆の記録としてアーカイブする、非商用の個人サイトです。</p>
+
+                    <h2 class="opacity-70 mb-2" style="letter-spacing: 0.05em;">3. 著作権および知的財産権</h2>
+                    <p class="opacity-60 mb-3">当サイトに掲載されている文章・画像その他すべてのコンテンツの著作権は、運営者または正当な権利を有する第三者に帰属します。書籍の表紙画像や本文の引用箇所は、著作権法上の引用の要件を満たす範囲で掲載しています。</p>
+                    <p class="opacity-60 mb-8">利用者は、これらのコンテンツを無断で複製、転載、改変、配布、出版、販売その他二次利用することはできません。掲載内容の利用を希望される場合は、事前にお問い合わせフォームからご連絡のうえ、許諾を得てください。掲載内容に誤りや不備を確認された場合は、同フォームからご連絡いただけると幸いです。</p>
+
+                    <h2 class="opacity-70 mb-2" style="letter-spacing: 0.05em;">4. 禁止事項</h2>
+                    <p class="opacity-60 mb-2">利用者は、以下の行為を行ってはなりません。</p>
+                    <ul class="opacity-60 mb-8" style="list-style: disc; padding-left: 1.4em;">
+                        <li>法令または公序良俗に反する行為</li>
+                        <li>運営者または第三者の権利・利益を侵害する行為</li>
+                        <li>当サイトの内容を無断で転載・商用利用する行為</li>
+                        <li>当サイトの運営を妨げる行為</li>
+                        <li>その他、運営者が不適切と判断する行為</li>
+                    </ul>
+
+                    <h2 class="opacity-70 mb-2" style="letter-spacing: 0.05em;">5. 掲載情報の変更・削除</h2>
+                    <p class="opacity-60 mb-8">運営者は、予告なく当サイトの内容の変更、修正、追加、削除、公開停止を行うことがあります。</p>
+
+                    <h2 class="opacity-70 mb-2" style="letter-spacing: 0.05em;">6. アーカイブの取得・AI学習等について</h2>
+                    <p class="opacity-60 mb-3">当サイトに掲載する文章は、特定の関心や文脈のもとで書かれた個人の記録です。これらを文脈から切り離し、本文を体系的に取得・再構成する行為(スクレイピング等)は許諾していません。</p>
+                    <p class="opacity-60 mb-8">運営者の関与・許諾なく、当サイトのコンテンツが第三者によりAI学習その他の用途に利用された場合について、運営者は一切の責任を負いません。また、当該利用によって生成された成果物についても責任を負いません。運営者は、必要に応じてアクセス制限その他の技術的措置を講じることがあり、これらの措置を回避する行為を禁止します。</p>
+
+                    <h2 class="opacity-70 mb-2" style="letter-spacing: 0.05em;">7. 免責事項</h2>
+                    <p class="opacity-60 mb-3">当サイトに掲載する情報は、公開時点において可能な限り正確な内容を掲載するよう努めていますが、その完全性、正確性、最新性を保証するものではありません。</p>
+                    <p class="opacity-60 mb-3">当サイトの利用または利用不能により生じたいかなる損害についても、運営者は一切の責任を負いません。</p>
+                    <p class="opacity-60 mb-8">当サイトからリンクされた外部サイトの内容やサービスにより生じた損害について、運営者は責任を負いません。</p>
+
+                    <p class="opacity-40" style="font-size: 0.65rem;">最終更新: 2026年7月</p>
+                </div>
+            `;
+        }
+
         // ハッシュタグ別の一覧ページ(タグ名・説明+該当記事)
         async function renderTagPage(slug) {
             hideAllViews();
@@ -1779,6 +1833,10 @@
             }
             if (isContactRoute()) {
                 renderContactPage();
+                return;
+            }
+            if (isTermsRoute()) {
+                renderTermsPage();
                 return;
             }
             const tagSlug = getTagSlug();
@@ -1952,7 +2010,7 @@
             if (homepageLayout === 'hub') return isListRoute();
             // パターンCの"/"はカードグリッドで#article-listを使わないため、無限スクロール判定からは除外する
             if (homepageLayout === 'card' && location.pathname.replace(/\/$/, '') === '') return false;
-            return !isListRoute() && !isTagListRoute() && !isAboutRoute() && !isContactRoute() && !isSearchRoute() && !getTagSlug();
+            return !isListRoute() && !isTagListRoute() && !isAboutRoute() && !isContactRoute() && !isTermsRoute() && !isSearchRoute() && !getTagSlug();
         }
 
         window.addEventListener('scroll', () => { if(isHomeRoute() && window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) renderArticles(1); });
