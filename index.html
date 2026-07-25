@@ -585,7 +585,9 @@
            mix-blend-mode:differenceで背景色と反転させ、白背景の上ではグレー、グレーの上では
            白、というように背景に応じて自動で色が変わるようにする(タッチ端末には出さない) */
         @media (hover: hover) and (pointer: fine) {
-            body { cursor: none; }
+            /* cursor-pointerクラスやリンク・ボタン自体に付いている個別のcursor指定の方が詳細度で勝って
+               標準の矢印/指カーソルが出てしまうため、全要素にまとめて!importantで上書きする */
+            body, body * { cursor: none !important; }
             #custom-cursor {
                 position: fixed;
                 top: 0;
