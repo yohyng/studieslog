@@ -50,6 +50,12 @@
         }
         details[open] > .editor-section-summary::after { transform: rotate(180deg); }
 
+        /* Notionパネル(参照専用プレビュー)の本文用の最低限の余白 */
+        .notion-preview-body p, .notion-preview-body li, .notion-preview-body blockquote, .notion-preview-body pre { margin: 0.4em 0; }
+        .notion-preview-body h1, .notion-preview-body h2, .notion-preview-body h3 { margin: 0.6em 0 0.3em; font-weight: 600; }
+        .notion-preview-body blockquote { border-left: 2px solid rgba(255, 255, 255, 0.2); padding-left: 0.75em; opacity: 0.8; }
+        .notion-preview-body pre { background: rgba(255, 255, 255, 0.05); padding: 0.5em; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; }
+
         /* タイプライターモード: 本文以外のUIをフェード+ぼかしで隠し、キャレットの行を画面上の一定位置にロックする */
         .tw-hide { transition: opacity 0.3s ease, filter 0.3s ease; }
         #app-screen.typewriter-mode .tw-hide {
@@ -139,12 +145,14 @@
         <!-- 編集ビュー -->
         <div id="editor-view" class="hidden flex-1 overflow-y-auto">
             <button id="typewriter-toggle" onclick="toggleTypewriterMode()" class="fixed bottom-6 right-6 z-50 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm transition-colors" style="opacity: 0.4;" title="タイプライターモード切り替え">✍️</button>
-            <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
+            <div class="flex justify-center gap-6 px-5 sm:px-8 py-8 sm:py-10">
+            <div class="max-w-3xl w-full">
                 <div class="flex items-center justify-between mb-6">
                     <button onclick="backToList()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors">← 一覧に戻る</button>
                     <div class="flex items-center gap-4">
                         <button onclick="reloadCurrentArticle()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors" title="他の場所で更新されている場合に備えて、サーバー上の最新の内容を読み込み直します(今の編集内容は失われます)">🔄 最新の内容を読み込み</button>
                         <button onclick="quickSaveArticle()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors" title="下書き・公開・予約投稿のいずれであっても、今のステータスのまま保存します">💾 保存</button>
+                        <button id="notion-panel-toggle" onclick="toggleNotionPanel()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors" title="Notionのデータベースを横に表示します(参照用。編集画面には反映されません)">📋 Notion</button>
                     </div>
                 </div>
 
@@ -270,6 +278,25 @@
                     <button onclick="backToList()" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">キャンセル</button>
                     <button id="delete-btn" onclick="deleteCurrentArticle()" class="hidden sm:ml-auto px-5 py-2.5 text-xs text-red-400/70 hover:text-red-400 transition-colors">この記事を削除</button>
                 </div>
+            </div>
+
+            <!-- Notionパネル(参照専用。ここからの操作で編集画面の内容が変わることはない) -->
+            <aside id="notion-panel" class="tw-hide hidden w-80 shrink-0 sticky top-8 self-start bg-white/5 border border-white/10 rounded max-h-[80vh] flex-col">
+                <div class="flex items-center justify-between px-3 py-2 border-b border-white/10">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-white/40">Notion</span>
+                    <div class="flex items-center gap-3">
+                        <button onclick="loadNotionPanelData()" class="text-white/40 hover:text-white transition-colors" title="再読み込み">🔄</button>
+                        <button onclick="toggleNotionPanel()" class="text-white/40 hover:text-white transition-colors" title="閉じる">✕</button>
+                    </div>
+                </div>
+                <div class="px-3 py-2 border-b border-white/10">
+                    <input id="notion-search" type="text" placeholder="タイトルで絞り込み" oninput="renderNotionPanelList()" class="w-full bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
+                </div>
+                <div id="notion-panel-list" class="flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-2 text-xs"></div>
+                <div id="notion-panel-more" class="hidden px-3 py-2 border-t border-white/10">
+                    <button onclick="loadNotionPanelData(true)" class="w-full text-xs text-white/40 hover:text-white transition-colors">もっと見る</button>
+                </div>
+            </aside>
             </div>
         </div>
 
@@ -2627,6 +2654,138 @@
                 btn.disabled = false;
                 btn.textContent = '✨ AIで英訳';
             }
+        }
+
+        // --- Notionパネル(記事編集画面の隣に出す参照専用のDB一覧。挿入機能はなし) ---
+        let notionItems = [];
+        let notionCursor = null;
+        let notionHasMore = false;
+        let notionLoading = false;
+        const notionPageCache = new Map();
+
+        function toggleNotionPanel() {
+            const panel = document.getElementById('notion-panel');
+            const opening = panel.classList.contains('hidden');
+            if (opening) {
+                panel.classList.remove('hidden');
+                panel.classList.add('flex');
+                if (!notionItems.length) loadNotionPanelData();
+            } else {
+                panel.classList.add('hidden');
+                panel.classList.remove('flex');
+            }
+        }
+
+        async function loadNotionPanelData(append = false) {
+            if (notionLoading) return;
+            notionLoading = true;
+            const listEl = document.getElementById('notion-panel-list');
+            const moreEl = document.getElementById('notion-panel-more');
+            if (!append) {
+                notionItems = [];
+                notionCursor = null;
+                listEl.innerHTML = '<div class="text-white/30 text-center py-8">読み込み中...</div>';
+            } else {
+                const moreBtn = moreEl.querySelector('button');
+                if (moreBtn) moreBtn.textContent = '読み込み中...';
+            }
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) {
+                    showToast('ログイン状態を確認できませんでした');
+                    return;
+                }
+                const params = new URLSearchParams({ action: 'list' });
+                if (append && notionCursor) params.set('cursor', notionCursor);
+                const res = await fetch(`/api/notion?${params.toString()}`, {
+                    headers: { Authorization: `Bearer ${session.access_token}` },
+                });
+                const result = await res.json();
+                if (!res.ok) {
+                    console.error(result);
+                    listEl.innerHTML = '<div class="text-red-300/70 text-center py-8">読み込みに失敗しました</div>';
+                    return;
+                }
+                notionItems = append ? notionItems.concat(result.items) : result.items;
+                notionCursor = result.nextCursor;
+                notionHasMore = result.hasMore;
+                moreEl.classList.toggle('hidden', !notionHasMore);
+                const moreBtn = moreEl.querySelector('button');
+                if (moreBtn) moreBtn.textContent = 'もっと見る';
+                renderNotionPanelList();
+            } catch (e) {
+                console.error(e);
+                listEl.innerHTML = '<div class="text-red-300/70 text-center py-8">読み込みに失敗しました</div>';
+            } finally {
+                notionLoading = false;
+            }
+        }
+
+        function renderNotionPanelList() {
+            const listEl = document.getElementById('notion-panel-list');
+            const query = (document.getElementById('notion-search').value || '').trim().toLowerCase();
+            const filtered = query ? notionItems.filter(item => item.title.toLowerCase().includes(query)) : notionItems;
+            listEl.innerHTML = '';
+            if (!filtered.length) {
+                const emptyMsg = notionItems.length ? '一致する項目がありません' : '項目がありません';
+                listEl.innerHTML = `<div class="text-white/30 text-center py-8">${emptyMsg}</div>`;
+                return;
+            }
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'bg-white/5 border border-white/10 rounded px-2 py-2';
+                const propsHtml = item.properties
+                    .map(p => `<span class="inline-block bg-white/10 rounded px-1.5 py-0.5 mr-1 mb-1 text-white/50">${escapeNotionHtml(p.name)}: ${escapeNotionHtml(p.value)}</span>`)
+                    .join('');
+                card.innerHTML = `
+                    <button type="button" class="w-full text-left text-white/80 hover:text-white transition-colors font-medium mb-1" onclick="toggleNotionPageDetail('${item.id}')">${escapeNotionHtml(item.title)}</button>
+                    <div class="flex flex-wrap">${propsHtml}</div>
+                    <div id="notion-detail-${item.id}" class="hidden mt-2 pt-2 border-t border-white/10 text-white/60 notion-preview-body"></div>
+                `;
+                listEl.appendChild(card);
+            });
+        }
+
+        async function toggleNotionPageDetail(pageId) {
+            const detailEl = document.getElementById(`notion-detail-${pageId}`);
+            if (!detailEl) return;
+            if (!detailEl.classList.contains('hidden')) {
+                detailEl.classList.add('hidden');
+                return;
+            }
+            detailEl.classList.remove('hidden');
+            if (notionPageCache.has(pageId)) {
+                detailEl.innerHTML = notionPageCache.get(pageId);
+                return;
+            }
+            detailEl.innerHTML = '<div class="text-white/30 py-2">読み込み中...</div>';
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) {
+                    showToast('ログイン状態を確認できませんでした');
+                    return;
+                }
+                const res = await fetch(`/api/notion?action=page&id=${encodeURIComponent(pageId)}`, {
+                    headers: { Authorization: `Bearer ${session.access_token}` },
+                });
+                const result = await res.json();
+                if (!res.ok) {
+                    console.error(result);
+                    detailEl.innerHTML = '<div class="text-red-300/70 py-2">読み込みに失敗しました</div>';
+                    return;
+                }
+                notionPageCache.set(pageId, result.html);
+                detailEl.innerHTML = result.html;
+            } catch (e) {
+                console.error(e);
+                detailEl.innerHTML = '<div class="text-red-300/70 py-2">読み込みに失敗しました</div>';
+            }
+        }
+
+        function escapeNotionHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
         }
 
         // --- 本文フォーマット・画像挿入 ---
