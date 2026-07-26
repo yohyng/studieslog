@@ -1293,6 +1293,44 @@
             displayedCount += items.length;
         }
 
+        // デモ用: 全記事を本文全開きの状態で縦一列に並べ、途中で「続きを読み込む」ボタンを挟んで
+        // 少しずつ追加していく。人にサイトを見せるとき、次々スクロールして流し見できるようにするためのモード
+        const ALL_ARTICLES_PAGE_SIZE = 5;
+        let allArticlesDisplayedCount = 0;
+
+        function renderAllArticlesPage() {
+            hideAllViews();
+            listContainer.classList.remove('hidden');
+            listContainer.innerHTML = '';
+            allArticlesDisplayedCount = 0;
+            renderAllArticlesBatch();
+        }
+
+        function renderAllArticlesBatch() {
+            const items = articles.slice(allArticlesDisplayedCount, allArticlesDisplayedCount + ALL_ARTICLES_PAGE_SIZE);
+            items.forEach(article => {
+                listContainer.insertAdjacentHTML('beforeend', buildArticleHtml(article));
+                const articleEl = document.getElementById(`article-${article.id}`);
+                forceLineHeight(article, articleEl);
+                const wrapper = articleEl.querySelector('.cursor-pointer.group');
+                openArticle(wrapper);
+                // 通常はタイトルクリックで開閉するが、このモードは常に全開きなので、
+                // クリックしてもホームへ遷移したりしないよう無効化しておく
+                wrapper.removeAttribute('onclick');
+            });
+            allArticlesDisplayedCount += items.length;
+
+            const existingBtn = document.getElementById('all-articles-load-more');
+            if (existingBtn) existingBtn.remove();
+            if (allArticlesDisplayedCount < articles.length) {
+                listContainer.insertAdjacentHTML('beforeend', `
+                    <div id="all-articles-load-more" class="text-center py-8">
+                        <button onclick="renderAllArticlesBatch()" class="px-5 py-2.5 text-xs border border-current rounded opacity-60 hover:opacity-100 transition-opacity">続きを読み込む</button>
+                    </div>
+                `);
+            }
+        }
+
         // 画面幅に応じた行間の倍率(CSSのmedia queryと同じ閾値をJS側でも再現する)
         function currentLineHeightScale() {
             if (window.matchMedia('(max-width: 640px)').matches) return 0.75;
@@ -1427,6 +1465,12 @@
         // まだサイドバー等からのリンクは用意していない
         function isAnnotationsRoute() {
             return location.pathname.replace(/\/$/, '') === '/annotations';
+        }
+
+        // デモ用モード: 全記事を本文全開きの状態で縦一列にざっと読み流せるページ。
+        // サイトを人に見せるとき用の専用URLで、サイドバー等からのリンクは用意していない
+        function isAllArticlesRoute() {
+            return location.pathname.replace(/\/$/, '') === '/allarticles';
         }
 
         // ルートに応じて表示するビューだけを残し、他は隠す
@@ -2642,6 +2686,10 @@
             }
             if (isTermsRoute()) {
                 renderTermsPage();
+                return;
+            }
+            if (isAllArticlesRoute()) {
+                renderAllArticlesPage();
                 return;
             }
             const tagSlug = getTagSlug();
