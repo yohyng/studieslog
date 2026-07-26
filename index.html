@@ -193,7 +193,11 @@
         /* --related-card-max: 関連記事だけの上限。ウィンドウ幅を最小まで狭めて1列表示になったときは
            記事本文幅いっぱいまでカードを大きく見せたいため、通常カードの上限(350px)よりだいぶ広くとる。
            記事本文の幅(--content-width)自体が実質の天井になるので、これより大きな値でも害はない */
-        :root { --card-min: 280px; --card-max: 350px; --related-card-min: 240px; --related-card-max: 640px; }
+        /* --card-squeeze-min: 「右側が大きく余るくらいなら1列増やす」ときに、カードが縮んでよい下限。
+           列数は--card-minで決めるがカード幅は--card-maxで頭打ちになるため、その間の幅では
+           1列のまま大きく余ってしまう帯ができる。そこを埋めるための値。
+           --card-minと同じ値にすれば、列を増やさず余白のままにする以前の挙動に戻る */
+        :root { --card-min: 280px; --card-max: 350px; --card-squeeze-min: 240px; --related-card-min: 240px; --related-card-max: 640px; }
         .card-grid,
         .related-articles-grid {
             display: flex;
@@ -2009,6 +2013,8 @@
             const cardMin = parseFloat(rootStyle.getPropertyValue('--card-min')) || 280;
             const relatedCardMin = parseFloat(rootStyle.getPropertyValue('--related-card-min')) || cardMin;
             const relatedCardMax = parseFloat(rootStyle.getPropertyValue('--related-card-max')) || cardMax;
+            // 「余白にするくらいなら1列増やす」ときに、カードが縮んでよい下限
+            const squeezeMinBase = parseFloat(rootStyle.getPropertyValue('--card-squeeze-min')) || 240;
             let headerPad = 0;
             document.querySelectorAll('.card-grid, .related-articles-grid').forEach(grid => {
                 grid.style.paddingLeft = '';
@@ -2020,8 +2026,24 @@
                 const isCardGrid = grid.classList.contains('card-grid');
                 const minWidth = isCardGrid ? cardMin : relatedCardMin;
                 const maxWidth = isCardGrid ? cardMax : relatedCardMax;
-                const perRow = Math.max(1, Math.floor((width + gap) / (minWidth + gap)));
-                const cardWidth = Math.min(maxWidth, (width - (perRow - 1) * gap) / perRow);
+                let perRow = Math.max(1, Math.floor((width + gap) / (minWidth + gap)));
+                let cardWidth = Math.min(maxWidth, (width - (perRow - 1) * gap) / perRow);
+                // 列数の判定は--card-min(280px)で行う一方、カード幅は--card-max(350px)で頭打ちに
+                // なるため、その間の幅(グリッド350〜571px)では「1列のままカードは350pxで止まり、
+                // 残りが全部余白になる」帯ができていた(最大220px・全体の39%が余白)。
+                // 余白が大きいときに限り、カードが--card-squeeze-minまで小さくなることを許して
+                // 1列増やす。少しの端数で列を増やすとPC幅でカードが不必要に小さくなるため、
+                // 余白が--card-maxの3割を超えるときだけ発動させる
+                const squeezeMin = Math.min(minWidth, squeezeMinBase);
+                const wasted = width - (perRow * cardWidth + (perRow - 1) * gap);
+                if (wasted > maxWidth * 0.3) {
+                    const nextPerRow = perRow + 1;
+                    const nextCardWidth = (width - (nextPerRow - 1) * gap) / nextPerRow;
+                    if (nextCardWidth >= squeezeMin) {
+                        perRow = nextPerRow;
+                        cardWidth = Math.min(maxWidth, nextCardWidth);
+                    }
+                }
                 grid.style.setProperty('--card-w', cardWidth + 'px');
                 // 中央に寄せるのは一覧ページのカードだけ。関連記事は記事本文の左端に揃えたいので寄せない
                 if (!isCardGrid) return;
