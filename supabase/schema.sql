@@ -27,6 +27,11 @@ alter table public.articles add column if not exists scheduled_at timestamptz;
 -- ジャンルとしてのカテゴリ(1記事につき1つ、任意)。タグ(複数付けられる横串)とは別の分類軸
 alter table public.articles add column if not exists category text not null default '';
 
+-- カテゴリをエッセイ/ノート/試論の3種類からlog/essayの2種類に整理した際のデータ移行。
+-- 既存記事のうち「エッセイ」はessayへ、「ノート」「試論」はlogへ統合する(何度実行しても安全)
+update public.articles set category = 'essay' where category = 'エッセイ';
+update public.articles set category = 'log' where category in ('ノート', '試論');
+
 -- パターンBのArticle一覧の上部に固定表示するためのピン留め(目安3件程度、件数上限は特に強制しない)
 alter table public.articles add column if not exists pinned boolean not null default false;
 
