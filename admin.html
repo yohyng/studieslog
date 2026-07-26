@@ -2577,13 +2577,30 @@
             if (!note) return;
             const editor = document.getElementById('edit-content');
             editor.focus();
+            // execCommand('insertHTML', ...)だと、Chromeが挿入時にHTMLを独自に正規化してしまい、
+            // <sup class="footnote-ref" data-note="...">が<span style="vertical-align:super">に
+            // 化けてclass・data-noteが失われる(=注釈の中身が消え、一覧にも出てこなくなる)ことがある。
+            // Rangeへ直接ノードを挿入するとこの正規化を経由しないため、確実にclass・data-noteが残る。
+            // カーソル位置が取れていない場合(本文を一度もクリックせずに注釈ボタンを押した場合など)は
+            // 本文の末尾に挿入する
+            const insertRange = range || (() => {
+                const r = document.createRange();
+                r.selectNodeContents(editor);
+                r.collapse(false);
+                return r;
+            })();
+            const num = editor.querySelectorAll('.footnote-ref').length + 1;
+            const sup = document.createElement('sup');
+            sup.className = 'footnote-ref';
+            sup.dataset.note = note;
+            sup.textContent = `[${num}]`;
+            insertRange.deleteContents();
+            insertRange.insertNode(sup);
+            insertRange.setStartAfter(sup);
+            insertRange.collapse(true);
             const sel = window.getSelection();
             sel.removeAllRanges();
-            if (range) sel.addRange(range);
-            const num = editor.querySelectorAll('.footnote-ref').length + 1;
-            // 本文中には[番号]の印だけを残す。実際の注釈文はdata-note属性に持たせ、
-            // 一覧はrenderFootnoteListPanel()が本文の最後(見た目上は別パネル)にまとめて表示する
-            document.execCommand('insertHTML', false, `<sup class="footnote-ref" data-note="${escapeAttr(note)}">[${num}]</sup>`);
+            sel.addRange(insertRange);
             renderFootnoteListPanel();
         }
 
