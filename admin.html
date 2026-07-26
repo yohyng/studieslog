@@ -2724,15 +2724,10 @@
         function setupPastePlainText() {
             document.getElementById('edit-content').addEventListener('paste', async (e) => {
                 const clipboard = e.clipboardData || window.clipboardData;
-                const imageFile = Array.from(clipboard.files || []).find(f => f.type.startsWith('image/'));
+                const imageFiles = Array.from(clipboard.files || []).filter(f => f.type.startsWith('image/'));
                 e.preventDefault();
-                if (imageFile) {
-                    showToast('アップロード中...');
-                    const url = await uploadImageFile(imageFile);
-                    if (url) {
-                        document.execCommand('insertImage', false, url);
-                        showToast('画像を挿入しました');
-                    }
+                if (imageFiles.length) {
+                    await insertImageFiles(imageFiles);
                     return;
                 }
                 const text = clipboard.getData('text/plain');
@@ -2741,7 +2736,9 @@
         }
 
         async function uploadImageFile(file) {
-            const path = `${Date.now()}-${file.name}`;
+            // 複数枚を続けてアップロードすると、同じ名前のファイルが同じミリ秒に重なって
+            // 保存先が衝突することがあるため、短いランダム文字列も混ぜて必ず別名にする
+            const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.name}`;
             const { error: uploadError } = await sb.storage.from(IMAGE_BUCKET).upload(path, file);
             if (uploadError) {
                 console.error(uploadError);
@@ -2787,19 +2784,38 @@
             input.click();
         }
 
+        // 選んだ・落とした・貼り付けた画像をまとめてアップロードし、今のカーソル位置に順番に挿入する。
+        // ツールバーの写真ボタン・ドラッグ&ドロップ・貼り付けの3か所から共通で使う
+        async function insertImageFiles(files) {
+            const images = Array.from(files || []).filter(f => f.type.startsWith('image/'));
+            if (!images.length) return 0;
+            let inserted = 0;
+            for (let i = 0; i < images.length; i++) {
+                // 複数枚のときは何枚目を処理中か出す。アップロード中に消えないよう長めに表示し、
+                // 最後の完了トーストで上書きする
+                showToast(images.length > 1 ? `アップロード中... (${i + 1}/${images.length})` : 'アップロード中...', 60000);
+                const url = await uploadImageFile(images[i]);
+                if (url) {
+                    document.execCommand('insertImage', false, url);
+                    inserted++;
+                }
+            }
+            showToast(inserted > 1 ? `画像を${inserted}枚挿入しました`
+                : inserted === 1 ? '画像を挿入しました'
+                : '画像を挿入できませんでした');
+            return inserted;
+        }
+
         function insertImage() {
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = 'image/*';
+            // PCのファイル選択でもスマホの写真選択でも、複数枚まとめて選べるようにする
+            input.multiple = true;
             input.onchange = async () => {
-                const file = input.files[0];
-                if (!file) return;
-                showToast('アップロード中...');
-                const url = await uploadImageFile(file);
-                if (url) {
-                    formatText('insertImage', url);
-                    showToast('画像を挿入しました');
-                }
+                if (!input.files || !input.files.length) return;
+                document.getElementById('edit-content').focus();
+                await insertImageFiles(input.files);
             };
             input.click();
         }
@@ -2840,12 +2856,7 @@
                 if (!files.length) return;
                 editor.focus();
                 placeCaretAtPoint(e.clientX, e.clientY);
-                showToast('アップロード中...');
-                for (const file of files) {
-                    const url = await uploadImageFile(file);
-                    if (url) document.execCommand('insertImage', false, url);
-                }
-                showToast('画像を挿入しました');
+                await insertImageFiles(files);
             });
         }
 
