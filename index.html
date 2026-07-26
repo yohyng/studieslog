@@ -1962,7 +1962,9 @@
         // 日英対応: 英語版タイトル/本文があり、かつ現在の表示言語が英語ならそちらを使う。
         // 空欄の場合(まだ翻訳していない記事)は日本語にフォールバックする
         function localizedTitle(article) {
-            return (currentLocale === 'en' && article.title_en) ? article.title_en : article.title;
+            const title = (currentLocale === 'en' && article.title_en) ? article.title_en : article.title;
+            // カテゴリが設定されている記事は、タイトルの冒頭に「カテゴリ名 | 」を付ける
+            return article.category ? `${article.category} | ${title}` : title;
         }
         function localizedContent(article) {
             return (currentLocale === 'en' && article.content_en) ? article.content_en : article.content;
