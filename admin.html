@@ -2880,12 +2880,21 @@
                 const imageHtml = item.coverUrl
                     ? `<img src="${escapeNotionHtml(item.coverUrl)}" alt="" loading="lazy" class="w-full aspect-video object-cover rounded mb-2" onerror="this.remove()">`
                     : '';
+                const propsHtml = item.properties && item.properties.length
+                    ? `<details class="mt-1">
+                        <summary class="editor-section-summary text-white/40 hover:text-white transition-colors" style="font-size: 11px;">詳細</summary>
+                        <div class="flex flex-wrap mt-1">
+                            ${item.properties.map(p => `<span class="inline-block bg-white/10 rounded px-1.5 py-0.5 mr-1 mb-1 text-white/50">${escapeNotionHtml(p.name)}: ${escapeNotionHtml(p.value)}</span>`).join('')}
+                        </div>
+                    </details>`
+                    : '';
                 card.innerHTML = `
                     ${imageHtml}
                     <div class="flex items-start justify-between gap-2">
                         <a href="${escapeNotionHtml(item.url || '#')}" target="_blank" rel="noopener" class="text-white/80 hover:text-white transition-colors font-medium">${escapeNotionHtml(item.title)}</a>
                         <button type="button" class="shrink-0 px-2 py-0.5 text-white/40 hover:text-white bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap" title="このメモを完了にして一覧から外します" onclick="markNotionPageComplete('${dbId}', '${item.id}')">✅ 完了</button>
                     </div>
+                    ${propsHtml}
                 `;
                 itemsEl.appendChild(card);
             });
