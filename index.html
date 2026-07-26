@@ -2171,6 +2171,14 @@
             });
         }
         window.addEventListener('resize', scheduleAlignHeaderToCards);
+        // 折りたたみスマホの開閉やタブレットの分割画面など、ウィンドウ自体の大きさは変わらず
+        // ビューポートだけ変わるケースでは、window の 'resize' が確実には発火しないことがある。
+        // その場合--card-wが古い(狭い)幅のまま固定されてしまい、実際は広くなったのにカードが
+        // 増えず右側が余白になってしまう。ResizeObserverでbody自体の実際のサイズ変化を直接監視し、
+        // resizeイベントの有無に関わらず再計算されるようにする
+        if (typeof ResizeObserver !== 'undefined') {
+            new ResizeObserver(scheduleAlignHeaderToCards).observe(document.body);
+        }
 
         // フィルターボタンを開閉する。カテゴリ/タグどちらかが選ばれている間は、パネルを閉じても
         // ボタンに小さいドットを出して「絞り込み中」であることが分かるようにする
