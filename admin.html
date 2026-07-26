@@ -122,7 +122,10 @@
         <div id="editor-view" class="hidden flex-1 overflow-y-auto">
             <button id="typewriter-toggle" onclick="toggleTypewriterMode()" class="fixed bottom-6 right-6 z-50 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm transition-colors" style="opacity: 0.4;" title="タイプライターモード切り替え">✍️</button>
             <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
-                <button onclick="backToList()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors mb-6">← 一覧に戻る</button>
+                <div class="flex items-center justify-between mb-6">
+                    <button onclick="backToList()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors">← 一覧に戻る</button>
+                    <button onclick="reloadCurrentArticle()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors" title="他の場所で更新されている場合に備えて、サーバー上の最新の内容を読み込み直します(今の編集内容は失われます)">🔄 最新の内容を読み込み</button>
+                </div>
 
                 <div class="mb-6">
                     <label class="tw-hide text-xs text-white/50 block mb-1">日付</label>
@@ -1823,10 +1826,10 @@
             window.open(`${location.origin}/article/${editingId}/story/${storyPreviewToken(editingId)}`, '_blank');
         }
 
-        async function openEditEditor(id) {
-            const article = articles.find(a => a.id === id);
-            if (!article) return;
-            editingId = article.id;
+        // openEditEditor()と、他の場所で更新された可能性のある記事を読み込み直すreloadCurrentArticle()の
+        // 両方から使う共通処理。記事オブジェクトの内容をエディタ画面の各要素に反映するだけで、
+        // editingIdの設定やタグ選択の読み込みは呼び出し側が行う
+        function populateEditorFromArticle(article) {
             document.getElementById('edit-date').value = article.date;
             document.getElementById('edit-title').value = article.title;
             document.getElementById('edit-title-en').value = article.title_en || '';
@@ -1844,14 +1847,47 @@
 
             applyEditorPreviewStyle();
 
+            document.getElementById('social-share-panel').classList.remove('hidden');
+            renderSocialDrafts(article);
+        }
+
+        async function openEditEditor(id) {
+            const article = articles.find(a => a.id === id);
+            if (!article) return;
+            editingId = article.id;
+            populateEditorFromArticle(article);
+
             await ensureTagsLoaded();
             await loadArticleTagSelection(article.id);
 
-            document.getElementById('social-share-panel').classList.remove('hidden');
-            renderSocialDrafts(article);
-
             showEditorView();
             checkForAutosaveDraft();
+        }
+
+        // 同じ記事を別の場所(別のタブ・別の端末など)でも編集していることがあるため、リアルタイムでの
+        // 共同編集はせず、代わりにこのボタンでサーバー上の最新の内容を手動で読み込み直せるようにする。
+        // 今の編集内容(未保存分)は失われるため、必ず確認を挟む
+        async function reloadCurrentArticle() {
+            if (!editingId) {
+                showToast('この記事はまだ保存されていません');
+                return;
+            }
+            if (!confirm('サーバー上の最新の内容を読み込み直します。今の編集内容は失われます。よろしいですか？')) return;
+
+            const { data, error } = await sb.from('articles').select('*').eq('id', editingId).single();
+            if (error || !data) {
+                console.error(error);
+                showToast('最新の内容の取得に失敗しました');
+                return;
+            }
+            const idx = articles.findIndex(a => a.id === editingId);
+            if (idx >= 0) articles[idx] = data; else articles.unshift(data);
+
+            populateEditorFromArticle(data);
+            await ensureTagsLoaded();
+            await loadArticleTagSelection(editingId);
+            clearAutosaveDraft();
+            showToast('最新の内容を読み込みました');
         }
 
         // 予約投稿は「cronで自動的にstatusを書き換える」方式ではなく、
