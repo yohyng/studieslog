@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理画面</title>
     <meta name="robots" content="noindex, nofollow">
+    <!-- 閲覧ページと同じグラデーション背景クラス(gradient-*)を共有するための埋め込み画像入りCSS -->
+    <link rel="stylesheet" href="/gradient-backgrounds.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -49,6 +51,10 @@
             transition: transform 0.15s ease;
         }
         details[open] > .editor-section-summary::after { transform: rotate(180deg); }
+
+        /* NotionパネルのDB名(トグル見出し)は、中身をスクロールしても常に見えるよう固定する */
+        #notion-panel { background-color: var(--admin-bg-color, #22262a); }
+        .notion-db-summary { position: sticky; top: 0; z-index: 10; background-color: var(--admin-bg-color, #22262a); }
 
         /* タイプライターモード: 本文以外のUIをフェード+ぼかしで隠し、キャレットの行を画面上の一定位置にロックする */
         .tw-hide { transition: opacity 0.3s ease, filter 0.3s ease; }
@@ -1686,11 +1692,54 @@
         }
 
         // 管理画面全体の背景を、実際の閲覧ページの背景色と統一する。site_settingsは公開読み取り可能なので、
-        // ログイン前(ログイン画面)から適用できる。
+        // ログイン前(ログイン画面)から適用できる。CSS変数にもしておき、Notionパネルの固定見出しなど
+        // 背景色に追従させたい箇所から参照できるようにする。
+        function setAdminBackgroundColor(color) {
+            document.body.style.backgroundColor = color;
+            document.documentElement.style.setProperty('--admin-bg-color', color);
+        }
+
+        // 閲覧ページと同じグラデーション/テクスチャ背景(gradient_bg_style)を管理画面にも適用する。
+        // CSS自体はgradient-backgrounds.css(閲覧ページと共有、埋め込み画像を含むため分離)を使う。
+        function applyAdminGradientBackground(data) {
+            document.body.classList.remove('gradient-gray', 'gradient-dark', 'gradient-svg', 'gradient-silver',
+                'gradient-smooth-1', 'gradient-smooth-2', 'gradient-smooth-3', 'gradient-smooth-4', 'gradient-smooth-5');
+            document.body.style.backgroundImage = '';
+            document.body.style.backgroundRepeat = '';
+            document.body.style.backgroundSize = '';
+            document.body.style.backgroundPosition = '';
+            if (data.gradient_bg_style === 'silver') {
+                document.body.classList.add('gradient-silver');
+                const tileImage = getComputedStyle(document.body).backgroundImage;
+                const angle1 = Math.round(Math.random() * 360);
+                const pos1 = Math.round(25 + Math.random() * 30);
+                const angle2 = Math.round(Math.random() * 360);
+                const pos2 = Math.round(45 + Math.random() * 30);
+                const macroSheen = `linear-gradient(${angle1}deg, rgba(255,255,255,0) 20%, rgba(255,255,255,0.14) ${pos1}%, rgba(255,255,255,0) 65%), linear-gradient(${angle2}deg, rgba(255,255,255,0) 35%, rgba(255,255,255,0.1) ${pos2}%, rgba(255,255,255,0) 80%)`;
+                const darkness = data.silver_darkness != null ? data.silver_darkness : 0.25;
+                const darkOverlay = `linear-gradient(rgba(0,0,0,${darkness}), rgba(0,0,0,${darkness}))`;
+                document.body.style.backgroundImage = `${darkOverlay}, ${macroSheen}, ${tileImage}`;
+                document.body.style.backgroundRepeat = 'no-repeat, no-repeat, no-repeat, repeat';
+                document.body.style.backgroundSize = '100% 100%, 220% 220%, 220% 220%, 500px 500px';
+                document.body.style.backgroundPosition = '0 0, 10% 20%, 90% 80%, 0 0';
+            } else if (data.gradient_bg_style === 'smooth') {
+                const variant = 1 + Math.floor(Math.random() * 5);
+                document.body.classList.add('gradient-smooth-' + variant);
+            } else if (['gray', 'dark', 'svg'].includes(data.gradient_bg_style)) {
+                document.body.classList.add('gradient-' + data.gradient_bg_style);
+            } else if (data.gradient_bg_style === 'custom' && data.bg_image_url) {
+                document.body.style.backgroundImage = `url("${data.bg_image_url}")`;
+                document.body.style.backgroundRepeat = 'repeat';
+            }
+        }
+
         async function applyAdminBackgroundColor() {
-            const { data, error } = await sb.from('site_settings').select('bg_color').eq('id', 1).single();
-            if (!error && data?.bg_color) {
-                document.body.style.backgroundColor = data.bg_color;
+            const { data, error } = await sb.from('site_settings')
+                .select('bg_color, gradient_bg_style, bg_image_url, silver_darkness')
+                .eq('id', 1).single();
+            if (!error && data) {
+                setAdminBackgroundColor(data.bg_color);
+                applyAdminGradientBackground(data);
             }
         }
 
@@ -1705,7 +1754,7 @@
                 return;
             }
             siteTypography = data;
-            document.body.style.backgroundColor = data.bg_color;
+            setAdminBackgroundColor(data.bg_color);
             applyEditorPreviewStyle();
         }
 
@@ -2792,7 +2841,7 @@
                 details.className = 'border-b border-white/10';
                 details.dataset.dbId = db.id;
                 details.innerHTML = `
-                    <summary class="editor-section-summary px-4 py-3 text-xs font-medium text-white/70 hover:text-white transition-colors">${escapeNotionHtml(db.name)}</summary>
+                    <summary class="editor-section-summary notion-db-summary px-4 py-3 text-xs font-medium text-white/70 hover:text-white transition-colors">${escapeNotionHtml(db.name)}</summary>
                     <div class="px-4 pb-4">
                         <input type="text" placeholder="タイトルで絞り込み" class="notion-db-search w-full bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 mb-3 focus:outline-none focus:border-white/30" oninput="renderNotionDbItems('${db.id}')">
                         <div class="notion-db-items flex flex-col gap-4"></div>
@@ -3514,7 +3563,8 @@
                 return;
             }
             siteTypography = payload;
-            document.body.style.backgroundColor = payload.bg_color;
+            setAdminBackgroundColor(payload.bg_color);
+            applyAdminGradientBackground(payload);
             applyEditorPreviewStyle();
             showToast('表示設定を保存しました');
         }
