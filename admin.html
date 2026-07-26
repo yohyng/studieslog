@@ -149,6 +149,7 @@
         <!-- 編集ビュー(Notionパネルを開くと、編集エリアとパネルが独立してスクロールする2段組みになる) -->
         <div id="editor-view" class="hidden flex-1 overflow-hidden flex">
             <button id="typewriter-toggle" class="fixed bottom-6 left-6 z-50 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm transition-colors cursor-grab active:cursor-grabbing" style="opacity: 0.4; touch-action: none;" title="タイプライターモード切り替え(ドラッグで移動できます)">✍️</button>
+            <button id="notion-panel-opener" onclick="toggleNotionPanel()" class="tw-hide fixed top-[4.2rem] right-6 z-40 px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors" title="Notionのデータベースを横に表示します(参照用。編集画面には反映されません)">📋 Notion</button>
             <div id="editor-main-col" class="flex-1 min-w-0 overflow-y-auto">
             <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
                 <div class="flex items-center justify-between mb-6">
@@ -156,7 +157,6 @@
                     <div class="flex items-center gap-4">
                         <button onclick="reloadCurrentArticle()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors" title="他の場所で更新されている場合に備えて、サーバー上の最新の内容を読み込み直します(今の編集内容は失われます)">🔄 最新の内容を読み込み</button>
                         <button onclick="quickSaveArticle()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors" title="下書き・公開・予約投稿のいずれであっても、今のステータスのまま保存します">💾 保存</button>
-                        <button id="notion-panel-toggle" onclick="toggleNotionPanel()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors" title="Notionのデータベースを横に表示します(参照用。編集画面には反映されません)">📋 Notion</button>
                     </div>
                 </div>
 
@@ -290,20 +290,11 @@
                 <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/10">
                     <span class="text-xs font-semibold uppercase tracking-wider text-white/40">Notion</span>
                     <div class="flex items-center gap-3">
-                        <button onclick="loadNotionPanelData()" class="text-white/40 hover:text-white transition-colors" title="再読み込み">🔄</button>
+                        <button onclick="reloadOpenNotionDatabases()" class="text-white/40 hover:text-white transition-colors" title="開いているDBを再読み込み">🔄</button>
                         <button onclick="toggleNotionPanel()" class="text-white/40 hover:text-white transition-colors" title="閉じる">✕</button>
                     </div>
                 </div>
-                <div id="notion-db-select-wrap" class="hidden shrink-0 px-4 py-3 border-b border-white/10">
-                    <select id="notion-db-select" onchange="switchNotionDatabase(this.value)" class="w-full bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30"></select>
-                </div>
-                <div class="shrink-0 px-4 py-3 border-b border-white/10">
-                    <input id="notion-search" type="text" placeholder="タイトルで絞り込み" oninput="renderNotionPanelList()" class="w-full bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
-                </div>
-                <div id="notion-panel-list" class="flex-1 min-h-0 overflow-y-auto px-4 py-3 flex flex-col gap-4 text-xs"></div>
-                <div id="notion-panel-more" class="hidden shrink-0 px-4 py-3 border-t border-white/10">
-                    <button onclick="loadNotionPanelData(true)" class="w-full text-xs text-white/40 hover:text-white transition-colors">もっと見る</button>
-                </div>
+                <div id="notion-panel-list" class="flex-1 min-h-0 overflow-y-auto flex flex-col text-xs"></div>
             </aside>
         </div>
 
@@ -2733,30 +2724,29 @@
         }
 
         // --- Notionパネル(記事編集画面の隣に出す参照専用のDB一覧。挿入機能はなし) ---
+        // DBごとに<details>で開閉でき、複数同時に開いたままにもできる。開いたDBだけ一覧を読み込む。
         let notionDatabases = [];
         let notionDatabasesLoaded = false;
-        let currentNotionDb = null;
-        let notionItems = [];
-        let notionCursor = null;
-        let notionHasMore = false;
-        let notionLoading = false;
+        const notionDbState = new Map(); // dbId -> { items, cursor, hasMore, loading, loaded }
         const notionPageCache = new Map();
 
         function toggleNotionPanel() {
             const panel = document.getElementById('notion-panel');
+            const opener = document.getElementById('notion-panel-opener');
             const opening = panel.classList.contains('hidden');
             if (opening) {
                 panel.classList.remove('hidden');
                 panel.classList.add('flex');
-                if (!notionDatabasesLoaded) loadNotionDatabaseOptions();
-                else if (!notionItems.length) loadNotionPanelData();
+                opener.classList.add('hidden');
+                if (!notionDatabasesLoaded) loadNotionDatabaseList();
             } else {
                 panel.classList.add('hidden');
                 panel.classList.remove('flex');
+                opener.classList.remove('hidden');
             }
         }
 
-        async function loadNotionDatabaseOptions() {
+        async function loadNotionDatabaseList() {
             const listEl = document.getElementById('notion-panel-list');
             listEl.innerHTML = '<div class="text-white/30 text-center py-8">読み込み中...</div>';
             try {
@@ -2776,40 +2766,70 @@
                 }
                 notionDatabases = result.databases || [];
                 notionDatabasesLoaded = true;
-
-                const selectWrap = document.getElementById('notion-db-select-wrap');
-                const selectEl = document.getElementById('notion-db-select');
-                selectEl.innerHTML = notionDatabases.map(d => `<option value="${escapeNotionHtml(d.id)}">${escapeNotionHtml(d.name)}</option>`).join('');
-                selectWrap.classList.toggle('hidden', notionDatabases.length <= 1);
-
-                if (!notionDatabases.length) {
-                    listEl.innerHTML = '<div class="text-white/30 text-center py-8">DBが設定されていません</div>';
-                    return;
-                }
-                currentNotionDb = notionDatabases[0].id;
-                selectEl.value = currentNotionDb;
-                loadNotionPanelData();
+                notionDatabases.forEach(db => {
+                    if (!notionDbState.has(db.id)) {
+                        notionDbState.set(db.id, { items: [], cursor: null, hasMore: false, loading: false, loaded: false });
+                    }
+                });
+                renderNotionDbAccordions();
             } catch (e) {
                 console.error(e);
                 listEl.innerHTML = '<div class="text-red-300/70 text-center py-8">読み込みに失敗しました</div>';
             }
         }
 
-        function switchNotionDatabase(dbId) {
-            currentNotionDb = dbId;
-            notionItems = [];
-            loadNotionPanelData();
+        function renderNotionDbAccordions() {
+            const listEl = document.getElementById('notion-panel-list');
+            listEl.innerHTML = '';
+            if (!notionDatabases.length) {
+                listEl.innerHTML = '<div class="text-white/30 text-center py-8">DBが設定されていません</div>';
+                return;
+            }
+            notionDatabases.forEach(db => {
+                const details = document.createElement('details');
+                details.className = 'border-b border-white/10';
+                details.dataset.dbId = db.id;
+                details.innerHTML = `
+                    <summary class="editor-section-summary px-4 py-3 text-xs font-medium text-white/70 hover:text-white transition-colors">${escapeNotionHtml(db.name)}</summary>
+                    <div class="px-4 pb-4">
+                        <input type="text" placeholder="タイトルで絞り込み" class="notion-db-search w-full bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 mb-3 focus:outline-none focus:border-white/30" oninput="renderNotionDbItems('${db.id}')">
+                        <div class="notion-db-items flex flex-col gap-4"></div>
+                        <div class="notion-db-more hidden mt-3">
+                            <button type="button" class="w-full text-xs text-white/40 hover:text-white transition-colors" onclick="loadNotionDbItems('${db.id}', true)">もっと見る</button>
+                        </div>
+                    </div>
+                `;
+                details.addEventListener('toggle', () => {
+                    if (!details.open) return;
+                    const state = notionDbState.get(db.id);
+                    if (state && !state.loaded && !state.loading) loadNotionDbItems(db.id);
+                });
+                listEl.appendChild(details);
+            });
         }
 
-        async function loadNotionPanelData(append = false) {
-            if (notionLoading || !currentNotionDb) return;
-            notionLoading = true;
-            const listEl = document.getElementById('notion-panel-list');
-            const moreEl = document.getElementById('notion-panel-more');
+        function reloadOpenNotionDatabases() {
+            document.querySelectorAll('#notion-panel-list details[open]').forEach(details => {
+                const dbId = details.dataset.dbId;
+                const state = notionDbState.get(dbId);
+                if (state) {
+                    state.loaded = false;
+                    loadNotionDbItems(dbId);
+                }
+            });
+        }
+
+        async function loadNotionDbItems(dbId, append = false) {
+            const state = notionDbState.get(dbId);
+            const details = document.querySelector(`#notion-panel-list details[data-db-id="${dbId}"]`);
+            if (!state || !details || state.loading) return;
+            const itemsEl = details.querySelector('.notion-db-items');
+            const moreEl = details.querySelector('.notion-db-more');
+            state.loading = true;
             if (!append) {
-                notionItems = [];
-                notionCursor = null;
-                listEl.innerHTML = '<div class="text-white/30 text-center py-8">読み込み中...</div>';
+                state.items = [];
+                state.cursor = null;
+                itemsEl.innerHTML = '<div class="text-white/30 text-center py-6">読み込み中...</div>';
             } else {
                 const moreBtn = moreEl.querySelector('button');
                 if (moreBtn) moreBtn.textContent = '読み込み中...';
@@ -2820,40 +2840,45 @@
                     showToast('ログイン状態を確認できませんでした');
                     return;
                 }
-                const params = new URLSearchParams({ action: 'list', db: currentNotionDb });
-                if (append && notionCursor) params.set('cursor', notionCursor);
+                const params = new URLSearchParams({ action: 'list', db: dbId });
+                if (append && state.cursor) params.set('cursor', state.cursor);
                 const res = await fetch(`/api/notion?${params.toString()}`, {
                     headers: { Authorization: `Bearer ${session.access_token}` },
                 });
                 const result = await res.json();
                 if (!res.ok) {
                     console.error(result);
-                    listEl.innerHTML = '<div class="text-red-300/70 text-center py-8">読み込みに失敗しました</div>';
+                    itemsEl.innerHTML = '<div class="text-red-300/70 text-center py-6">読み込みに失敗しました</div>';
                     return;
                 }
-                notionItems = append ? notionItems.concat(result.items) : result.items;
-                notionCursor = result.nextCursor;
-                notionHasMore = result.hasMore;
-                moreEl.classList.toggle('hidden', !notionHasMore);
+                state.items = append ? state.items.concat(result.items) : result.items;
+                state.cursor = result.nextCursor;
+                state.hasMore = result.hasMore;
+                state.loaded = true;
+                moreEl.classList.toggle('hidden', !state.hasMore);
                 const moreBtn = moreEl.querySelector('button');
                 if (moreBtn) moreBtn.textContent = 'もっと見る';
-                renderNotionPanelList();
+                renderNotionDbItems(dbId);
             } catch (e) {
                 console.error(e);
-                listEl.innerHTML = '<div class="text-red-300/70 text-center py-8">読み込みに失敗しました</div>';
+                itemsEl.innerHTML = '<div class="text-red-300/70 text-center py-6">読み込みに失敗しました</div>';
             } finally {
-                notionLoading = false;
+                state.loading = false;
             }
         }
 
-        function renderNotionPanelList() {
-            const listEl = document.getElementById('notion-panel-list');
-            const query = (document.getElementById('notion-search').value || '').trim().toLowerCase();
-            const filtered = query ? notionItems.filter(item => item.title.toLowerCase().includes(query)) : notionItems;
-            listEl.innerHTML = '';
+        function renderNotionDbItems(dbId) {
+            const state = notionDbState.get(dbId);
+            const details = document.querySelector(`#notion-panel-list details[data-db-id="${dbId}"]`);
+            if (!state || !details) return;
+            const itemsEl = details.querySelector('.notion-db-items');
+            const searchEl = details.querySelector('.notion-db-search');
+            const query = ((searchEl && searchEl.value) || '').trim().toLowerCase();
+            const filtered = query ? state.items.filter(item => item.title.toLowerCase().includes(query)) : state.items;
+            itemsEl.innerHTML = '';
             if (!filtered.length) {
-                const emptyMsg = notionItems.length ? '一致する項目がありません' : '項目がありません';
-                listEl.innerHTML = `<div class="text-white/30 text-center py-8">${emptyMsg}</div>`;
+                const emptyMsg = state.items.length ? '一致する項目がありません' : '項目がありません';
+                itemsEl.innerHTML = `<div class="text-white/30 text-center py-6">${emptyMsg}</div>`;
                 return;
             }
             filtered.forEach(item => {
@@ -2867,7 +2892,7 @@
                     <div class="flex flex-wrap">${propsHtml}</div>
                     <div id="notion-detail-${item.id}" class="mt-2 text-white/60 notion-preview-body">読み込み中...</div>
                 `;
-                listEl.appendChild(card);
+                itemsEl.appendChild(card);
             });
             // 一覧を眺めるだけでメモの中身までばっと見えるよう、表示中のカードの本文プレビューを続けて読み込む
             loadNotionPreviews(filtered.map(item => item.id));
