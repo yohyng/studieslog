@@ -20,8 +20,8 @@ module.exports = async function handler(req, res) {
 
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const notionKey = process.env.NOTION_API_KEY;
-    const databaseId = process.env.NOTION_DATABASE_ID;
-    if (!serviceKey || !notionKey || !databaseId) {
+    const databases = getConfiguredDatabases();
+    if (!serviceKey || !notionKey || !databases.length) {
         res.status(500).json({ error: 'missing required environment variables' });
         return;
     }
@@ -37,6 +37,11 @@ module.exports = async function handler(req, res) {
 
     const action = req.query.action;
     try {
+        if (action === 'databases') {
+            res.status(200).json({ databases });
+            return;
+        }
+
         if (action === 'page') {
             const pageId = typeof req.query.id === 'string' ? req.query.id : '';
             if (!pageId) {
@@ -49,8 +54,14 @@ module.exports = async function handler(req, res) {
         }
 
         if (!action || action === 'list') {
+            const requestedDb = typeof req.query.db === 'string' ? req.query.db : '';
+            const database = requestedDb ? databases.find((d) => d.id === requestedDb) : databases[0];
+            if (!database) {
+                res.status(400).json({ error: 'unknown database' });
+                return;
+            }
             const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined;
-            const result = await fetchDatabaseList(databaseId, notionKey, cursor);
+            const result = await fetchDatabaseList(database.id, notionKey, cursor);
             res.status(200).json(result);
             return;
         }
@@ -61,6 +72,29 @@ module.exports = async function handler(req, res) {
         res.status(502).json({ error: 'notion request failed' });
     }
 };
+
+// 複数DBを登録できるよう、NOTION_DATABASESに [{id, name}, ...] のJSONを入れる想定。
+// 単一DBのみ使う場合は、これまで通りNOTION_DATABASE_ID(+任意でNOTION_DATABASE_NAME)だけでも動く。
+function getConfiguredDatabases() {
+    const raw = process.env.NOTION_DATABASES;
+    if (raw) {
+        try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                return parsed
+                    .filter((d) => d && typeof d.id === 'string' && d.id)
+                    .map((d) => ({ id: d.id, name: typeof d.name === 'string' && d.name ? d.name : d.id }));
+            }
+        } catch (e) {
+            console.error('failed to parse NOTION_DATABASES', e);
+        }
+    }
+    const singleId = process.env.NOTION_DATABASE_ID;
+    if (singleId) {
+        return [{ id: singleId, name: process.env.NOTION_DATABASE_NAME || 'Notion DB' }];
+    }
+    return [];
+}
 
 async function notionFetch(path, notionKey, options = {}) {
     const response = await fetch(`https://api.notion.com/v1${path}`, {

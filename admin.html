@@ -99,7 +99,7 @@
     </div>
 
     <!-- アプリ本体(ログイン後) -->
-    <div id="app-screen" class="hidden min-h-screen flex flex-col">
+    <div id="app-screen" class="hidden h-screen flex flex-col overflow-hidden">
         <header class="tw-hide border-b border-white/10 px-5 sm:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
             <div class="flex items-center gap-4 sm:gap-6 flex-wrap">
                 <h1 class="text-sm font-medium tracking-wide whitespace-nowrap">管理画面</h1>
@@ -144,7 +144,7 @@
 
         <!-- 編集ビュー(Notionパネルを開くと、編集エリアとパネルが独立してスクロールする2段組みになる) -->
         <div id="editor-view" class="hidden flex-1 overflow-hidden flex">
-            <button id="typewriter-toggle" onclick="toggleTypewriterMode()" class="fixed bottom-6 right-6 z-50 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm transition-colors" style="opacity: 0.4;" title="タイプライターモード切り替え">✍️</button>
+            <button id="typewriter-toggle" class="fixed bottom-6 left-6 z-50 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm transition-colors cursor-grab active:cursor-grabbing" style="opacity: 0.4; touch-action: none;" title="タイプライターモード切り替え(ドラッグで移動できます)">✍️</button>
             <div id="editor-main-col" class="flex-1 min-w-0 overflow-y-auto">
             <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
                 <div class="flex items-center justify-between mb-6">
@@ -289,6 +289,9 @@
                         <button onclick="loadNotionPanelData()" class="text-white/40 hover:text-white transition-colors" title="再読み込み">🔄</button>
                         <button onclick="toggleNotionPanel()" class="text-white/40 hover:text-white transition-colors" title="閉じる">✕</button>
                     </div>
+                </div>
+                <div id="notion-db-select-wrap" class="hidden shrink-0 px-4 py-3 border-b border-white/10">
+                    <select id="notion-db-select" onchange="switchNotionDatabase(this.value)" class="w-full bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30"></select>
                 </div>
                 <div class="shrink-0 px-4 py-3 border-b border-white/10">
                     <input id="notion-search" type="text" placeholder="タイトルで絞り込み" oninput="renderNotionPanelList()" class="w-full bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
@@ -1593,6 +1596,75 @@
             }
         }
 
+        // タイプライターモードボタンのドラッグ移動(押した位置からほぼ動いていなければクリックとして扱う)。
+        // 位置はビューポート比率でlocalStorageに保存し、画面サイズが変わっても近い位置に復元する。
+        function setupTypewriterToggleDrag() {
+            const btn = document.getElementById('typewriter-toggle');
+            const STORAGE_KEY = 'studieslog_admin_tw_btn_pos';
+            const DRAG_THRESHOLD = 4;
+            let dragging = false;
+            let moved = false;
+            let startX = 0, startY = 0, originLeft = 0, originTop = 0;
+
+            function applyPosition(left, top) {
+                const maxLeft = Math.max(window.innerWidth - btn.offsetWidth - 4, 4);
+                const maxTop = Math.max(window.innerHeight - btn.offsetHeight - 4, 4);
+                btn.style.left = `${Math.min(Math.max(left, 4), maxLeft)}px`;
+                btn.style.top = `${Math.min(Math.max(top, 4), maxTop)}px`;
+                btn.style.right = 'auto';
+                btn.style.bottom = 'auto';
+            }
+
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const { xr, yr } = JSON.parse(saved);
+                    applyPosition(xr * window.innerWidth, yr * window.innerHeight);
+                } catch (e) { /* 保存値が壊れていれば既定位置のまま */ }
+            }
+
+            btn.addEventListener('pointerdown', (e) => {
+                dragging = true;
+                moved = false;
+                startX = e.clientX;
+                startY = e.clientY;
+                const rect = btn.getBoundingClientRect();
+                originLeft = rect.left;
+                originTop = rect.top;
+                btn.setPointerCapture(e.pointerId);
+            });
+
+            btn.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) moved = true;
+                if (moved) applyPosition(originLeft + dx, originTop + dy);
+            });
+
+            function endDrag() {
+                if (!dragging) return;
+                dragging = false;
+                if (moved) {
+                    const rect = btn.getBoundingClientRect();
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                        xr: rect.left / window.innerWidth,
+                        yr: rect.top / window.innerHeight,
+                    }));
+                }
+            }
+            btn.addEventListener('pointerup', endDrag);
+            btn.addEventListener('pointercancel', endDrag);
+
+            btn.addEventListener('click', () => {
+                if (moved) {
+                    moved = false;
+                    return;
+                }
+                toggleTypewriterMode();
+            });
+        }
+
         // 現在のキャレット位置のビューポート上のY座標を取得する(contenteditable用。
         // Range#getClientRectsで行の矩形が直接取れるので、textareaと違いミラー要素は不要)
         function getCaretViewportTop() {
@@ -2657,6 +2729,9 @@
         }
 
         // --- Notionパネル(記事編集画面の隣に出す参照専用のDB一覧。挿入機能はなし) ---
+        let notionDatabases = [];
+        let notionDatabasesLoaded = false;
+        let currentNotionDb = null;
         let notionItems = [];
         let notionCursor = null;
         let notionHasMore = false;
@@ -2669,15 +2744,61 @@
             if (opening) {
                 panel.classList.remove('hidden');
                 panel.classList.add('flex');
-                if (!notionItems.length) loadNotionPanelData();
+                if (!notionDatabasesLoaded) loadNotionDatabaseOptions();
+                else if (!notionItems.length) loadNotionPanelData();
             } else {
                 panel.classList.add('hidden');
                 panel.classList.remove('flex');
             }
         }
 
+        async function loadNotionDatabaseOptions() {
+            const listEl = document.getElementById('notion-panel-list');
+            listEl.innerHTML = '<div class="text-white/30 text-center py-8">読み込み中...</div>';
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) {
+                    showToast('ログイン状態を確認できませんでした');
+                    return;
+                }
+                const res = await fetch('/api/notion?action=databases', {
+                    headers: { Authorization: `Bearer ${session.access_token}` },
+                });
+                const result = await res.json();
+                if (!res.ok) {
+                    console.error(result);
+                    listEl.innerHTML = '<div class="text-red-300/70 text-center py-8">読み込みに失敗しました</div>';
+                    return;
+                }
+                notionDatabases = result.databases || [];
+                notionDatabasesLoaded = true;
+
+                const selectWrap = document.getElementById('notion-db-select-wrap');
+                const selectEl = document.getElementById('notion-db-select');
+                selectEl.innerHTML = notionDatabases.map(d => `<option value="${escapeNotionHtml(d.id)}">${escapeNotionHtml(d.name)}</option>`).join('');
+                selectWrap.classList.toggle('hidden', notionDatabases.length <= 1);
+
+                if (!notionDatabases.length) {
+                    listEl.innerHTML = '<div class="text-white/30 text-center py-8">DBが設定されていません</div>';
+                    return;
+                }
+                currentNotionDb = notionDatabases[0].id;
+                selectEl.value = currentNotionDb;
+                loadNotionPanelData();
+            } catch (e) {
+                console.error(e);
+                listEl.innerHTML = '<div class="text-red-300/70 text-center py-8">読み込みに失敗しました</div>';
+            }
+        }
+
+        function switchNotionDatabase(dbId) {
+            currentNotionDb = dbId;
+            notionItems = [];
+            loadNotionPanelData();
+        }
+
         async function loadNotionPanelData(append = false) {
-            if (notionLoading) return;
+            if (notionLoading || !currentNotionDb) return;
             notionLoading = true;
             const listEl = document.getElementById('notion-panel-list');
             const moreEl = document.getElementById('notion-panel-more');
@@ -2695,7 +2816,7 @@
                     showToast('ログイン状態を確認できませんでした');
                     return;
                 }
-                const params = new URLSearchParams({ action: 'list' });
+                const params = new URLSearchParams({ action: 'list', db: currentNotionDb });
                 if (append && notionCursor) params.set('cursor', notionCursor);
                 const res = await fetch(`/api/notion?${params.toString()}`, {
                     headers: { Authorization: `Bearer ${session.access_token}` },
@@ -3373,6 +3494,7 @@
         setupImageDropZone();
         setupImageResize();
         setupPastePlainText();
+        setupTypewriterToggleDrag();
         checkAuth();
 
         // タイプライターモード中、キャレット位置が変わるたびに固定位置へスクロールし直す
