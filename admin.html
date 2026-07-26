@@ -124,7 +124,10 @@
             <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
                 <div class="flex items-center justify-between mb-6">
                     <button onclick="backToList()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors">← 一覧に戻る</button>
-                    <button onclick="reloadCurrentArticle()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors" title="他の場所で更新されている場合に備えて、サーバー上の最新の内容を読み込み直します(今の編集内容は失われます)">🔄 最新の内容を読み込み</button>
+                    <div class="flex items-center gap-4">
+                        <button onclick="reloadCurrentArticle()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors" title="他の場所で更新されている場合に備えて、サーバー上の最新の内容を読み込み直します(今の編集内容は失われます)">🔄 最新の内容を読み込み</button>
+                        <button onclick="quickSaveArticle()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors" title="下書き・公開・予約投稿のいずれであっても、今のステータスのまま保存します">💾 保存</button>
+                    </div>
                 </div>
 
                 <div class="mb-6">
@@ -1913,6 +1916,15 @@
                 return `予約済み(${d.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}に公開)`;
             }
             return '公開中';
+        }
+
+        // 下書き保存・公開する・予約投稿のように状態を変えるのではなく、今のステータスのまま
+        // 保存だけしたいとき用。新規記事(まだ一度も保存していない)は下書きとして保存する
+        async function quickSaveArticle() {
+            const current = editingId ? articles.find(a => a.id === editingId) : null;
+            const status = current ? current.status : 'draft';
+            const scheduledAt = current && current.status === 'scheduled' ? current.scheduled_at : null;
+            await saveArticle(status, scheduledAt);
         }
 
         async function saveScheduledArticle() {
