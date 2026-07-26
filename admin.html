@@ -52,9 +52,7 @@
         }
         details[open] > .editor-section-summary::after { transform: rotate(180deg); }
 
-        /* NotionパネルのDB名(トグル見出し)は、中身をスクロールしても常に見えるよう固定する */
         #notion-panel { background-color: var(--admin-bg-color, #22262a); }
-        .notion-db-summary { position: sticky; top: 0; z-index: 10; background-color: var(--admin-bg-color, #22262a); }
 
         /* タイプライターモード: 本文以外のUIをフェード+ぼかしで隠し、キャレットの行を画面上の一定位置にロックする */
         .tw-hide { transition: opacity 0.3s ease, filter 0.3s ease; }
@@ -294,6 +292,7 @@
                         <button onclick="toggleNotionPanel()" class="text-white/40 hover:text-white transition-colors" title="閉じる">✕</button>
                     </div>
                 </div>
+                <div id="notion-db-toggle-bar" class="shrink-0 flex flex-col border-b border-white/10"></div>
                 <div id="notion-panel-list" class="flex-1 min-h-0 overflow-y-auto flex flex-col text-xs"></div>
             </aside>
         </div>
@@ -2830,20 +2829,31 @@
             }
         }
 
+        // DB名(トグル見出し)はスクロールしない固定バーに、中身だけをその下のスクロール領域に描画する。
+        // これでDB1を開いて中身が長くなっても、DB2・DB3の見出しが下に押し出されて見えなくなることはない。
         function renderNotionDbAccordions() {
+            const toggleBar = document.getElementById('notion-db-toggle-bar');
             const listEl = document.getElementById('notion-panel-list');
+            toggleBar.innerHTML = '';
             listEl.innerHTML = '';
             if (!notionDatabases.length) {
                 listEl.innerHTML = '<div class="text-white/30 text-center py-8">DBが設定されていません</div>';
                 return;
             }
             notionDatabases.forEach(db => {
-                const details = document.createElement('details');
-                details.className = 'border-b border-white/10';
-                details.dataset.dbId = db.id;
-                details.innerHTML = `
-                    <summary class="editor-section-summary notion-db-summary px-4 py-3 text-xs font-medium text-white/70 hover:text-white transition-colors">${escapeNotionHtml(db.name)}</summary>
-                    <div class="px-4 pb-4">
+                const toggleBtn = document.createElement('button');
+                toggleBtn.type = 'button';
+                toggleBtn.dataset.dbId = db.id;
+                toggleBtn.className = 'notion-db-toggle-btn w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-white/70 hover:text-white transition-colors border-b border-white/10 last:border-b-0';
+                toggleBtn.innerHTML = `<span>${escapeNotionHtml(db.name)}</span><span class="notion-db-toggle-arrow text-white/30 transition-transform">▾</span>`;
+                toggleBtn.onclick = () => toggleNotionDb(db.id);
+                toggleBar.appendChild(toggleBtn);
+
+                const section = document.createElement('div');
+                section.className = 'notion-db-section hidden border-b border-white/10 last:border-b-0';
+                section.dataset.dbId = db.id;
+                section.innerHTML = `
+                    <div class="px-4 py-3">
                         <input type="text" placeholder="タイトルで絞り込み" class="notion-db-search w-full bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 mb-3 focus:outline-none focus:border-white/30" oninput="renderNotionDbItems('${db.id}')">
                         <div class="notion-db-items flex flex-col gap-4"></div>
                         <div class="notion-db-more hidden mt-3">
@@ -2851,18 +2861,28 @@
                         </div>
                     </div>
                 `;
-                details.addEventListener('toggle', () => {
-                    if (!details.open) return;
-                    const state = notionDbState.get(db.id);
-                    if (state && !state.loaded && !state.loading) loadNotionDbItems(db.id);
-                });
-                listEl.appendChild(details);
+                listEl.appendChild(section);
             });
         }
 
+        function toggleNotionDb(dbId) {
+            const section = document.querySelector(`#notion-panel-list .notion-db-section[data-db-id="${dbId}"]`);
+            const btn = document.querySelector(`#notion-db-toggle-bar .notion-db-toggle-btn[data-db-id="${dbId}"]`);
+            if (!section || !btn) return;
+            const opening = section.classList.contains('hidden');
+            section.classList.toggle('hidden', !opening);
+            btn.classList.toggle('text-white', opening);
+            const arrow = btn.querySelector('.notion-db-toggle-arrow');
+            if (arrow) arrow.style.transform = opening ? 'rotate(180deg)' : '';
+            if (opening) {
+                const state = notionDbState.get(dbId);
+                if (state && !state.loaded && !state.loading) loadNotionDbItems(dbId);
+            }
+        }
+
         function reloadOpenNotionDatabases() {
-            document.querySelectorAll('#notion-panel-list details[open]').forEach(details => {
-                const dbId = details.dataset.dbId;
+            document.querySelectorAll('#notion-panel-list .notion-db-section:not(.hidden)').forEach(section => {
+                const dbId = section.dataset.dbId;
                 const state = notionDbState.get(dbId);
                 if (state) {
                     state.loaded = false;
@@ -2873,10 +2893,10 @@
 
         async function loadNotionDbItems(dbId, append = false) {
             const state = notionDbState.get(dbId);
-            const details = document.querySelector(`#notion-panel-list details[data-db-id="${dbId}"]`);
-            if (!state || !details || state.loading) return;
-            const itemsEl = details.querySelector('.notion-db-items');
-            const moreEl = details.querySelector('.notion-db-more');
+            const section = document.querySelector(`#notion-panel-list .notion-db-section[data-db-id="${dbId}"]`);
+            if (!state || !section || state.loading) return;
+            const itemsEl = section.querySelector('.notion-db-items');
+            const moreEl = section.querySelector('.notion-db-more');
             state.loading = true;
             if (!append) {
                 state.items = [];
@@ -2921,10 +2941,10 @@
 
         function renderNotionDbItems(dbId) {
             const state = notionDbState.get(dbId);
-            const details = document.querySelector(`#notion-panel-list details[data-db-id="${dbId}"]`);
-            if (!state || !details) return;
-            const itemsEl = details.querySelector('.notion-db-items');
-            const searchEl = details.querySelector('.notion-db-search');
+            const section = document.querySelector(`#notion-panel-list .notion-db-section[data-db-id="${dbId}"]`);
+            if (!state || !section) return;
+            const itemsEl = section.querySelector('.notion-db-items');
+            const searchEl = section.querySelector('.notion-db-search');
             const query = ((searchEl && searchEl.value) || '').trim().toLowerCase();
             const filtered = query ? state.items.filter(item => item.title.toLowerCase().includes(query)) : state.items;
             itemsEl.innerHTML = '';
