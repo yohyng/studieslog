@@ -111,6 +111,7 @@
                     <button id="nav-subscribers" onclick="showTab('subscribers')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">サブスクリプション</button>
                     <button id="nav-inquiries" onclick="showTab('inquiries')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">お問い合わせ</button>
                     <button id="nav-settings" onclick="showTab('settings')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">表示設定</button>
+                    <button id="nav-ai" onclick="showTab('ai')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">AI</button>
                 </nav>
             </div>
             <div class="flex items-center gap-4 text-xs">
@@ -1191,6 +1192,30 @@
         </div>
     </div>
 
+    <!-- AIビュー(試作: 自分の記事をRAGにした執筆補助) -->
+    <div id="ai-view" class="hidden flex-1 overflow-y-auto">
+        <div class="max-w-2xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
+            <p class="text-xs text-white/40 mb-6">自分の過去記事を検索対象にした、試作段階の執筆補助です。まず下のボタンで記事をインデックス(埋め込みベクトル化)してから、質問・相談を入力してください。記事を追加・編集したときは再インデックスしてください。</p>
+
+            <div class="mb-8 pb-8 border-b border-white/10">
+                <button id="ai-reindex-btn" onclick="reindexAiArticles()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">🔄 記事をインデックスする</button>
+                <span id="ai-reindex-status" class="text-xs text-white/40 ml-3"></span>
+            </div>
+
+            <label class="text-xs text-white/50 block mb-2">質問・相談</label>
+            <textarea id="ai-query" rows="4" placeholder="例: このテーマについて前にどんなことを書いていたか教えて" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30 mb-3"></textarea>
+            <button id="ai-ask-btn" onclick="askAi()" class="px-4 py-2 text-xs bg-white/20 hover:bg-white/30 rounded transition-colors">聞く</button>
+
+            <div id="ai-answer-wrap" class="hidden mt-8 pt-8 border-t border-white/10">
+                <div id="ai-answer" class="text-sm whitespace-pre-wrap mb-4"></div>
+                <details id="ai-sources-details" class="text-xs text-white/40">
+                    <summary class="editor-section-summary">参考にした記事</summary>
+                    <div id="ai-sources" class="mt-2 flex flex-col gap-2"></div>
+                </details>
+            </div>
+        </div>
+    </div>
+
     <div id="toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50" style="max-width: min(90vw, 32rem); text-align: center; white-space: pre-wrap;">保存されました</div>
 
     <!-- 注釈入力モーダル -->
@@ -1333,6 +1358,7 @@
             document.getElementById('nav-subscribers').classList.toggle('bg-white/10', tab === 'subscribers');
             document.getElementById('nav-inquiries').classList.toggle('bg-white/10', tab === 'inquiries');
             document.getElementById('nav-settings').classList.toggle('bg-white/10', tab === 'settings');
+            document.getElementById('nav-ai').classList.toggle('bg-white/10', tab === 'ai');
 
             document.getElementById('list-view').classList.add('hidden');
             document.getElementById('editor-view').classList.add('hidden');
@@ -1341,6 +1367,7 @@
             document.getElementById('subscribers-view').classList.add('hidden');
             document.getElementById('inquiries-view').classList.add('hidden');
             document.getElementById('settings-view').classList.add('hidden');
+            document.getElementById('ai-view').classList.add('hidden');
 
             if (tab === 'articles') {
                 showListView();
@@ -1355,6 +1382,8 @@
             } else if (tab === 'inquiries') {
                 document.getElementById('inquiries-view').classList.remove('hidden');
                 loadInquiriesList();
+            } else if (tab === 'ai') {
+                document.getElementById('ai-view').classList.remove('hidden');
             } else {
                 document.getElementById('settings-view').classList.remove('hidden');
                 loadSiteSettings();
@@ -3017,6 +3046,84 @@
             const div = document.createElement('div');
             div.textContent = str;
             return div.innerHTML;
+        }
+
+        // --- AI(試作: 自分の記事をRAGにした執筆補助) ---
+        async function reindexAiArticles() {
+            const btn = document.getElementById('ai-reindex-btn');
+            const status = document.getElementById('ai-reindex-status');
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) {
+                showToast('ログイン状態を確認できませんでした');
+                return;
+            }
+            btn.disabled = true;
+            status.textContent = 'インデックス中...(記事数によっては時間がかかります)';
+            try {
+                const res = await fetch('/api/rag', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'reindex' }),
+                });
+                const result = await res.json();
+                if (!res.ok) {
+                    console.error(result);
+                    status.textContent = `失敗しました: ${result.error || ''}`;
+                    return;
+                }
+                status.textContent = `完了: ${result.articleCount}記事 / ${result.chunkCount}チャンク`;
+            } catch (e) {
+                console.error(e);
+                status.textContent = 'インデックスに失敗しました';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function askAi() {
+            const query = document.getElementById('ai-query').value.trim();
+            if (!query) {
+                showToast('質問・相談を入力してください');
+                return;
+            }
+            const btn = document.getElementById('ai-ask-btn');
+            const answerWrap = document.getElementById('ai-answer-wrap');
+            const answerEl = document.getElementById('ai-answer');
+            const sourcesEl = document.getElementById('ai-sources');
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) {
+                showToast('ログイン状態を確認できませんでした');
+                return;
+            }
+            btn.disabled = true;
+            btn.textContent = '考え中...';
+            try {
+                const res = await fetch('/api/rag', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'ask', query }),
+                });
+                const result = await res.json();
+                if (!res.ok) {
+                    console.error(result);
+                    showToast(`失敗しました: ${result.error || ''}`);
+                    return;
+                }
+                answerWrap.classList.remove('hidden');
+                answerEl.textContent = result.answer || '(応答がありませんでした)';
+                sourcesEl.innerHTML = (result.sources || []).map(s => `
+                    <div class="bg-white/5 border border-white/10 rounded px-3 py-2">
+                        <div class="text-white/70">${escapeNotionHtml(s.title)}</div>
+                        <div class="text-white/40 mt-1">${escapeNotionHtml(s.excerpt)}…</div>
+                    </div>
+                `).join('') || '<div class="text-white/30">(参考記事はありませんでした)</div>';
+            } catch (e) {
+                console.error(e);
+                showToast('AIへの問い合わせに失敗しました');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '聞く';
+            }
         }
 
         // --- 本文フォーマット・画像挿入 ---

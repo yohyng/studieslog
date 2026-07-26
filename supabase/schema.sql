@@ -364,3 +364,35 @@ create policy "inquiries_auth_select" on public.inquiries
 drop policy if exists "inquiries_auth_delete" on public.inquiries;
 create policy "inquiries_auth_delete" on public.inquiries
   for delete to authenticated using (true);
+
+-- 執筆補助RAGの試作: 自分の記事をチャンクに分けて埋め込みベクトルを保存し、
+-- 執筆中に近い内容を検索してAIに参考として渡すためのテーブル。管理画面専用(公開読み取りは不要)
+create extension if not exists vector;
+
+create table if not exists public.article_chunks (
+  id bigint generated always as identity primary key,
+  article_id bigint not null references public.articles(id) on delete cascade,
+  chunk_index int not null,
+  content text not null,
+  embedding vector(768),
+  created_at timestamptz not null default now(),
+  unique (article_id, chunk_index)
+);
+
+alter table public.article_chunks enable row level security;
+
+drop policy if exists "article_chunks_auth_all" on public.article_chunks;
+create policy "article_chunks_auth_all" on public.article_chunks
+  for all to authenticated using (true) with check (true);
+
+-- コサイン距離が近い順にチャンクを返す類似検索(RPCとして呼び出す)
+create or replace function match_article_chunks(query_embedding vector(768), match_count int default 6)
+returns table (article_id bigint, chunk_index int, content text, similarity float)
+language sql stable
+as $$
+  select article_id, chunk_index, content, 1 - (embedding <=> query_embedding) as similarity
+  from public.article_chunks
+  where embedding is not null
+  order by embedding <=> query_embedding
+  limit match_count;
+$$;
