@@ -149,7 +149,7 @@
             <button id="typewriter-toggle" class="fixed bottom-6 left-6 z-50 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm transition-colors cursor-grab active:cursor-grabbing" style="opacity: 0.4; touch-action: none;" title="タイプライターモード切り替え(ドラッグで移動できます)">✍️</button>
             <button id="notion-panel-opener" onclick="toggleNotionPanel()" class="tw-hide fixed top-[4.2rem] right-6 z-40 px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors" title="Notionのデータベースを横に表示します(参照用。編集画面には反映されません)">📋 Notion</button>
             <div id="editor-main-col" class="flex-1 min-w-0 overflow-y-auto">
-            <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
+            <div id="editor-form-col" class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
                 <div class="flex items-center justify-between mb-6">
                     <button onclick="backToList()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors">← 一覧に戻る</button>
                     <div class="flex items-center gap-4">
@@ -193,7 +193,7 @@
                         <button onclick="formatText('undo')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="元に戻す (Ctrl+Z)">↶ 元に戻す</button>
                         <button onclick="formatText('redo')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="やり直す (Ctrl+Y)">↷ やり直す</button>
                     </div>
-                    <div id="edit-content" class="content-editor bg-white/5 border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
+                    <div id="edit-content" class="content-editor border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
                     <div id="edit-char-count" class="tw-hide text-xs text-white/30 mt-1 text-right">0文字</div>
 
                     <!-- 本文中には[番号]の印だけを残し、実際の注釈文はここでまとめて編集する(閲覧ページの
@@ -1804,11 +1804,16 @@
                     const wrapWidth = Math.max(200, t.content_width - articleBoxPad);
                     editor.style.maxWidth = wrapWidth + 'px';
                     titleEl.style.maxWidth = wrapWidth + 'px';
+                    // 本文欄以外(日付・タグ・保存ボタンなど)の並びも同じ幅に揃え、編集画面全体のガタつきをなくす
+                    const formCol = document.getElementById('editor-form-col');
+                    if (formCol) formCol.style.maxWidth = wrapWidth + 'px';
                 }
             }
             if (siteTypography) {
                 editor.style.color = siteTypography.text_color;
-                editor.style.backgroundColor = siteTypography.bg_color;
+                // 閲覧ページの記事本文には単色の背景を敷いていない(ページ自体の背景がそのまま透けて見える)。
+                // ここで塗りつぶすとグラデーション背景の上に不自然な単色パッチが乗るため、常に透明にする
+                editor.style.backgroundColor = 'transparent';
                 // 閲覧ページのcontent-body/article-titleと同じ不透明度を反映する
                 editor.style.opacity = siteTypography.body_text_opacity ?? 0.75;
 

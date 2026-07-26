@@ -156,16 +156,34 @@ async function fetchDatabaseList(databaseId, notionKey, cursor) {
         url: page.url,
         title: extractTitle(page.properties),
         properties: summarizeProperties(page.properties),
-        coverUrl: extractCoverUrl(page.cover),
+        coverUrl: extractCoverUrl(page),
     }));
 
     return { items, hasMore: !!data.has_more, nextCursor: data.next_cursor || null };
 }
 
-function extractCoverUrl(cover) {
-    if (!cover) return null;
-    if (cover.type === 'external') return cover.external?.url || null;
-    if (cover.type === 'file') return cover.file?.url || null;
+function fileUrl(file) {
+    if (!file) return null;
+    if (file.type === 'external') return file.external?.url || null;
+    if (file.type === 'file') return file.file?.url || null;
+    return null;
+}
+
+function extractCoverUrl(page) {
+    const fromCover = fileUrl(page.cover);
+    if (fromCover) return fromCover;
+    // ページカバーが無い場合、ファイル/メディア型のプロパティ(例: "Image")があれば
+    // その最初の1枚をカードのサムネイルとして使う(Notion側のギャラリービューと同じ考え方)
+    const properties = page.properties;
+    if (properties) {
+        for (const key of Object.keys(properties)) {
+            const prop = properties[key];
+            if (prop.type === 'files' && prop.files && prop.files.length > 0) {
+                const url = fileUrl(prop.files[0]);
+                if (url) return url;
+            }
+        }
+    }
     return null;
 }
 
