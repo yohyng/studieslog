@@ -1685,6 +1685,15 @@
             }
         }
 
+        // 管理画面全体の背景を、実際の閲覧ページの背景色と統一する。site_settingsは公開読み取り可能なので、
+        // ログイン前(ログイン画面)から適用できる。
+        async function applyAdminBackgroundColor() {
+            const { data, error } = await sb.from('site_settings').select('bg_color').eq('id', 1).single();
+            if (!error && data?.bg_color) {
+                document.body.style.backgroundColor = data.bg_color;
+            }
+        }
+
         // --- 本文欄を閲覧ページと同じ文字組み・配色にして、公開時の見え方をある程度推測できるようにする ---
         async function loadSiteTypographyForPreview() {
             const { data, error } = await sb.from('site_settings')
@@ -3510,6 +3519,7 @@
             showToast('表示設定を保存しました');
         }
 
+        applyAdminBackgroundColor();
         setupImageDropZone();
         setupImageResize();
         setupPastePlainText();
