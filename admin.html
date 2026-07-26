@@ -63,9 +63,13 @@
             pointer-events: none;
             filter: blur(3px);
         }
-        #app-screen.typewriter-mode #editor-view {
+        #app-screen.typewriter-mode #editor-main-col {
             padding-top: 30vh;
             padding-bottom: 50vh;
+        }
+        /* Notionパネルを開いたままタイプライターモードに入っても、幅を専有して本文欄を狭くしないよう完全に隠す */
+        #app-screen.typewriter-mode #notion-panel {
+            display: none !important;
         }
         #app-screen.typewriter-mode #edit-content {
             background: transparent !important;
