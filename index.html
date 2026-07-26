@@ -2207,7 +2207,24 @@
         // 増えず右側が余白になってしまう。ResizeObserverでbody自体の実際のサイズ変化を直接監視し、
         // resizeイベントの有無に関わらず再計算されるようにする
         if (typeof ResizeObserver !== 'undefined') {
-            new ResizeObserver(scheduleAlignHeaderToCards).observe(document.body);
+            const layoutObserver = new ResizeObserver(scheduleAlignHeaderToCards);
+            layoutObserver.observe(document.body);
+            // カードを実際に入れている器も個別に監視する。bodyの幅が変わらなくても、
+            // wide-page-activeが後から付く・フォントや画像の読み込みでレイアウトが
+            // 確定するなど、器の幅だけが後から変わることがある。初回の計測が
+            // 「まだ広がる前の狭い幅」だと--card-wがその値のまま固定され、実際は
+            // 2列入る幅なのに1列のまま右側が余白になってしまうため。
+            // (これらの器自体はlayoutCardGrids()では変更しないので、監視して再計算しても
+            //  自分の変更で再び発火する無限ループにはならない)
+            ['card-view', 'tag-view', 'article-list'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) layoutObserver.observe(el);
+            });
+        }
+        // 画像やフォントの読み込みで最終的な幅が決まった後にも、もう一度計算し直す
+        window.addEventListener('load', scheduleAlignHeaderToCards);
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(scheduleAlignHeaderToCards);
         }
 
         // フィルターボタンを開閉する。カテゴリ/タグどちらかが選ばれている間は、パネルを閉じても
