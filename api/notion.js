@@ -4,9 +4,12 @@
 
 const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
 const NOTION_VERSION = '2022-06-28';
+// このチェックボックスプロパティがtrueのページは、一覧から除外する(「完了」操作)。
+// 対象DBにこのプロパティが無い場合は、絞り込みなし・完了操作なしで動く(下のcatchで自動フォールバック)。
+const COMPLETE_PROPERTY = process.env.NOTION_COMPLETE_PROPERTY || 'Completed';
 
 module.exports = async function handler(req, res) {
-    if (req.method !== 'GET') {
+    if (req.method !== 'GET' && req.method !== 'POST') {
         res.status(405).json({ error: 'method not allowed' });
         return;
     }
@@ -35,8 +38,25 @@ module.exports = async function handler(req, res) {
         return;
     }
 
-    const action = req.query.action;
     try {
+        if (req.method === 'POST') {
+            const action = req.body?.action;
+            if (action === 'complete') {
+                const pageId = typeof req.body?.pageId === 'string' ? req.body.pageId : '';
+                if (!pageId) {
+                    res.status(400).json({ error: 'pageId is required' });
+                    return;
+                }
+                await markPageComplete(pageId, notionKey);
+                res.status(200).json({ ok: true });
+                return;
+            }
+            res.status(400).json({ error: 'unknown action' });
+            return;
+        }
+
+        const action = req.query.action;
+
         if (action === 'databases') {
             res.status(200).json({ databases });
             return;
@@ -108,19 +128,39 @@ async function notionFetch(path, notionKey, options = {}) {
     });
     if (!response.ok) {
         const detail = await response.text();
-        throw new Error(`notion api error (${response.status}): ${detail}`);
+        const error = new Error(`notion api error (${response.status}): ${detail}`);
+        error.status = response.status;
+        throw error;
     }
     return response.json();
 }
 
 async function fetchDatabaseList(databaseId, notionKey, cursor) {
-    const data = await notionFetch(`/databases/${encodeURIComponent(databaseId)}/query`, notionKey, {
-        method: 'POST',
-        body: JSON.stringify({
-            page_size: 50,
-            ...(cursor ? { start_cursor: cursor } : {}),
-        }),
-    });
+    const baseBody = {
+        page_size: 50,
+        ...(cursor ? { start_cursor: cursor } : {}),
+    };
+    let data;
+    try {
+        // 完了プロパティがあるDBでは、完了済みのページを一覧から除外する
+        data = await notionFetch(`/databases/${encodeURIComponent(databaseId)}/query`, notionKey, {
+            method: 'POST',
+            body: JSON.stringify({
+                ...baseBody,
+                filter: { property: COMPLETE_PROPERTY, checkbox: { equals: false } },
+            }),
+        });
+    } catch (e) {
+        // 対象DBに完了プロパティが無ければ、絞り込みなしで取り直す
+        if (e.status === 400) {
+            data = await notionFetch(`/databases/${encodeURIComponent(databaseId)}/query`, notionKey, {
+                method: 'POST',
+                body: JSON.stringify(baseBody),
+            });
+        } else {
+            throw e;
+        }
+    }
 
     const items = (data.results || []).map((page) => ({
         id: page.id,
@@ -130,6 +170,17 @@ async function fetchDatabaseList(databaseId, notionKey, cursor) {
     }));
 
     return { items, hasMore: !!data.has_more, nextCursor: data.next_cursor || null };
+}
+
+async function markPageComplete(pageId, notionKey) {
+    await notionFetch(`/pages/${encodeURIComponent(pageId)}`, notionKey, {
+        method: 'PATCH',
+        body: JSON.stringify({
+            properties: {
+                [COMPLETE_PROPERTY]: { checkbox: true },
+            },
+        }),
+    });
 }
 
 async function fetchPagePreviewHtml(pageId, notionKey) {
@@ -168,6 +219,7 @@ function summarizeProperties(properties) {
     for (const name of Object.keys(properties)) {
         const prop = properties[name];
         if (prop.type === 'title') continue;
+        if (name === COMPLETE_PROPERTY) continue;
         const value = propertyValueToText(prop);
         if (value === null) continue;
         out.push({ name, type: prop.type, value });
