@@ -142,11 +142,11 @@
             </div>
         </div>
 
-        <!-- 編集ビュー -->
-        <div id="editor-view" class="hidden flex-1 overflow-y-auto">
+        <!-- 編集ビュー(Notionパネルを開くと、編集エリアとパネルが独立してスクロールする2段組みになる) -->
+        <div id="editor-view" class="hidden flex-1 overflow-hidden flex">
             <button id="typewriter-toggle" onclick="toggleTypewriterMode()" class="fixed bottom-6 right-6 z-50 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm transition-colors" style="opacity: 0.4;" title="タイプライターモード切り替え">✍️</button>
-            <div class="flex justify-center gap-6 px-5 sm:px-8 py-8 sm:py-10">
-            <div class="max-w-3xl w-full">
+            <div id="editor-main-col" class="flex-1 min-w-0 overflow-y-auto">
+            <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
                 <div class="flex items-center justify-between mb-6">
                     <button onclick="backToList()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors">← 一覧に戻る</button>
                     <div class="flex items-center gap-4">
@@ -279,25 +279,25 @@
                     <button id="delete-btn" onclick="deleteCurrentArticle()" class="hidden sm:ml-auto px-5 py-2.5 text-xs text-red-400/70 hover:text-red-400 transition-colors">この記事を削除</button>
                 </div>
             </div>
+            </div>
 
-            <!-- Notionパネル(参照専用。ここからの操作で編集画面の内容が変わることはない) -->
-            <aside id="notion-panel" class="tw-hide hidden w-80 shrink-0 sticky top-8 self-start bg-white/5 border border-white/10 rounded max-h-[80vh] flex-col">
-                <div class="flex items-center justify-between px-3 py-2 border-b border-white/10">
+            <!-- Notionパネル(参照専用。ここからの操作で編集画面の内容が変わることはない。開くと編集エリアとは独立してスクロールする) -->
+            <aside id="notion-panel" class="tw-hide hidden w-[380px] lg:w-[440px] shrink-0 border-l border-white/10 flex-col overflow-hidden">
+                <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/10">
                     <span class="text-xs font-semibold uppercase tracking-wider text-white/40">Notion</span>
                     <div class="flex items-center gap-3">
                         <button onclick="loadNotionPanelData()" class="text-white/40 hover:text-white transition-colors" title="再読み込み">🔄</button>
                         <button onclick="toggleNotionPanel()" class="text-white/40 hover:text-white transition-colors" title="閉じる">✕</button>
                     </div>
                 </div>
-                <div class="px-3 py-2 border-b border-white/10">
+                <div class="shrink-0 px-4 py-3 border-b border-white/10">
                     <input id="notion-search" type="text" placeholder="タイトルで絞り込み" oninput="renderNotionPanelList()" class="w-full bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
                 </div>
-                <div id="notion-panel-list" class="flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-2 text-xs"></div>
-                <div id="notion-panel-more" class="hidden px-3 py-2 border-t border-white/10">
+                <div id="notion-panel-list" class="flex-1 min-h-0 overflow-y-auto px-4 py-3 flex flex-col gap-4 text-xs"></div>
+                <div id="notion-panel-more" class="hidden shrink-0 px-4 py-3 border-t border-white/10">
                     <button onclick="loadNotionPanelData(true)" class="w-full text-xs text-white/40 hover:text-white transition-colors">もっと見る</button>
                 </div>
             </aside>
-            </div>
         </div>
 
         <!-- タグ一覧ビュー -->
@@ -2733,36 +2733,44 @@
             }
             filtered.forEach(item => {
                 const card = document.createElement('div');
-                card.className = 'bg-white/5 border border-white/10 rounded px-2 py-2';
+                card.className = 'pb-4 border-b border-white/10 last:border-b-0 last:pb-0';
                 const propsHtml = item.properties
                     .map(p => `<span class="inline-block bg-white/10 rounded px-1.5 py-0.5 mr-1 mb-1 text-white/50">${escapeNotionHtml(p.name)}: ${escapeNotionHtml(p.value)}</span>`)
                     .join('');
                 card.innerHTML = `
-                    <button type="button" class="w-full text-left text-white/80 hover:text-white transition-colors font-medium mb-1" onclick="toggleNotionPageDetail('${item.id}')">${escapeNotionHtml(item.title)}</button>
+                    <a href="${escapeNotionHtml(item.url || '#')}" target="_blank" rel="noopener" class="block text-white/80 hover:text-white transition-colors font-medium mb-1">${escapeNotionHtml(item.title)}</a>
                     <div class="flex flex-wrap">${propsHtml}</div>
-                    <div id="notion-detail-${item.id}" class="hidden mt-2 pt-2 border-t border-white/10 text-white/60 notion-preview-body"></div>
+                    <div id="notion-detail-${item.id}" class="mt-2 text-white/60 notion-preview-body">読み込み中...</div>
                 `;
                 listEl.appendChild(card);
             });
+            // 一覧を眺めるだけでメモの中身までばっと見えるよう、表示中のカードの本文プレビューを続けて読み込む
+            loadNotionPreviews(filtered.map(item => item.id));
         }
 
-        async function toggleNotionPageDetail(pageId) {
+        async function loadNotionPreviews(pageIds) {
+            const CONCURRENCY = 3;
+            let cursor = 0;
+            const worker = async () => {
+                while (cursor < pageIds.length) {
+                    const pageId = pageIds[cursor++];
+                    await loadNotionPreviewInto(pageId);
+                }
+            };
+            await Promise.all(Array.from({ length: Math.min(CONCURRENCY, pageIds.length) }, worker));
+        }
+
+        async function loadNotionPreviewInto(pageId) {
             const detailEl = document.getElementById(`notion-detail-${pageId}`);
             if (!detailEl) return;
-            if (!detailEl.classList.contains('hidden')) {
-                detailEl.classList.add('hidden');
-                return;
-            }
-            detailEl.classList.remove('hidden');
             if (notionPageCache.has(pageId)) {
                 detailEl.innerHTML = notionPageCache.get(pageId);
                 return;
             }
-            detailEl.innerHTML = '<div class="text-white/30 py-2">読み込み中...</div>';
             try {
                 const { data: { session } } = await sb.auth.getSession();
                 if (!session) {
-                    showToast('ログイン状態を確認できませんでした');
+                    detailEl.innerHTML = '<span class="text-red-300/70">ログイン状態を確認できませんでした</span>';
                     return;
                 }
                 const res = await fetch(`/api/notion?action=page&id=${encodeURIComponent(pageId)}`, {
@@ -2771,14 +2779,14 @@
                 const result = await res.json();
                 if (!res.ok) {
                     console.error(result);
-                    detailEl.innerHTML = '<div class="text-red-300/70 py-2">読み込みに失敗しました</div>';
+                    detailEl.innerHTML = '<span class="text-red-300/70">読み込みに失敗しました</span>';
                     return;
                 }
                 notionPageCache.set(pageId, result.html);
                 detailEl.innerHTML = result.html;
             } catch (e) {
                 console.error(e);
-                detailEl.innerHTML = '<div class="text-red-300/70 py-2">読み込みに失敗しました</div>';
+                detailEl.innerHTML = '<span class="text-red-300/70">読み込みに失敗しました</span>';
             }
         }
 
