@@ -50,12 +50,6 @@
         }
         details[open] > .editor-section-summary::after { transform: rotate(180deg); }
 
-        /* Notionパネル(参照専用プレビュー)の本文用の最低限の余白 */
-        .notion-preview-body p, .notion-preview-body li, .notion-preview-body blockquote, .notion-preview-body pre { margin: 0.4em 0; }
-        .notion-preview-body h1, .notion-preview-body h2, .notion-preview-body h3 { margin: 0.6em 0 0.3em; font-weight: 600; }
-        .notion-preview-body blockquote { border-left: 2px solid rgba(255, 255, 255, 0.2); padding-left: 0.75em; opacity: 0.8; }
-        .notion-preview-body pre { background: rgba(255, 255, 255, 0.05); padding: 0.5em; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; }
-
         /* タイプライターモード: 本文以外のUIをフェード+ぼかしで隠し、キャレットの行を画面上の一定位置にロックする */
         .tw-hide { transition: opacity 0.3s ease, filter 0.3s ease; }
         #app-screen.typewriter-mode .tw-hide {
@@ -2728,7 +2722,6 @@
         let notionDatabases = [];
         let notionDatabasesLoaded = false;
         const notionDbState = new Map(); // dbId -> { items, cursor, hasMore, loading, loaded }
-        const notionPageCache = new Map();
 
         function toggleNotionPanel() {
             const panel = document.getElementById('notion-panel');
@@ -2884,21 +2877,18 @@
             filtered.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'pb-4 border-b border-white/10 last:border-b-0 last:pb-0';
-                const propsHtml = item.properties
-                    .map(p => `<span class="inline-block bg-white/10 rounded px-1.5 py-0.5 mr-1 mb-1 text-white/50">${escapeNotionHtml(p.name)}: ${escapeNotionHtml(p.value)}</span>`)
-                    .join('');
+                const imageHtml = item.coverUrl
+                    ? `<img src="${escapeNotionHtml(item.coverUrl)}" alt="" loading="lazy" class="w-full aspect-video object-cover rounded mb-2" onerror="this.remove()">`
+                    : '';
                 card.innerHTML = `
-                    <div class="flex items-start justify-between gap-2 mb-1">
+                    ${imageHtml}
+                    <div class="flex items-start justify-between gap-2">
                         <a href="${escapeNotionHtml(item.url || '#')}" target="_blank" rel="noopener" class="text-white/80 hover:text-white transition-colors font-medium">${escapeNotionHtml(item.title)}</a>
                         <button type="button" class="shrink-0 px-2 py-0.5 text-white/40 hover:text-white bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap" title="このメモを完了にして一覧から外します" onclick="markNotionPageComplete('${dbId}', '${item.id}')">✅ 完了</button>
                     </div>
-                    <div class="flex flex-wrap">${propsHtml}</div>
-                    <div id="notion-detail-${item.id}" class="mt-2 text-white/60 notion-preview-body">読み込み中...</div>
                 `;
                 itemsEl.appendChild(card);
             });
-            // 一覧を眺めるだけでメモの中身までばっと見えるよう、表示中のカードの本文プレビューを続けて読み込む
-            loadNotionPreviews(filtered.map(item => item.id));
         }
 
         async function markNotionPageComplete(dbId, pageId) {
@@ -2928,48 +2918,6 @@
             } catch (e) {
                 console.error(e);
                 showToast('完了にできませんでした');
-            }
-        }
-
-        async function loadNotionPreviews(pageIds) {
-            const CONCURRENCY = 3;
-            let cursor = 0;
-            const worker = async () => {
-                while (cursor < pageIds.length) {
-                    const pageId = pageIds[cursor++];
-                    await loadNotionPreviewInto(pageId);
-                }
-            };
-            await Promise.all(Array.from({ length: Math.min(CONCURRENCY, pageIds.length) }, worker));
-        }
-
-        async function loadNotionPreviewInto(pageId) {
-            const detailEl = document.getElementById(`notion-detail-${pageId}`);
-            if (!detailEl) return;
-            if (notionPageCache.has(pageId)) {
-                detailEl.innerHTML = notionPageCache.get(pageId);
-                return;
-            }
-            try {
-                const { data: { session } } = await sb.auth.getSession();
-                if (!session) {
-                    detailEl.innerHTML = '<span class="text-red-300/70">ログイン状態を確認できませんでした</span>';
-                    return;
-                }
-                const res = await fetch(`/api/notion?action=page&id=${encodeURIComponent(pageId)}`, {
-                    headers: { Authorization: `Bearer ${session.access_token}` },
-                });
-                const result = await res.json();
-                if (!res.ok) {
-                    console.error(result);
-                    detailEl.innerHTML = '<span class="text-red-300/70">読み込みに失敗しました</span>';
-                    return;
-                }
-                notionPageCache.set(pageId, result.html);
-                detailEl.innerHTML = result.html;
-            } catch (e) {
-                console.error(e);
-                detailEl.innerHTML = '<span class="text-red-300/70">読み込みに失敗しました</span>';
             }
         }
 

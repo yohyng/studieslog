@@ -62,17 +62,6 @@ module.exports = async function handler(req, res) {
             return;
         }
 
-        if (action === 'page') {
-            const pageId = typeof req.query.id === 'string' ? req.query.id : '';
-            if (!pageId) {
-                res.status(400).json({ error: 'id is required' });
-                return;
-            }
-            const html = await fetchPagePreviewHtml(pageId, notionKey);
-            res.status(200).json({ html });
-            return;
-        }
-
         if (!action || action === 'list') {
             const requestedDb = typeof req.query.db === 'string' ? req.query.db : '';
             const database = requestedDb ? databases.find((d) => d.id === requestedDb) : databases[0];
@@ -167,9 +156,17 @@ async function fetchDatabaseList(databaseId, notionKey, cursor) {
         url: page.url,
         title: extractTitle(page.properties),
         properties: summarizeProperties(page.properties),
+        coverUrl: extractCoverUrl(page.cover),
     }));
 
     return { items, hasMore: !!data.has_more, nextCursor: data.next_cursor || null };
+}
+
+function extractCoverUrl(cover) {
+    if (!cover) return null;
+    if (cover.type === 'external') return cover.external?.url || null;
+    if (cover.type === 'file') return cover.file?.url || null;
+    return null;
 }
 
 async function markPageComplete(pageId, notionKey) {
@@ -181,24 +178,6 @@ async function markPageComplete(pageId, notionKey) {
             },
         }),
     });
-}
-
-async function fetchPagePreviewHtml(pageId, notionKey) {
-    const blocks = [];
-    let cursor;
-    // プレビュー用途なので、量が多い記事でも重くならないよう上限を設ける
-    const MAX_BLOCKS = 200;
-    do {
-        const data = await notionFetch(
-            `/blocks/${encodeURIComponent(pageId)}/children?page_size=100${cursor ? `&start_cursor=${encodeURIComponent(cursor)}` : ''}`,
-            notionKey,
-            { method: 'GET' }
-        );
-        blocks.push(...(data.results || []));
-        cursor = data.has_more ? data.next_cursor : null;
-    } while (cursor && blocks.length < MAX_BLOCKS);
-
-    return blocksToHtml(blocks.slice(0, MAX_BLOCKS));
 }
 
 function extractTitle(properties) {
@@ -281,66 +260,3 @@ function richTextToPlain(richText) {
     return richText.map((t) => t.plain_text || '').join('');
 }
 
-function escapeHtml(str) {
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
-function blocksToHtml(blocks) {
-    const parts = [];
-    for (const block of blocks) {
-        const type = block.type;
-        const data = block[type];
-        if (!data) continue;
-        const text = data.rich_text ? escapeHtml(richTextToPlain(data.rich_text)) : '';
-        switch (type) {
-            case 'paragraph':
-                parts.push(`<p>${text || '&nbsp;'}</p>`);
-                break;
-            case 'heading_1':
-                parts.push(`<h1>${text}</h1>`);
-                break;
-            case 'heading_2':
-                parts.push(`<h2>${text}</h2>`);
-                break;
-            case 'heading_3':
-                parts.push(`<h3>${text}</h3>`);
-                break;
-            case 'bulleted_list_item':
-                parts.push(`<li>${text}</li>`);
-                break;
-            case 'numbered_list_item':
-                parts.push(`<li>${text}</li>`);
-                break;
-            case 'to_do':
-                parts.push(`<p>${data.checked ? '☑' : '☐'} ${text}</p>`);
-                break;
-            case 'quote':
-                parts.push(`<blockquote>${text}</blockquote>`);
-                break;
-            case 'callout':
-                parts.push(`<p>💡 ${text}</p>`);
-                break;
-            case 'code':
-                parts.push(`<pre>${text}</pre>`);
-                break;
-            case 'divider':
-                parts.push('<hr>');
-                break;
-            case 'bookmark':
-            case 'link_preview':
-                parts.push(`<p><a href="${escapeHtml(data.url || '')}" target="_blank" rel="noopener">${escapeHtml(data.url || '')}</a></p>`);
-                break;
-            case 'image':
-                parts.push(`<p>🖼 ${escapeHtml(data.caption ? richTextToPlain(data.caption) : '画像')}</p>`);
-                break;
-            default:
-                if (text) parts.push(`<p>${text}</p>`);
-        }
-    }
-    return parts.join('\n') || '<p class="text-white/30">(本文なし)</p>';
-}
