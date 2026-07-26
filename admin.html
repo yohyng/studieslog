@@ -98,16 +98,19 @@
             <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
                 <div class="flex flex-wrap gap-2 mb-4">
                     <button onclick="openNewEditor()" class="flex-1 sm:flex-none px-5 py-3 text-sm bg-white/10 hover:bg-white/20 rounded transition-colors">＋ 新しい記事を書く</button>
-                    <button id="bulk-translate-toggle-btn" onclick="toggleBulkTranslateMode()" class="px-5 py-3 text-sm bg-white/10 hover:bg-white/20 rounded transition-colors">一括英訳</button>
+                    <button id="bulk-mode-toggle-btn" onclick="toggleBulkMode()" class="px-5 py-3 text-sm bg-white/10 hover:bg-white/20 rounded transition-colors">一括操作</button>
                 </div>
                 <input id="article-search" type="text" placeholder="タイトル・本文で検索" oninput="renderArticleCards()" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-6 focus:outline-none focus:border-white/30">
-                <div id="bulk-translate-bar" class="hidden flex flex-wrap items-center gap-3 mb-4 p-3 bg-white/5 border border-white/10 rounded text-xs">
-                    <span id="bulk-translate-count" class="text-white/60">0件選択中</span>
+                <div id="bulk-action-bar" class="hidden flex flex-wrap items-center gap-3 mb-4 p-3 bg-white/5 border border-white/10 rounded text-xs">
+                    <span id="bulk-selected-count" class="text-white/60">0件選択中</span>
                     <button onclick="bulkSelectUntranslated()" class="text-white/50 hover:text-white transition-colors">未翻訳のみ選択</button>
                     <button onclick="bulkSelectAll()" class="text-white/50 hover:text-white transition-colors">全て選択</button>
                     <button onclick="bulkSelectNone()" class="text-white/50 hover:text-white transition-colors">選択解除</button>
-                    <button onclick="runBulkTranslate()" class="ml-auto px-4 py-2 bg-white/20 hover:bg-white/30 rounded transition-colors">選択した記事を英訳する</button>
-                    <button onclick="toggleBulkTranslateMode()" class="px-3 py-2 text-white/50 hover:text-white transition-colors">キャンセル</button>
+                    <div class="ml-auto flex gap-2">
+                        <button onclick="runBulkTranslate()" class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded transition-colors">選択した記事を英訳する</button>
+                        <button onclick="runBulkDelete()" class="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded transition-colors">選択した記事を削除する</button>
+                    </div>
+                    <button onclick="toggleBulkMode()" class="px-3 py-2 text-white/50 hover:text-white transition-colors">キャンセル</button>
                 </div>
                 <div id="article-cards" class="flex flex-col gap-3"></div>
                 <div id="article-search-empty" class="hidden text-xs text-white/40 text-center py-16">一致する記事がありません。</div>
@@ -1147,7 +1150,7 @@
         const IMAGE_BUCKET = 'article-images';
 
         let articles = [];
-        let bulkTranslateMode = false;
+        let bulkMode = false;
         let bulkSelectedIds = new Set();
         let editingId = null;
         let tags = [];
@@ -1337,7 +1340,7 @@
                 const preview = plainText.slice(0, 70);
                 const card = document.createElement('div');
                 card.className = 'flex items-center gap-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded px-4 py-3 cursor-pointer transition-colors';
-                card.onclick = bulkTranslateMode ? () => toggleBulkSelect(article.id) : () => openEditEditor(article.id);
+                card.onclick = bulkMode ? () => toggleBulkSelect(article.id) : () => openEditEditor(article.id);
                 const effectiveStatus = computeEffectiveStatus(article);
                 let badgeHtml = '';
                 if (article.status === 'draft') {
@@ -1354,7 +1357,7 @@
                 if (hasTranslation) {
                     badgeHtml += '<span class="text-xs px-1.5 py-0.5 rounded bg-emerald-400/20 text-emerald-200/80">英訳☑</span>';
                 }
-                const checkboxHtml = bulkTranslateMode
+                const checkboxHtml = bulkMode
                     ? `<div class="w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${bulkSelectedIds.has(article.id) ? 'bg-white border-white' : 'border-white/30'}">${bulkSelectedIds.has(article.id) ? '<span class="text-black text-xs leading-none">✓</span>' : ''}</div>`
                     : '';
                 card.innerHTML = `
@@ -1368,50 +1371,47 @@
                         <div class="text-sm mb-1 truncate">${article.title || '(無題)'}</div>
                         <div class="text-xs text-white/40 truncate">${preview}</div>
                     </div>
-                    ${bulkTranslateMode ? '' : '<span class="text-xs text-white/30">編集 →</span>'}
+                    ${bulkMode ? '' : '<span class="text-xs text-white/30">編集 →</span>'}
                 `;
                 container.appendChild(card);
             });
         }
 
-        // --- 一括英訳: 記事一覧にチェックボックスを出し、選択した記事をまとめてGemini API(/api/translate)で英訳する ---
-        function updateBulkTranslateBar() {
-            document.getElementById('bulk-translate-count').textContent = `${bulkSelectedIds.size}件選択中`;
+        // --- 一括操作: 記事一覧にチェックボックスを出し、選択した記事をまとめて英訳/削除する ---
+        function updateBulkActionBar() {
+            document.getElementById('bulk-selected-count').textContent = `${bulkSelectedIds.size}件選択中`;
         }
 
-        function toggleBulkTranslateMode() {
-            bulkTranslateMode = !bulkTranslateMode;
+        function toggleBulkMode() {
+            bulkMode = !bulkMode;
             bulkSelectedIds = new Set();
-            if (bulkTranslateMode) {
-                articles.forEach(a => { if (!articleHasTranslation(a)) bulkSelectedIds.add(a.id); });
-            }
-            document.getElementById('bulk-translate-bar').classList.toggle('hidden', !bulkTranslateMode);
-            document.getElementById('bulk-translate-toggle-btn').textContent = bulkTranslateMode ? '一括英訳モードを終了' : '一括英訳';
-            updateBulkTranslateBar();
+            document.getElementById('bulk-action-bar').classList.toggle('hidden', !bulkMode);
+            document.getElementById('bulk-mode-toggle-btn').textContent = bulkMode ? '一括操作を終了' : '一括操作';
+            updateBulkActionBar();
             renderArticleCards();
         }
 
         function toggleBulkSelect(id) {
             if (bulkSelectedIds.has(id)) bulkSelectedIds.delete(id); else bulkSelectedIds.add(id);
-            updateBulkTranslateBar();
+            updateBulkActionBar();
             renderArticleCards();
         }
 
         function bulkSelectUntranslated() {
             bulkSelectedIds = new Set(articles.filter(a => !articleHasTranslation(a)).map(a => a.id));
-            updateBulkTranslateBar();
+            updateBulkActionBar();
             renderArticleCards();
         }
 
         function bulkSelectAll() {
             bulkSelectedIds = new Set(articles.map(a => a.id));
-            updateBulkTranslateBar();
+            updateBulkActionBar();
             renderArticleCards();
         }
 
         function bulkSelectNone() {
             bulkSelectedIds = new Set();
-            updateBulkTranslateBar();
+            updateBulkActionBar();
             renderArticleCards();
         }
 
@@ -1433,7 +1433,7 @@
                 return;
             }
 
-            const btn = document.querySelector('#bulk-translate-bar button[onclick="runBulkTranslate()"]');
+            const btn = document.querySelector('#bulk-action-bar button[onclick="runBulkTranslate()"]');
             let successCount = 0;
             const failedTitles = [];
             for (let i = 0; i < targets.length; i++) {
@@ -1465,7 +1465,26 @@
                     : `${successCount}件を英訳しました(失敗: ${failedTitles.join('、')})`,
                 failedTitles.length === 0 ? 2000 : 8000
             );
-            toggleBulkTranslateMode();
+            toggleBulkMode();
+            await loadArticleList();
+        }
+
+        async function runBulkDelete() {
+            if (bulkSelectedIds.size === 0) {
+                showToast('記事を選択してください');
+                return;
+            }
+            const targets = articles.filter(a => bulkSelectedIds.has(a.id));
+            if (!confirm(`選択した${targets.length}件を削除しますか？元に戻せません。`)) return;
+
+            const { error } = await sb.from('articles').delete().in('id', targets.map(a => a.id));
+            if (error) {
+                console.error(error);
+                showToast('削除に失敗しました');
+                return;
+            }
+            showToast(`${targets.length}件を削除しました`);
+            toggleBulkMode();
             await loadArticleList();
         }
 
