@@ -3981,32 +3981,32 @@
         twEditor.addEventListener('keydown', function(e) {
             if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey) return;
             const sel = window.getSelection();
-            if (!sel || !sel.rangeCount) return;
-            let node = sel.getRangeAt(0).commonAncestorContainer;
-            if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+            if (!sel || !sel.rangeCount || !sel.getRangeAt(0).collapsed) return;
+            let anchor = sel.getRangeAt(0).startContainer;
+            // カーソルがblockquote内かチェック
             let bq = null;
-            for (let cur = node; cur && cur !== twEditor; cur = cur.parentNode) {
-                if (cur.nodeName === 'BLOCKQUOTE') { bq = cur; break; }
+            for (let n = anchor; n && n !== twEditor; n = n.parentNode) {
+                if (n.nodeName === 'BLOCKQUOTE') { bq = n; break; }
             }
             if (!bq) return;
-            // blockquote直下の現在ブロックを探す
-            let blockInBq = node;
-            while (blockInBq.parentNode !== bq) {
-                blockInBq = blockInBq.parentNode;
-                if (!blockInBq || blockInBq === twEditor) return;
+            // blockquote直下の子要素を探す（テキストノードは親要素へ）
+            let child = anchor.nodeType === Node.TEXT_NODE ? anchor.parentNode : anchor;
+            while (child && child.parentNode !== bq) {
+                child = child.parentNode;
+                if (!child || child === twEditor || child === bq) return;
             }
-            if (blockInBq.textContent.trim() !== '') return; // 空でなければブラウザ任せ
+            if (!child || child.textContent !== '') return; // 空でなければブラウザ任せ
             e.preventDefault();
-            bq.removeChild(blockInBq);
+            bq.removeChild(child);
             const p = document.createElement('p');
             p.innerHTML = '<br>';
             bq.parentNode.insertBefore(p, bq.nextSibling);
             if (!bq.textContent.trim()) bq.parentNode.removeChild(bq);
-            const range = document.createRange();
-            range.setStart(p, 0);
-            range.collapse(true);
+            const r = document.createRange();
+            r.setStart(p, 0);
+            r.collapse(true);
             sel.removeAllRanges();
-            sel.addRange(range);
+            sel.addRange(r);
         });
 
         // 自動保存: タイトル・本文(日英)を編集するたびに、少し待ってからlocalStorageへ控えを取る
