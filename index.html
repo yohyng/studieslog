@@ -736,6 +736,11 @@
                         <span class="opacity-40">/</span>
                         <span id="locale-btn-en" onclick="setLocale('en')" class="cursor-pointer opacity-50 hover:opacity-100 transition-opacity">EN</span>
                     </div>
+                    <div class="flex items-center gap-1.5 mt-2 pt-3" style="border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);">
+                        <button onclick="adjustUserFontScale(-0.1)" class="glass-chip w-6 h-6 inline-flex items-center justify-center hover:opacity-80 transition-opacity" style="box-shadow: none; font-size: 0.65rem;" aria-label="文字を小さく" title="文字を小さく">A-</button>
+                        <span class="font-scale-value opacity-60" style="font-size: 0.65rem; min-width: 2em; text-align: center;"></span>
+                        <button onclick="adjustUserFontScale(0.1)" class="glass-chip w-6 h-6 inline-flex items-center justify-center hover:opacity-80 transition-opacity" style="box-shadow: none; font-size: 0.65rem;" aria-label="文字を大きく" title="文字を大きく">A+</button>
+                    </div>
                 </nav>
             </div>
         </div>
@@ -918,8 +923,9 @@
 
         function applyUserFontScale() {
             document.documentElement.style.setProperty('--user-font-scale', userFontScale);
-            const label = document.getElementById('font-scale-value');
-            if (label) label.textContent = Math.round(userFontScale * 100) + '%';
+            document.querySelectorAll('.font-scale-value').forEach(el => {
+                el.textContent = Math.round(userFontScale * 100) + '%';
+            });
         }
 
         function adjustUserFontScale(delta) {
@@ -2045,7 +2051,7 @@
                 <div class="flex items-center gap-3 pt-3" style="border-top: 0.5px solid var(--divider-color); font-size: 0.75rem;">
                     <span class="opacity-60">文字サイズ</span>
                     <button onclick="adjustUserFontScale(-0.1)" class="glass-chip w-6 h-6 inline-flex items-center justify-center hover:opacity-80 transition-opacity" style="box-shadow: none;" aria-label="文字を小さく" title="文字を小さく">A-</button>
-                    <span id="font-scale-value" class="opacity-60" style="min-width: 2.5em; text-align: center;"></span>
+                    <span id="font-scale-value" class="font-scale-value opacity-60" style="min-width: 2.5em; text-align: center;"></span>
                     <button onclick="adjustUserFontScale(0.1)" class="glass-chip w-6 h-6 inline-flex items-center justify-center hover:opacity-80 transition-opacity" style="box-shadow: none;" aria-label="文字を大きく" title="文字を大きく">A+</button>
                 </div>
             `;
