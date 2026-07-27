@@ -117,6 +117,25 @@ function census(html) {
     return { tags, attrs };
 }
 const textOf = (html) => parse(html).textContent.replace(/\s+/g, ' ').trim();
+// タグ間の改行・インデントは出力側で消えるが表示には影響しない。
+// 「中身が本当に失われたか」を見るには空白を全部落として比べる必要がある
+const compactOf = (html) => parse(html).textContent.replace(/\s+/g, '');
+
+/** 2つの文字列が最初に食い違う位置と、その前後を返す */
+function divergence(a, b, ctx = 100) {
+    let i = 0;
+    while (i < a.length && i < b.length && a[i] === b[i]) i++;
+    const from = Math.max(0, i - ctx);
+    return {
+        at: i,
+        in: (from ? '…' : '') + a.slice(from, i) + ' ⟦ここから⟧ ' + a.slice(i, i + ctx),
+        out: (from ? '…' : '') + b.slice(from, i) + ' ⟦ここから⟧ ' + b.slice(i, i + ctx),
+    };
+}
+
+/** 空行(中身のないブロック)の数。空行が消えると本文の見た目が大きく変わる */
+const emptyBlocks = (html) =>
+    [...parse(html).children].filter((e) => !e.textContent.trim()).length;
 const notesOf = (html) => [...parse(html).querySelectorAll('sup.footnote-ref')]
     .map((e) => e.getAttribute('data-note') || '');
 const cardsOf = (html) => [...parse(html).querySelectorAll('a.book-link-card')].map((e) => {
@@ -175,9 +194,19 @@ function auditHtml(html) {
         return { fatal: e.message, input: html };
     }
     const before = census(html), after = census(out);
-    const problems = [];
-    const tIn = textOf(html), tOut = textOf(out);
-    if (tIn !== tOut) problems.push({ kind: '本文テキスト', in: tIn, out: tOut });
+    const problems = [], benign = [];
+
+    // 空白を除いて比較する。タグ間の改行が消えるのは表示に影響しないので損失に数えない
+    const cIn = compactOf(html), cOut = compactOf(out);
+    if (cIn !== cOut) {
+        problems.push({ kind: '本文テキスト', ...divergence(cIn, cOut) });
+    } else if (textOf(html) !== textOf(out)) {
+        benign.push('タグ間の空白のみ変化(表示に影響なし)');
+    }
+
+    // 空行が消えると本文の見た目が変わるが、テキスト比較では検出できないので別に見る
+    const eIn = emptyBlocks(html), eOut = emptyBlocks(out);
+    if (eIn !== eOut) problems.push({ kind: '空行の数', in: String(eIn), out: String(eOut) });
 
     const cmp = (label, a, b) => {
         if (JSON.stringify(a) !== JSON.stringify(b)) {
@@ -203,7 +232,7 @@ function auditHtml(html) {
     }
 
     return {
-        problems, lostTags, lostAttrs, tagSamples, attrSamples,
+        problems, benign, lostTags, lostAttrs, tagSamples, attrSamples,
         input: html, output: out,
     };
 }
@@ -307,14 +336,25 @@ function render(d) {
         // 損失は畳まずに開いた状態で出す(見落とすと移行時にデータが消えるため)
         const open = r.problems.length ? ' open' : '';
         const probs = r.problems.map((p) =>
-            `<div class="tag-bad" style="margin:.4rem 0">${esc(p.kind)}が変化</div>
-             <pre>in : ${esc(String(p.in).slice(0, 400))}\nout: ${esc(String(p.out).slice(0, 400))}</pre>`).join('');
+            `<div class="tag-bad" style="margin:.4rem 0">${esc(p.kind)}が変化${
+                p.at !== undefined ? ` <span class="note">(${p.at}文字目から)</span>` : ''}</div>
+             <pre>in : ${esc(String(p.in))}\nout: ${esc(String(p.out))}</pre>`).join('');
+        // 損失の原因を特定するには正規化後のテキストでは足りず、生HTMLが要る
+        const raw = r.problems.length
+            ? `<details><summary>この記事の生HTML(原因調査用・コピーして共有できます)</summary>
+               <div class="note" style="margin:.4rem 0">入力(Supabaseに保存されている実際のHTML)</div>
+               <pre>${esc(r.input.slice(0, 4000))}${r.input.length > 4000 ? '\n…(以下略)' : ''}</pre>
+               <div class="note" style="margin:.4rem 0">出力(Tiptapを往復した後)</div>
+               <pre>${esc(r.output.slice(0, 4000))}${r.output.length > 4000 ? '\n…(以下略)' : ''}</pre>
+               </details>` : '';
+        const ben = (r.benign || []).length
+            ? `<div class="note tag-ok">${r.benign.map(esc).join(' / ')}</div>` : '';
         const tags = Object.keys(r.lostTags).length
             ? `<div class="note">タグ減: ${Object.entries(r.lostTags).map(([k, v]) => `${k}×${v}`).join(', ')}</div>` : '';
         const attrs = Object.keys(r.lostAttrs).length
             ? `<div class="note">属性減: ${Object.entries(r.lostAttrs).map(([k, v]) => `${k}×${v}`).join(', ')}</div>` : '';
         return `<details${open}><summary class="${sev}">${mark} #${a.id} ${esc(a.title || '(無題)')} [${field}]</summary>
-                ${probs}${tags}${attrs}</details>`;
+                ${probs}${ben}${tags}${attrs}${raw}</details>`;
     }).join('');
 
     // 落ちた値の内訳。件数だけでは「無視してよいゴミ」か「書式の消失」か判断できない
