@@ -84,7 +84,7 @@ async function embedTexts(texts, geminiKey) {
     for (let i = 0; i < texts.length; i += BATCH_SIZE) {
         const batch = texts.slice(i, i + BATCH_SIZE);
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:batchEmbedContents?key=${encodeURIComponent(geminiKey)}`,
+            `https://generativelanguage.googleapis.com/v1/models/${EMBEDDING_MODEL}:batchEmbedContents?key=${encodeURIComponent(geminiKey)}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -110,7 +110,7 @@ async function embedTexts(texts, geminiKey) {
 
 async function embedText(text, geminiKey) {
     const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent?key=${encodeURIComponent(geminiKey)}`,
+        `https://generativelanguage.googleapis.com/v1/models/${EMBEDDING_MODEL}:embedContent?key=${encodeURIComponent(geminiKey)}`,
         {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
