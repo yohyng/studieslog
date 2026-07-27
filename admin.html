@@ -1893,8 +1893,11 @@
             typewriterMode = !typewriterMode;
             document.getElementById('app-screen').classList.toggle('typewriter-mode', typewriterMode);
             document.getElementById('typewriter-toggle').style.opacity = typewriterMode ? '1' : '0.4';
+            // このモードでは編集欄の左右の余白が0になる。折り返し幅はその余白を測って
+            // 決めているので、切り替えのたびに計算し直す
+            applyEditorPreviewStyle();
             if (typewriterMode) {
-                document.getElementById('edit-content').focus();
+                edFocus('edit-content');
                 requestAnimationFrame(repositionCaretTypewriter);
             }
         }
@@ -2111,11 +2114,20 @@
                 if (t.content_width) {
                     const articleBoxPad = 1.5 * t.font_size * 2;
                     const wrapWidth = Math.max(200, t.content_width - articleBoxPad);
-                    editor.style.maxWidth = wrapWidth + 'px';
+
+                    // 編集欄には枠線と左右の余白(px-4)があり、box-sizing:border-boxなので
+                    // max-widthをwrapWidthにすると、その分だけ内側で折り返してしまい
+                    // 閲覧画面より本文が狭くなる。実際の余白を測って足し戻す
+                    // (タイプライターモードでは余白が0になるので、そのときも自動で正しくなる)
+                    const cs = getComputedStyle(editor);
+                    const frame = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+                        + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+                    editor.style.maxWidth = (wrapWidth + frame) + 'px';
                     titleEl.style.maxWidth = wrapWidth + 'px';
-                    // 本文欄以外(日付・タグ・保存ボタンなど)の並びも同じ幅に揃え、編集画面全体のガタつきをなくす
+                    // 本文欄以外(日付・タグ・保存ボタンなど)の並びも同じ幅に揃え、編集画面全体のガタつきをなくす。
+                    // 本文欄が枠の分だけ広いので、はみ出さないよう同じだけ広げておく
                     const formCol = document.getElementById('editor-form-col');
-                    if (formCol) formCol.style.maxWidth = wrapWidth + 'px';
+                    if (formCol) formCol.style.maxWidth = (wrapWidth + frame) + 'px';
                 }
             }
             if (siteTypography) {
