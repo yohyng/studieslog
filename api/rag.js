@@ -3,7 +3,7 @@
 // 管理画面からのみ呼ばれる。APIキーはこの関数の外(ブラウザ側)には一切渡さない。
 
 const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
-const EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || 'embedding-001';
+const EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001';
 const CHAT_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 module.exports = async function handler(req, res) {
