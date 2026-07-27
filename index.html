@@ -1195,12 +1195,16 @@
                 ? `<div class="text-left mb-5"><div class="text-xs opacity-40 mb-2">この記事へのリンク</div><div class="flex flex-col gap-1.5">${backlinks.map(a => `<a href="/article/${a.id}" onclick="event.stopPropagation()" class="text-xs opacity-70 hover:opacity-100 transition-opacity">${escapeHtml(a.title)}</a>`).join('')}</div></div>`
                 : '';
             const title = localizedTitle(article);
+            const rawTitle = (currentLocale === 'en' && article.title_en) ? article.title_en : article.title;
+            const titleHtml = article.category
+                ? `<span class="category-label" data-category="${escapeHtml(article.category)}">${escapeHtml(article.category)}</span> | ${escapeHtml(rawTitle)}`
+                : escapeHtml(rawTitle);
             const content = localizedContent(article);
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" data-category="${article.category || ''}" style="border: 0.5px solid var(--divider-color); padding: 1.5rem;">
                     <div class="cursor-pointer group" onclick="toggleArticle(this, event)">
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
-                        <h2 class="text-lg font-normal mb-4 article-title">${title}</h2>
+                        <h2 class="text-lg font-normal mb-4 article-title">${titleHtml}</h2>
                         ${tagsHtml}
                         <div class="article-snippet text-sm"><div class="content-body">${applyFootnoteStyling(content, article.id)}</div></div>
                     </div>
