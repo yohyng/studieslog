@@ -3098,7 +3098,7 @@
                 const result = await res.json();
                 if (!res.ok) {
                     console.error(result);
-                    status.textContent = `失敗しました: ${result.error || ''}`;
+                    status.textContent = `失敗しました: ${result.detail || result.error || ''}`;
                     return;
                 }
                 status.textContent = `完了: ${result.articleCount}記事 / ${result.chunkCount}チャンク`;

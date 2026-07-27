@@ -129,7 +129,7 @@ async function reindexArticles(serviceKey, geminiKey) {
     const articles = await supabaseRest('/articles?select=id,title,content', serviceKey, { method: 'GET' });
 
     // 件数が減った記事の古いチャンクが残らないよう、まず全消しして作り直す
-    await supabaseRest('/article_chunks?article_id=gt.0', serviceKey, { method: 'DELETE' });
+    await supabaseRest('/article_chunks?id=gte.0', serviceKey, { method: 'DELETE' });
 
     let chunkCount = 0;
     for (const article of articles || []) {
@@ -144,9 +144,10 @@ async function reindexArticles(serviceKey, geminiKey) {
                 article_id: article.id,
                 chunk_index: i,
                 content,
-                embedding: vectors[i],
+                // pgvector via PostgREST needs vector as string "[x,y,...]", not a JSON array
+                embedding: Array.isArray(vectors[i]) ? `[${vectors[i].join(',')}]` : null,
             }))
-            .filter((row) => Array.isArray(row.embedding));
+            .filter((row) => row.embedding !== null);
 
         if (rows.length) {
             await supabaseRest('/article_chunks', serviceKey, {
