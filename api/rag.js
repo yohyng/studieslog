@@ -52,6 +52,15 @@ module.exports = async function handler(req, res) {
             res.status(200).json(result);
             return;
         }
+        if (action === 'listmodels') {
+            const r = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(geminiKey)}`
+            );
+            const data = await r.json();
+            const names = (data.models || []).map(m => m.name);
+            res.status(200).json({ models: names });
+            return;
+        }
         res.status(400).json({ error: 'unknown action' });
     } catch (e) {
         console.error(e);
