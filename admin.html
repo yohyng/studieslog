@@ -31,11 +31,16 @@
         /* Tiptapは .content-editor の中に自前のcontenteditableを作る。
            既存の .content-editor 配下のスタイルはそのまま効く */
         /* ProseMirrorが動作前提としているCSS。これが無いと連続した空白が潰れ、
-           長いURLなどが折り返されずに横へはみ出す */
+           長いURL(百分率エンコードされたAmazonのリンクなど)が折り返されず横へはみ出して、
+           編集欄だけ閲覧画面より本文が広く見えてしまう */
         .content-editor .tiptap {
-            outline: none; min-height: 1.5em;
+            outline: none;
             white-space: pre-wrap; word-wrap: break-word;
         }
+        /* .content-editor の min-height:300px は外側の箱にかかる。内側の編集領域を
+           伸ばしておかないと、下half分の余白をクリックしてもカーソルが入らない */
+        .content-editor:has(.tiptap) { display: flex; flex-direction: column; }
+        .content-editor .tiptap { flex: 1 1 auto; }
         .content-editor .tiptap p.is-editor-empty:first-child::before {
             content: attr(data-placeholder); color: rgba(255,255,255,0.25); float: left;
             height: 0; pointer-events: none;
