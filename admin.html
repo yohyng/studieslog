@@ -4034,10 +4034,10 @@
             // 最初の子でなければブラウザ任せ（引用内の行マージはブラウザに任せる）
             if (child.previousSibling !== null) return;
 
-            // カーソルが子要素の先頭でなければブラウザ任せ（内部ネスト要素の中間など）
-            const testRange = document.createRange();
-            testRange.selectNodeContents(child);
-            if (range.compareBoundaryPoints(Range.START_TO_START, testRange) !== 0) return;
+            // anchor から child までの経路で左兄弟があればブラウザ任せ（段落途中の場合など）
+            for (let n = anchor; n !== child; n = n.parentNode) {
+                if (n.previousSibling !== null) return;
+            }
 
             e.preventDefault();
             bq.removeChild(child);
