@@ -133,14 +133,14 @@ function divergence(a, b, ctx = 100) {
     };
 }
 
-/** 空行(brだけ、または中身のない段落)の数。増減すると本文の間隔が変わる。
- *  画像・水平線などは中身があるので空行に数えない(querySelectorは自身を見ないためmatchesも見る) */
+/** 実際に1行分の空白として描画される空行の数。増減すると本文の間隔が変わる。
+ *  入れ子の空divは内側だけが1行になるので「最も内側の空ブロック」を数える。
+ *  画像・水平線を含むものは中身があるので空行ではない。 */
+const SOLID = 'img, hr, iframe, video';
 const emptyBlocks = (html) =>
-    [...parse(html).children].filter((e) => {
-        if (e.textContent.trim()) return false;
-        const SOLID = 'img, hr, iframe, video';
-        return !e.matches(SOLID) && !e.querySelector(SOLID);
-    }).length;
+    [...parse(html).querySelectorAll('p, div')].filter((e) =>
+        !e.textContent.trim() && !e.querySelector(SOLID) && !e.querySelector('p, div')
+    ).length;
 const notesOf = (html) => [...parse(html).querySelectorAll('sup.footnote-ref')]
     .map((e) => e.getAttribute('data-note') || '');
 const cardsOf = (html) => [...parse(html).querySelectorAll('a.book-link-card')].map((e) => {

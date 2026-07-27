@@ -55,6 +55,11 @@ const fixtures = [
     ['脚注(旧inline形式)', '<p>本文<sup class="footnote-ref">[1]</sup><span class="footnote-note">古い注釈本文</span></p>'],
     ['リンクカード', CARD + '<p></p>'],
     ['リンクカード(画像なし)', CARD.replace(/<img[^>]*>/, '')],
+    // カードをブロック扱いにすると段落が分割され空段落が増える。実データで該当したため固定する
+    ['リンクカード(pの中)', `<p>本文A</p><p>${CARD}</p><p>本文B</p>`],
+    ['リンクカード(divの中)', `<div>本文A</div><div>${CARD}</div><div>本文B</div>`],
+    ['リンクカード(挿入時の実形)', `<div>本文A</div><div>${CARD}<p></p></div><div>本文B</div>`],
+    ['空行(入れ子div)', '<div>A</div><div><div><br></div></div><div>B</div>'],
     ['画像', '<p>前</p><img src="https://example.com/a.png"><p>後</p>'],
     ['画像(幅指定)', '<img src="https://example.com/a.png" style="width:50%; height:auto;">'],
     ['画像(選択中クラス混入)', '<img src="https://example.com/a.png" class="img-selected">'],
@@ -100,15 +105,13 @@ function textOf(html) {
     return parse(html).textContent.replace(/\s+/g, ' ').trim();
 }
 
-/** 空行(brだけ、または中身のない段落)の数。消えても増えても本文の間隔が変わる */
+/** 実際に1行分の空白として描画される空行の数。消えても増えても本文の間隔が変わる。
+ *  入れ子の空divは内側だけが1行になるので「最も内側の空ブロック」を数える。 */
 function emptyBlocks(html) {
-    return [...parse(html).children].filter((el) => {
-        if (el.textContent.trim()) return false;
-        // 画像・水平線などは(自身がそれである場合も含めて)「空行」ではない。
-        // querySelectorは自身を見ないので matches も併せて確認する
-        const SOLID = 'img, hr, iframe, video';
-        return !el.matches(SOLID) && !el.querySelector(SOLID);
-    }).length;
+    const SOLID = 'img, hr, iframe, video';
+    return [...parse(html).querySelectorAll('p, div')].filter((el) =>
+        !el.textContent.trim() && !el.querySelector(SOLID) && !el.querySelector('p, div')
+    ).length;
 }
 
 /** 入力にあって出力で減ったものを列挙 */
