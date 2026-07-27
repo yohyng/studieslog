@@ -30,7 +30,12 @@
         .content-editor .footnote-ref { color: #7dd3fc; cursor: default; }
         /* Tiptapは .content-editor の中に自前のcontenteditableを作る。
            既存の .content-editor 配下のスタイルはそのまま効く */
-        .content-editor .tiptap { outline: none; min-height: 1.5em; }
+        /* ProseMirrorが動作前提としているCSS。これが無いと連続した空白が潰れ、
+           長いURLなどが折り返されずに横へはみ出す */
+        .content-editor .tiptap {
+            outline: none; min-height: 1.5em;
+            white-space: pre-wrap; word-wrap: break-word;
+        }
         .content-editor .tiptap p.is-editor-empty:first-child::before {
             content: attr(data-placeholder); color: rgba(255,255,255,0.25); float: left;
             height: 0; pointer-events: none;
