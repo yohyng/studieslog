@@ -136,6 +136,33 @@ function lost(before, after) {
     }
     return out;
 }
+
+// 件数だけでは対処方針(スキーマ拡張か、事前変換か、無視してよいか)が決まらないので、
+// 実際に落ちた属性値・要素の中身を採取する
+function samplesOf(html) {
+    const body = parse(html), tagHtml = {}, attrVal = {};
+    body.querySelectorAll('*').forEach((el) => {
+        const t = el.tagName.toLowerCase();
+        (tagHtml[t] = tagHtml[t] || []).push(el.outerHTML.slice(0, 200));
+        for (const a of el.attributes) {
+            const k = `${t}[${a.name}]`;
+            (attrVal[k] = attrVal[k] || []).push(a.value);
+        }
+    });
+    return { tagHtml, attrVal };
+}
+
+/** 入力側にあって出力側に無い値だけを取り出す(多重集合の差) */
+function diffValues(beforeList, afterList) {
+    const remaining = [...(afterList || [])];
+    const gone = [];
+    for (const v of beforeList || []) {
+        const i = remaining.indexOf(v);
+        if (i >= 0) remaining.splice(i, 1);
+        else gone.push(v);
+    }
+    return gone;
+}
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 /** 1本のHTMLを往復させて結果を返す */
@@ -162,10 +189,21 @@ function auditHtml(html) {
     cmp('画像src', imgsOf(html), imgsOf(out));
     cmp('リンクhref', linksOf(html), linksOf(out));
 
+    const lostTags = lost(before.tags, after.tags);
+    const lostAttrs = lost(before.attrs, after.attrs);
+
+    // 落ちたものについてだけ実際の値を採取する
+    const sIn = samplesOf(html), sOut = samplesOf(out);
+    const tagSamples = {}, attrSamples = {};
+    for (const k of Object.keys(lostTags)) {
+        tagSamples[k] = diffValues(sIn.tagHtml[k], sOut.tagHtml[k]);
+    }
+    for (const k of Object.keys(lostAttrs)) {
+        attrSamples[k] = diffValues(sIn.attrVal[k], sOut.attrVal[k]);
+    }
+
     return {
-        problems,
-        lostTags: lost(before.tags, after.tags),
-        lostAttrs: lost(before.attrs, after.attrs),
+        problems, lostTags, lostAttrs, tagSamples, attrSamples,
         input: html, output: out,
     };
 }
@@ -204,6 +242,8 @@ $('run-btn').onclick = async () => {
 
     const results = [];
     const tagTotals = {}, attrTotals = {};
+    // 落ちた値ごとの出現回数。値そのものを見ないと対処方針が決まらないため全体で集計する
+    const attrValueTotals = {}, tagValueTotals = {};
     let exact = 0, normalized = 0, damaged = 0, fields = 0;
 
     for (let n = 0; n < articles.length; n++) {
@@ -221,6 +261,15 @@ $('run-btn').onclick = async () => {
             for (const [k, v] of Object.entries(r.lostTags)) tagTotals[k] = (tagTotals[k] || 0) + v;
             for (const [k, v] of Object.entries(r.lostAttrs)) attrTotals[k] = (attrTotals[k] || 0) + v;
 
+            for (const [k, vals] of Object.entries(r.attrSamples || {})) {
+                const bucket = attrValueTotals[k] = attrValueTotals[k] || {};
+                for (const v of vals) bucket[v] = (bucket[v] || 0) + 1;
+            }
+            for (const [k, vals] of Object.entries(r.tagSamples || {})) {
+                const bucket = tagValueTotals[k] = tagValueTotals[k] || {};
+                for (const v of vals) bucket[v] = (bucket[v] || 0) + 1;
+            }
+
             const hasLoss = r.problems.length > 0;
             const hasNorm = Object.keys(r.lostTags).length || Object.keys(r.lostAttrs).length;
             if (hasLoss) { damaged++; results.push({ a, field, r }); }
@@ -230,7 +279,8 @@ $('run-btn').onclick = async () => {
     }
 
     $('log').textContent = `完了 (${articles.length}記事 / ${fields}本文)`;
-    render({ articles, fields, exact, normalized, damaged, tagTotals, attrTotals, results });
+    render({ articles, fields, exact, normalized, damaged, tagTotals, attrTotals,
+             attrValueTotals, tagValueTotals, results });
     $('run-btn').disabled = false;
 };
 
@@ -254,6 +304,8 @@ function render(d) {
         }
         const sev = r.problems.length ? 'tag-bad' : 'tag-warn';
         const mark = r.problems.length ? '✗ 損失' : '△ 正規化';
+        // 損失は畳まずに開いた状態で出す(見落とすと移行時にデータが消えるため)
+        const open = r.problems.length ? ' open' : '';
         const probs = r.problems.map((p) =>
             `<div class="tag-bad" style="margin:.4rem 0">${esc(p.kind)}が変化</div>
              <pre>in : ${esc(String(p.in).slice(0, 400))}\nout: ${esc(String(p.out).slice(0, 400))}</pre>`).join('');
@@ -261,9 +313,31 @@ function render(d) {
             ? `<div class="note">タグ減: ${Object.entries(r.lostTags).map(([k, v]) => `${k}×${v}`).join(', ')}</div>` : '';
         const attrs = Object.keys(r.lostAttrs).length
             ? `<div class="note">属性減: ${Object.entries(r.lostAttrs).map(([k, v]) => `${k}×${v}`).join(', ')}</div>` : '';
-        return `<details><summary class="${sev}">${mark} #${a.id} ${esc(a.title || '(無題)')} [${field}]</summary>
+        return `<details${open}><summary class="${sev}">${mark} #${a.id} ${esc(a.title || '(無題)')} [${field}]</summary>
                 ${probs}${tags}${attrs}</details>`;
     }).join('');
+
+    // 落ちた値の内訳。件数だけでは「無視してよいゴミ」か「書式の消失」か判断できない
+    const valueBreakdown = (totals, label) => {
+        const keys = Object.keys(totals).sort(
+            (a, b) => Object.values(totals[b]).reduce((x, y) => x + y, 0)
+                    - Object.values(totals[a]).reduce((x, y) => x + y, 0));
+        if (!keys.length) return '<div class="tag-ok">なし</div>';
+        return keys.map((k) => {
+            const vals = Object.entries(totals[k]).sort((a, b) => b[1] - a[1]);
+            const shown = vals.slice(0, 12);
+            const more = vals.length > shown.length
+                ? `<div class="note">…ほか ${vals.length - shown.length} 種類</div>` : '';
+            return `<div style="margin-bottom:1rem">
+                <div><code class="${classify(k.split('[')[0])}">${esc(k)}</code>
+                     <span class="note">${vals.length} 種類</span></div>
+                <table style="margin-top:.3rem">
+                    ${shown.map(([v, c]) => `<tr>
+                        <td><code>${esc(v.length > 160 ? v.slice(0, 160) + '…' : v) || '(空)'}</code></td>
+                        <td class="num">${c}</td></tr>`).join('')}
+                </table>${more}</div>`;
+        }).join('');
+    };
 
     $('result').innerHTML = `
     <div class="box">
@@ -293,6 +367,21 @@ function render(d) {
     <div class="box">
         <div style="font-size:.85rem; margin-bottom:.6rem;">落ちた属性(全記事の合計)</div>
         <table><tr><th>属性</th><th class="num">件数</th></tr>${rows(d.attrTotals, false)}</table>
+    </div>
+
+    <div class="box">
+        <div style="font-size:.85rem; margin-bottom:.6rem;">落ちた属性の「値」の内訳</div>
+        <div class="note" style="margin:0 0 .8rem">
+            件数だけでは判断できないので実際の値を出しています。
+            <code>font-weight:bold</code> のような書式なら対処が要りますが、
+            貼り付け由来の <code>color:rgb(0,0,0)</code> のようなゴミなら無視して構いません。
+        </div>
+        ${valueBreakdown(d.attrValueTotals || {})}
+    </div>
+
+    <div class="box">
+        <div style="font-size:.85rem; margin-bottom:.6rem;">落ちたタグの実物(先頭200文字)</div>
+        ${valueBreakdown(d.tagValueTotals || {})}
     </div>
 
     <div class="box">
