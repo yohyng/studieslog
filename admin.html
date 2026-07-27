@@ -133,7 +133,15 @@
                     <button onclick="bulkSelectUntranslated()" class="text-white/50 hover:text-white transition-colors">未翻訳のみ選択</button>
                     <button onclick="bulkSelectAll()" class="text-white/50 hover:text-white transition-colors">全て選択</button>
                     <button onclick="bulkSelectNone()" class="text-white/50 hover:text-white transition-colors">選択解除</button>
-                    <div class="ml-auto flex gap-2">
+                    <div class="ml-auto flex flex-wrap items-center gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <select id="bulk-category-select" class="bg-white/10 text-white text-xs rounded px-2 py-2 border border-white/20 focus:outline-none focus:border-white/40">
+                                <option value="">カテゴリ未設定</option>
+                                <option value="log">log</option>
+                                <option value="essay">essay</option>
+                            </select>
+                            <button onclick="runBulkSetCategory()" class="px-3 py-2 bg-white/20 hover:bg-white/30 rounded transition-colors">カテゴリ設定</button>
+                        </div>
                         <button onclick="runBulkTranslate()" class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded transition-colors">選択した記事を英訳する</button>
                         <button onclick="runBulkDelete()" class="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded transition-colors">選択した記事を削除する</button>
                     </div>
@@ -1558,6 +1566,28 @@
                     : `${successCount}件を英訳しました(失敗: ${failedTitles.join('、')})`,
                 failedTitles.length === 0 ? 2000 : 8000
             );
+            toggleBulkMode();
+            await loadArticleList();
+        }
+
+        async function runBulkSetCategory() {
+            if (bulkSelectedIds.size === 0) {
+                showToast('記事を選択してください');
+                return;
+            }
+            const category = document.getElementById('bulk-category-select').value;
+            const label = category || '(カテゴリ未設定)';
+            if (!confirm(`選択した${bulkSelectedIds.size}件のカテゴリを「${label}」に設定しますか？`)) return;
+
+            const { error } = await sb.from('articles')
+                .update({ category: category || null })
+                .in('id', [...bulkSelectedIds]);
+            if (error) {
+                console.error(error);
+                showToast('カテゴリ設定に失敗しました');
+                return;
+            }
+            showToast(`${bulkSelectedIds.size}件のカテゴリを設定しました`);
             toggleBulkMode();
             await loadArticleList();
         }
