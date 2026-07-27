@@ -58,6 +58,12 @@ const fixtures = [
     ['画像', '<p>前</p><img src="https://example.com/a.png"><p>後</p>'],
     ['画像(幅指定)', '<img src="https://example.com/a.png" style="width:50%; height:auto;">'],
     ['画像(選択中クラス混入)', '<img src="https://example.com/a.png" class="img-selected">'],
+    // 画像をブロック扱いにすると段落が分割され、前後に空段落が生まれて本文の間隔が変わる。
+    // 実データの監査で13本文が該当したため、退行しないよう固定する
+    ['画像(段落内)', '<p>本文A</p><p><img src="https://example.com/a.png"></p><p>本文B</p>'],
+    ['画像(div内)', '<div>本文A</div><div><img src="https://example.com/a.png"></div><div>本文B</div>'],
+    ['画像(テキストと同一行)', '<div>説明<img src="https://example.com/a.png">つづき</div>'],
+    ['画像(空行に挟まれる)', '<div>A</div><div><br></div><div><img src="https://example.com/a.png"></div><div><br></div><div>B</div>'],
     ['改行br', '<p>一行目<br>二行目</p>'],
     ['div段落(execCommand旧)', '<div>divで書かれた段落</div>'],
     ['span style(execCommand旧)', '<p><span style="font-weight:bold">太字っぽいspan</span></p>'],
@@ -92,6 +98,17 @@ function census(html) {
 
 function textOf(html) {
     return parse(html).textContent.replace(/\s+/g, ' ').trim();
+}
+
+/** 空行(brだけ、または中身のない段落)の数。消えても増えても本文の間隔が変わる */
+function emptyBlocks(html) {
+    return [...parse(html).children].filter((el) => {
+        if (el.textContent.trim()) return false;
+        // 画像・水平線などは(自身がそれである場合も含めて)「空行」ではない。
+        // querySelectorは自身を見ないので matches も併せて確認する
+        const SOLID = 'img, hr, iframe, video';
+        return !el.matches(SOLID) && !el.querySelector(SOLID);
+    }).length;
 }
 
 /** 入力にあって出力で減ったものを列挙 */
@@ -160,7 +177,11 @@ for (const [name, input] of fixtures) {
     const tIn = textOf(input), tOut = textOf(output);
     if (tIn !== tOut) problems.push(`本文テキスト変化:\n      in : "${tIn}"\n      out: "${tOut}"`);
 
-    // 2. 脚注のdata-noteが保たれているか
+    // 2. 空行の数(テキスト比較では検出できないが、見た目が変わる)
+    const eIn = emptyBlocks(input), eOut = emptyBlocks(output);
+    if (eIn !== eOut) problems.push(`空行の数が変化: ${eIn} → ${eOut}`);
+
+    // 3. 脚注のdata-noteが保たれているか
     const nIn = noteValues(input), nOut = noteValues(output);
     if (JSON.stringify(nIn) !== JSON.stringify(nOut)) {
         problems.push(`脚注data-note変化: ${JSON.stringify(nIn)} → ${JSON.stringify(nOut)}`);

@@ -133,9 +133,14 @@ function divergence(a, b, ctx = 100) {
     };
 }
 
-/** 空行(中身のないブロック)の数。空行が消えると本文の見た目が大きく変わる */
+/** 空行(brだけ、または中身のない段落)の数。増減すると本文の間隔が変わる。
+ *  画像・水平線などは中身があるので空行に数えない(querySelectorは自身を見ないためmatchesも見る) */
 const emptyBlocks = (html) =>
-    [...parse(html).children].filter((e) => !e.textContent.trim()).length;
+    [...parse(html).children].filter((e) => {
+        if (e.textContent.trim()) return false;
+        const SOLID = 'img, hr, iframe, video';
+        return !e.matches(SOLID) && !e.querySelector(SOLID);
+    }).length;
 const notesOf = (html) => [...parse(html).querySelectorAll('sup.footnote-ref')]
     .map((e) => e.getAttribute('data-note') || '');
 const cardsOf = (html) => [...parse(html).querySelectorAll('a.book-link-card')].map((e) => {
