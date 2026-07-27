@@ -1368,6 +1368,22 @@
                         <div id="ai-sources" class="mt-2 flex flex-col gap-2"></div>
                     </details>
                 </div>
+
+                <!-- Notion RAG -->
+                <div class="mt-10 pt-10 border-t border-white/10">
+                    <p class="text-xs text-white/40 mb-6">Notionのメモ・アーカイブを検索対象にした補助です。GitHub Actions でインデックス済みのページが対象になります。</p>
+                    <label class="text-xs text-white/50 block mb-2">質問・相談（Notionアーカイブから検索）</label>
+                    <textarea id="notion-ai-query" rows="4" placeholder="例: 3Dプリントについて何かメモしてた？" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30 mb-3"></textarea>
+                    <button id="notion-ai-ask-btn" onclick="askNotionAi()" class="px-4 py-2 text-xs bg-white/20 hover:bg-white/30 rounded transition-colors">Notionから検索</button>
+
+                    <div id="notion-ai-answer-wrap" class="hidden mt-8 pt-8 border-t border-white/10">
+                        <div id="notion-ai-answer" class="text-sm whitespace-pre-wrap mb-4"></div>
+                        <details class="text-xs text-white/40">
+                            <summary class="editor-section-summary">参考にしたNotionページ</summary>
+                            <div id="notion-ai-sources" class="mt-2 flex flex-col gap-2"></div>
+                        </details>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -3326,6 +3342,42 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = '聞く';
+            }
+        }
+
+        async function askNotionAi() {
+            const query = document.getElementById('notion-ai-query').value.trim();
+            if (!query) { showToast('質問・相談を入力してください'); return; }
+            const btn = document.getElementById('notion-ai-ask-btn');
+            const answerWrap = document.getElementById('notion-ai-answer-wrap');
+            const answerEl = document.getElementById('notion-ai-answer');
+            const sourcesEl = document.getElementById('notion-ai-sources');
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) { showToast('ログイン状態を確認できませんでした'); return; }
+            btn.disabled = true;
+            btn.textContent = '考え中...';
+            try {
+                const res = await fetch('/api/rag', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'ask-notion', query }),
+                });
+                const result = await res.json();
+                if (!res.ok) { console.error(result); showToast(`失敗しました: ${result.error || ''}`); return; }
+                answerWrap.classList.remove('hidden');
+                answerEl.textContent = result.answer || '(応答がありませんでした)';
+                sourcesEl.innerHTML = (result.sources || []).map(s => `
+                    <div class="bg-white/5 border border-white/10 rounded px-3 py-2">
+                        <div class="text-white/70">${escapeNotionHtml(s.title)}</div>
+                        <div class="text-white/40 mt-1">${escapeNotionHtml(s.excerpt)}…</div>
+                    </div>
+                `).join('') || '<div class="text-white/30">(参考ページはありませんでした)</div>';
+            } catch (e) {
+                console.error(e);
+                showToast('AIへの問い合わせに失敗しました');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Notionから検索';
             }
         }
 
