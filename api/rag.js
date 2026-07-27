@@ -52,6 +52,16 @@ module.exports = async function handler(req, res) {
             res.status(200).json(result);
             return;
         }
+        if (action === 'ask-notion') {
+            const query = typeof req.body?.query === 'string' ? req.body.query.trim() : '';
+            if (!query) {
+                res.status(400).json({ error: 'query is required' });
+                return;
+            }
+            const result = await answerWithNotionRag(query, serviceKey, geminiKey);
+            res.status(200).json(result);
+            return;
+        }
         if (action === 'listmodels') {
             const r = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(geminiKey)}`
@@ -200,6 +210,54 @@ ${query}`;
         sources: (matches || []).map((m) => ({
             articleId: m.article_id,
             title: titleById[m.article_id] || '(無題)',
+            similarity: m.similarity,
+            excerpt: m.content.slice(0, 120),
+        })),
+    };
+}
+
+async function answerWithNotionRag(query, serviceKey, geminiKey) {
+    const queryEmbedding = await embedText(query, geminiKey);
+    if (!queryEmbedding) throw new Error('failed to embed query');
+
+    const matches = await supabaseRest('/rpc/match_notion_chunks', serviceKey, {
+        method: 'POST',
+        body: JSON.stringify({ query_embedding: queryEmbedding, match_count: 6 }),
+    });
+
+    const contextBlocks = (matches || [])
+        .map((m, i) => `[参考${i + 1}: 「${m.page_title || '(無題)'}」より]\n${m.content}`)
+        .join('\n\n---\n\n');
+
+    const prompt = `あなたはこのサイトの書き手のアシスタントです。以下は、書き手自身のNotionメモ・アーカイブから検索で見つかった関連する抜粋です。
+これらを参考にしつつ、書き手の質問・相談に日本語で答えてください。
+
+# Notionメモからの参考抜粋
+${contextBlocks || '(関連する抜粋が見つかりませんでした)'}
+
+# 書き手からの質問・相談
+${query}`;
+
+    const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${CHAT_MODEL}:generateContent?key=${encodeURIComponent(geminiKey)}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        }
+    );
+    if (!geminiRes.ok) {
+        const detail = await geminiRes.text();
+        throw new Error(`gemini generate error (${geminiRes.status}): ${detail}`);
+    }
+    const geminiData = await geminiRes.json();
+    const answer = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    return {
+        answer,
+        sources: (matches || []).map((m) => ({
+            pageId: m.page_id,
+            title: m.page_title || '(無題)',
             similarity: m.similarity,
             excerpt: m.content.slice(0, 120),
         })),
