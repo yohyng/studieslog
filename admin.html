@@ -3977,6 +3977,38 @@
         twEditor.addEventListener('input', updateCharCount);
         twEditor.addEventListener('input', renderFootnoteListPanel);
 
+        // 引用(blockquote)内で空行のままEnterを押すと引用を抜けてpを挿入する
+        twEditor.addEventListener('keydown', function(e) {
+            if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey) return;
+            const sel = window.getSelection();
+            if (!sel || !sel.rangeCount) return;
+            let node = sel.getRangeAt(0).commonAncestorContainer;
+            if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+            let bq = null;
+            for (let cur = node; cur && cur !== twEditor; cur = cur.parentNode) {
+                if (cur.nodeName === 'BLOCKQUOTE') { bq = cur; break; }
+            }
+            if (!bq) return;
+            // blockquote直下の現在ブロックを探す
+            let blockInBq = node;
+            while (blockInBq.parentNode !== bq) {
+                blockInBq = blockInBq.parentNode;
+                if (!blockInBq || blockInBq === twEditor) return;
+            }
+            if (blockInBq.textContent.trim() !== '') return; // 空でなければブラウザ任せ
+            e.preventDefault();
+            bq.removeChild(blockInBq);
+            const p = document.createElement('p');
+            p.innerHTML = '<br>';
+            bq.parentNode.insertBefore(p, bq.nextSibling);
+            if (!bq.textContent.trim()) bq.parentNode.removeChild(bq);
+            const range = document.createRange();
+            range.setStart(p, 0);
+            range.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        });
+
         // 自動保存: タイトル・本文(日英)を編集するたびに、少し待ってからlocalStorageへ控えを取る
         [twEditor, 'edit-title-en', 'edit-content-en', 'edit-title'].forEach(target => {
             const el = typeof target === 'string' ? document.getElementById(target) : target;
