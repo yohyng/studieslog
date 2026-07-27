@@ -2,6 +2,17 @@ name: Notion RAG Indexer
 
 on:
   workflow_dispatch:   # GitHubのUIから手動実行
+    inputs:
+      resume:
+        description: '前回の続きから再開（保存済みページをスキップ）'
+        required: false
+        default: false
+        type: boolean
+      max_pages:
+        description: '処理ページ数の上限（0=全件、テスト時は100など）'
+        required: false
+        default: '0'
+        type: string
   # 定期実行したい場合はコメントアウトを外す(毎週月曜9時JST)
   # schedule:
   #   - cron: '0 0 * * 1'
@@ -28,4 +39,8 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python scripts/notion_rag.py
+        run: |
+          ARGS=""
+          [ "${{ inputs.resume }}" = "true" ] && ARGS="$ARGS --resume"
+          [ "${{ inputs.max_pages }}" != "0" ] && [ -n "${{ inputs.max_pages }}" ] && ARGS="$ARGS --max-pages ${{ inputs.max_pages }}"
+          python scripts/notion_rag.py $ARGS
