@@ -4,17 +4,15 @@ Notion Database → Supabase RAG indexer
 
 Usage:
     python notion_rag.py              # フルリインデックス（既存チャンクを全削除して作り直す）
-    python notion_rag.py --resume     # チェックポイントを使って中断箇所から再開
+    python notion_rag.py --resume     # Supabase の保存済みページをスキップして再開
     python notion_rag.py --dry-run    # Notionからは取得するが埋め込み・保存は行わない
 
 環境変数は scripts/.env に書くか、あらかじめシェルで export しておく。
 """
 
 import argparse
-import json
 import os
 import re
-import sys
 import time
 from pathlib import Path
 
@@ -33,7 +31,6 @@ SUPABASE_SERVICE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
 EMBEDDING_MODEL     = os.environ.get("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")
 
 CHUNK_SIZE       = 800   # 1チャンクあたりの最大文字数
-CHECKPOINT_FILE  = Path(__file__).parent / "notion_rag_checkpoint.json"
 NOTION_SLEEP     = 0.35  # Notion API は平均 3req/s 制限
 GEMINI_SLEEP     = 0.05  # Gemini embedding: ~20req/s
 
@@ -149,17 +146,24 @@ def chunk_text(text, max_len=CHUNK_SIZE):
 
 # ── Gemini 埋め込み ────────────────────────────────────────────────────────
 
-def embed_text(text):
+def embed_text(text, max_retries=3):
+    """テキストを埋め込みベクトルに変換。429 は指数バックオフでリトライ。"""
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models"
         f"/{EMBEDDING_MODEL}:embedContent"
     )
-    r = requests.post(
-        url, params={"key": GEMINI_API_KEY},
-        json={"content": {"parts": [{"text": text}]}}, timeout=30,
-    )
-    r.raise_for_status()
-    return r.json()["embedding"]["values"]
+    for attempt in range(max_retries + 1):
+        r = requests.post(
+            url, params={"key": GEMINI_API_KEY},
+            json={"content": {"parts": [{"text": text}]}}, timeout=30,
+        )
+        if r.status_code == 429 and attempt < max_retries:
+            wait = 60 * (2 ** attempt)  # 60s → 120s → 240s
+            print(f"\n  ⏳ Gemini レート制限 (429)。{wait}秒待機... (試行 {attempt+1}/{max_retries})", flush=True)
+            time.sleep(wait)
+            continue
+        r.raise_for_status()
+        return r.json()["embedding"]["values"]
 
 
 # ── Supabase REST ───────────────────────────────────────────────────────────
@@ -180,38 +184,38 @@ def supabase(path, method="GET", body=None, extra_headers=None):
     return r.json() if r.text else None
 
 
-# ── チェックポイント ──────────────────────────────────────────────────────
-
-def load_checkpoint():
-    if CHECKPOINT_FILE.exists():
-        return set(json.loads(CHECKPOINT_FILE.read_text())["done"])
-    return set()
-
-def save_checkpoint(done_ids):
-    CHECKPOINT_FILE.write_text(json.dumps({"done": list(done_ids)}, ensure_ascii=False))
+def get_indexed_page_ids():
+    """Supabase に保存済みのページIDセットを返す（chunk_index=0 の行から判定）。"""
+    result = supabase("/notion_chunks?select=page_id&chunk_index=eq.0")
+    return set(row["page_id"] for row in (result or []))
 
 
 # ── メイン ────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="Notion DB → Supabase RAG indexer")
-    parser.add_argument("--resume",  action="store_true", help="チェックポイントから再開")
-    parser.add_argument("--dry-run", action="store_true", help="埋め込み・保存をスキップ")
+    parser.add_argument("--resume",    action="store_true", help="Supabase の保存済みページをスキップして再開")
+    parser.add_argument("--dry-run",   action="store_true", help="埋め込み・保存をスキップ")
+    parser.add_argument("--max-pages", type=int, default=0, help="処理するページ数の上限（0=無制限、テスト用）")
     args = parser.parse_args()
 
     if args.resume:
-        done_ids = load_checkpoint()
-        print(f"再開モード: {len(done_ids)} ページはスキップします")
+        print("再開モード: Supabase から保存済みページを確認中...")
+        done_ids = get_indexed_page_ids()
+        print(f"  {len(done_ids)} ページはスキップします")
     else:
         done_ids = set()
         if not args.dry_run:
             print("notion_chunks を全削除して作り直します...")
             supabase("/notion_chunks?id=gte.0", "DELETE")
-        CHECKPOINT_FILE.unlink(missing_ok=True)
 
     print(f"Notion Database からページを取得中...")
     pages = fetch_all_pages(NOTION_DATABASE_ID)
     print(f"合計 {len(pages)} ページ")
+
+    if args.max_pages > 0:
+        pages = pages[:args.max_pages]
+        print(f"（--max-pages {args.max_pages} により先頭 {len(pages)} ページのみ処理）")
 
     total_chunks = 0
     for i, page in enumerate(pages):
@@ -238,6 +242,7 @@ def main():
 
         if not chunks:
             print("(空、スキップ)")
+            done_ids.add(page_id)
             continue
 
         print(f"{len(chunks)} チャンク", end="", flush=True)
@@ -249,6 +254,7 @@ def main():
 
         # 埋め込みと保存
         rows = []
+        rate_limited = False
         for j, chunk in enumerate(chunks):
             try:
                 vector = embed_text(chunk)
@@ -260,25 +266,31 @@ def main():
                     "embedding":   f"[{','.join(str(v) for v in vector)}]",
                 })
                 time.sleep(GEMINI_SLEEP)
+            except requests.exceptions.HTTPError as e:
+                if e.response is not None and e.response.status_code == 429:
+                    print(f"\n⚠ Gemini レート制限を超えました。--resume で再開してください。")
+                    rate_limited = True
+                    break
+                print(f"\n  ⚠ チャンク {j} の埋め込み失敗: {e}")
             except Exception as e:
                 print(f"\n  ⚠ チャンク {j} の埋め込み失敗: {e}")
+
+        if rate_limited:
+            break
 
         if rows:
             try:
                 supabase("/notion_chunks", "POST", body=rows,
                          extra_headers={"Prefer": "return=minimal"})
                 total_chunks += len(rows)
+                done_ids.add(page_id)
                 print(f" → 保存完了")
             except Exception as e:
                 print(f"\n  ⚠ 保存失敗: {e}")
-                continue
-
-        done_ids.add(page_id)
-        save_checkpoint(done_ids)
+        else:
+            print(" (埋め込み失敗、スキップ)")
 
     print(f"\n✓ 完了 — {len(done_ids)} ページ / {total_chunks} チャンク保存")
-    if not args.dry_run:
-        CHECKPOINT_FILE.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
