@@ -27,6 +27,11 @@ alter table public.articles add column if not exists scheduled_at timestamptz;
 -- ジャンルとしてのカテゴリ(1記事につき1つ、任意)。タグ(複数付けられる横串)とは別の分類軸
 alter table public.articles add column if not exists category text not null default '';
 
+-- カテゴリをエッセイ/ノート/試論の3種類からlog/essayの2種類に整理した際のデータ移行。
+-- 既存記事のうち「エッセイ」はessayへ、「ノート」「試論」はlogへ統合する(何度実行しても安全)
+update public.articles set category = 'essay' where category = 'エッセイ';
+update public.articles set category = 'log' where category in ('ノート', '試論');
+
 -- パターンBのArticle一覧の上部に固定表示するためのピン留め(目安3件程度、件数上限は特に強制しない)
 alter table public.articles add column if not exists pinned boolean not null default false;
 
@@ -45,16 +50,20 @@ create policy "articles_public_read" on public.articles
   );
 
 -- ログイン済み(管理者)は下書きも含めて全部読める
+drop policy if exists "articles_authenticated_read_all" on public.articles;
 create policy "articles_authenticated_read_all" on public.articles
   for select to authenticated using (true);
 
 -- 作成・更新・削除はログイン済みユーザーのみ
+drop policy if exists "articles_auth_insert" on public.articles;
 create policy "articles_auth_insert" on public.articles
   for insert to authenticated with check (true);
 
+drop policy if exists "articles_auth_update" on public.articles;
 create policy "articles_auth_update" on public.articles
   for update to authenticated using (true) with check (true);
 
+drop policy if exists "articles_auth_delete" on public.articles;
 create policy "articles_auth_delete" on public.articles
   for delete to authenticated using (true);
 
@@ -63,12 +72,15 @@ insert into storage.buckets (id, name, public)
 values ('article-images', 'article-images', true)
 on conflict (id) do nothing;
 
+drop policy if exists "article_images_public_read" on storage.objects;
 create policy "article_images_public_read" on storage.objects
   for select using (bucket_id = 'article-images');
 
+drop policy if exists "article_images_auth_insert" on storage.objects;
 create policy "article_images_auth_insert" on storage.objects
   for insert to authenticated with check (bucket_id = 'article-images');
 
+drop policy if exists "article_images_auth_delete" on storage.objects;
 create policy "article_images_auth_delete" on storage.objects
   for delete to authenticated using (bucket_id = 'article-images');
 
@@ -135,6 +147,12 @@ alter table public.site_settings add column if not exists page_title text not nu
 alter table public.site_settings add column if not exists site_title text not null default '断片';
 alter table public.site_settings add column if not exists site_title_font text not null default '';
 alter table public.site_settings add column if not exists site_subtitle text not null default '記憶の集積。言葉は静かに積もっていく。';
+-- サブタイトルの英語行(タイトル下、日本語行の上に表示。空文字ならその行ごと非表示)
+alter table public.site_settings add column if not exists site_subtitle_en text not null default '';
+-- サブタイトルのフォント(日英共通。空文字なら本文フォントに従う)
+alter table public.site_settings add column if not exists site_subtitle_font text not null default '';
+-- サブタイトルの背景(帯)の色。空文字なら帯なし
+alter table public.site_settings add column if not exists site_subtitle_bg_color text not null default '#ffffff';
 alter table public.site_settings add column if not exists preview_lines int not null default 3;
 alter table public.site_settings add column if not exists content_width int not null default 672;
 alter table public.site_settings add column if not exists text_align text not null default 'left';
@@ -186,10 +204,12 @@ on conflict (id) do nothing;
 alter table public.site_settings enable row level security;
 
 -- 閲覧は誰でも可能(公開ページが表示に使う)
+drop policy if exists "site_settings_public_read" on public.site_settings;
 create policy "site_settings_public_read" on public.site_settings
   for select using (true);
 
 -- 更新はログイン済みユーザーのみ
+drop policy if exists "site_settings_auth_update" on public.site_settings;
 create policy "site_settings_auth_update" on public.site_settings
   for update to authenticated using (id = 1) with check (id = 1);
 
@@ -202,6 +222,7 @@ alter table public.site_settings add column if not exists title_font text not nu
 
 -- アバウトページに表示するSNSリンク(空文字なら非表示)
 alter table public.site_settings add column if not exists sns_x_url text not null default '';
+alter table public.site_settings add column if not exists sns_facebook_url text not null default '';
 alter table public.site_settings add column if not exists sns_instagram_url text not null default '';
 alter table public.site_settings add column if not exists sns_website_url text not null default '';
 
@@ -219,6 +240,14 @@ alter table public.site_settings add column if not exists article_tag_font text 
 alter table public.site_settings add column if not exists article_subscribe_bg_color text not null default '';
 alter table public.site_settings add column if not exists article_subscribe_text_color text not null default '';
 
+-- 本文・タイトルの不透明度。記事本文(content-body)とカード表示(card-excerpt/card-title)の
+-- 両方に共通で適用され、見た目の印象を揃える
+alter table public.site_settings add column if not exists body_text_opacity numeric not null default 0.75;
+alter table public.site_settings add column if not exists title_text_opacity numeric not null default 1;
+
+-- タイトル・台形アイコンのセクションと、その下の各ページのコンテンツとの間隔(px)
+alter table public.site_settings add column if not exists header_spacing int not null default 288;
+
 -- ハッシュタグ
 create table if not exists public.tags (
   id bigint generated always as identity primary key,
@@ -230,15 +259,19 @@ create table if not exists public.tags (
 
 alter table public.tags enable row level security;
 
+drop policy if exists "tags_public_read" on public.tags;
 create policy "tags_public_read" on public.tags
   for select using (true);
 
+drop policy if exists "tags_auth_insert" on public.tags;
 create policy "tags_auth_insert" on public.tags
   for insert to authenticated with check (true);
 
+drop policy if exists "tags_auth_update" on public.tags;
 create policy "tags_auth_update" on public.tags
   for update to authenticated using (true) with check (true);
 
+drop policy if exists "tags_auth_delete" on public.tags;
 create policy "tags_auth_delete" on public.tags
   for delete to authenticated using (true);
 
@@ -251,12 +284,15 @@ create table if not exists public.article_tags (
 
 alter table public.article_tags enable row level security;
 
+drop policy if exists "article_tags_public_read" on public.article_tags;
 create policy "article_tags_public_read" on public.article_tags
   for select using (true);
 
+drop policy if exists "article_tags_auth_insert" on public.article_tags;
 create policy "article_tags_auth_insert" on public.article_tags
   for insert to authenticated with check (true);
 
+drop policy if exists "article_tags_auth_delete" on public.article_tags;
 create policy "article_tags_auth_delete" on public.article_tags
   for delete to authenticated using (true);
 
@@ -274,15 +310,19 @@ alter table public.subscribers add column if not exists is_admin_test boolean no
 
 alter table public.subscribers enable row level security;
 
+drop policy if exists "subscribers_public_insert" on public.subscribers;
 create policy "subscribers_public_insert" on public.subscribers
   for insert with check (true);
 
+drop policy if exists "subscribers_auth_select" on public.subscribers;
 create policy "subscribers_auth_select" on public.subscribers
   for select to authenticated using (true);
 
+drop policy if exists "subscribers_auth_delete" on public.subscribers;
 create policy "subscribers_auth_delete" on public.subscribers
   for delete to authenticated using (true);
 
+drop policy if exists "subscribers_auth_update" on public.subscribers;
 create policy "subscribers_auth_update" on public.subscribers
   for update to authenticated using (true) with check (true);
 
@@ -298,6 +338,7 @@ on conflict (id) do nothing;
 
 alter table public.newsletter_state enable row level security;
 
+drop policy if exists "newsletter_state_auth_all" on public.newsletter_state;
 create policy "newsletter_state_auth_all" on public.newsletter_state
   for all to authenticated using (true) with check (true);
 
@@ -312,11 +353,46 @@ create table if not exists public.inquiries (
 
 alter table public.inquiries enable row level security;
 
+drop policy if exists "inquiries_public_insert" on public.inquiries;
 create policy "inquiries_public_insert" on public.inquiries
   for insert with check (true);
 
+drop policy if exists "inquiries_auth_select" on public.inquiries;
 create policy "inquiries_auth_select" on public.inquiries
   for select to authenticated using (true);
 
+drop policy if exists "inquiries_auth_delete" on public.inquiries;
 create policy "inquiries_auth_delete" on public.inquiries
   for delete to authenticated using (true);
+
+-- 執筆補助RAGの試作: 自分の記事をチャンクに分けて埋め込みベクトルを保存し、
+-- 執筆中に近い内容を検索してAIに参考として渡すためのテーブル。管理画面専用(公開読み取りは不要)
+create extension if not exists vector;
+
+create table if not exists public.article_chunks (
+  id bigint generated always as identity primary key,
+  article_id bigint not null references public.articles(id) on delete cascade,
+  chunk_index int not null,
+  content text not null,
+  embedding vector(3072),
+  created_at timestamptz not null default now(),
+  unique (article_id, chunk_index)
+);
+
+alter table public.article_chunks enable row level security;
+
+drop policy if exists "article_chunks_auth_all" on public.article_chunks;
+create policy "article_chunks_auth_all" on public.article_chunks
+  for all to authenticated using (true) with check (true);
+
+-- コサイン距離が近い順にチャンクを返す類似検索(RPCとして呼び出す)
+create or replace function match_article_chunks(query_embedding vector(3072), match_count int default 6)
+returns table (article_id bigint, chunk_index int, content text, similarity float)
+language sql stable
+as $$
+  select article_id, chunk_index, content, 1 - (embedding <=> query_embedding) as similarity
+  from public.article_chunks
+  where embedding is not null
+  order by embedding <=> query_embedding
+  limit match_count;
+$$;

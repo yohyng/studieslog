@@ -2,7 +2,10 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- minimum-scale=1: 読み込み時の等倍より小さく縮小できると、画面幅の外側(コンテンツも背景も無い領域)
+         まで見えてしまい、右側に余白が出て中身が左に寄って見える。縮小の下限を等倍に固定してこれを防ぐ。
+         拡大側は制限していないので、読みづらいときのピンチイン(拡大)はこれまで通りできる -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
     <title>fragments</title>
     <!-- 個別記事(/article/:id)はmiddleware.jsがクローラー向けにOGPを差し替えるため、ここはそれ以外のページ向けの既定値 -->
     <meta property="og:type" content="website">
@@ -13,13 +16,22 @@
     <!-- 自前のCSSをTailwind(CDN版、読み込み・生成が非同期で少し遅れる)より先に置き、
          最低限の見た目(背景色・中央寄せ・余白)がすぐ効くようにしておく -->
     <style>
+        /* 各ビュー(card-view/hub-view/search-viewなど)の表示切り替えはTailwindの.hiddenクラスの
+           着脱に頼っているが、Tailwind CDNが未読込/読込遅延の環境だとこのクラス自体が何もしなくなり、
+           本来隠れているはずの要素(検索・購読フォームなど)が最初から表示されてしまう。
+           header/box-sizingで既に対策している箇所と同じ理由で、自前でも指定しておく */
+        .hidden { display: none; }
         :root {
             --bg-color: #828282;
             --text-color: rgba(255, 255, 255, 0.9);
             --text-color-solid: #ffffff;
+            /* 本文・タイトルの不透明度。記事本文(content-body)とカード表示(card-excerpt/card-title)の
+               両方に共通で適用し、見た目の印象を揃える */
+            --body-text-opacity: 0.75;
+            --title-text-opacity: 1;
             /* 引用文の縦線と同じ太さ・色味(1px、text-color-solidの70%)を、記事カードの枠線や
                各種区切り線など、サイト全体の「線」に共通で使う */
-            --divider-color: var(--text-color-solid);
+            --divider-color: rgba(255, 255, 255, 0.75);
             --noise-tile: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AABf2ElEQVR42lW9aXib53mmfRIAQawkSJAEd3Dfd3GXRO27ZG22XDu262Sa3U33ZtLpTGY6x0zbOTrHTJp2Jq3juImS2LEt27Eka6d2riLFfSdBkATADSRBgFgIAvx+6Huf74t/yhsJvO/z3Pd1n9d1R9y8eTP/xo0bxMbGotPpGB0dJTU1lZ2dHZ4+fcpbb73FxsYGw8PDGAwGTCYTdrsdgJGREQ4fPszGxgaRkZE8fvyYd955h+7ubpxOJxcuXOD27dv09vaSm5vLgwcP+JM/+RN6enrY3NykubmZy5cvc+rUKT744AMqKytZXV3l9ddfR6vVcvPmTQoLC5mamiIlJYWBgQEsFguhUIhTp06xb98+7t27h81m4+LFi7S1tREMBomMjMTtdrO1tcX4+DgHDx5keXmZ0tJSurq6ePbsGXv37mXv3r3cunWLtbU1vF4vkZGRJCcnMzs7y1e+8hWePHmCXq+nrKwMuVzO06dPMRqN6PV6rFYrnZ2dXLx4EZVKxfr6Ov39/SQnJ7OxsYFGo6G+vh6VSsXs7Czb29tERkaysLBAOBxmZWWFhIQE5H/0R39k3NnZwWazsba2ht/vJzU1FZVKhd1uJykpifHxcY4cOcL6+joVFRWMjo4il8spLCwkISEBgPb2dmpra7FareK/k5eXx/DwMHK5nJKSErKyslhaWiInJweDwcDGxgb19fWsr6+j0WhQq9Wo1Wr8fj+3b99mfHyc+Ph4hoaG6OrqYvfu3ezs7LBnzx4sFgv37t1jfn4evV6PxWLBZrMhl8t59uwZ6enpdHR0UFlZSVxcHGlpacTHx3P9+nVefvllzGYz6+vrjIyMUF5ezpkzZ3jw4AEVFRVUV1dz7949cnNz6e3txWKxMDY2RlJSEh6Ph8TERAYHBykuLhZ/9ujRI/bu3cvCwgKZmZmo1Wqio6MZGhri2rVrLCwskJuby8rKCqWlpchkMubm5pA3Nzcbnzx5Qk9PD3/6p3/Kxx9/TGVlJdHR0cTExHD37l1OnDjBr371KxYXF3E6nRQVFSGTyYiNjaWvr49AIIDL5UKpVJKSkoLb7SYrK4u2tja2t7dJSUlhdXWVxMREwuEwJSUlDAwM4PV66e3tJTo6muzsbKxWK/Hx8SQmJiKTyTAYDBQVFaHRaCgrKyM1NRWz2czY2BjhcJj8/Hx0Oh1dXV2cP3+eQCBARkYGdrudffv24fF40Gg0tLW1ATA9PU1SUhKRkZE4HA4MBgPr6+tYLBZcLhcVFRW/84FmZWXR3NyM3+8nGAxiMBhYXl4mOjqayMhIqqurWVxcZHh4mIaGBjQaDTabjc3NTa5du0ZVVRWTk5NYrVZ2dnbQarVkZ2czNTVFdHQ0FosFOWA8dOgQubm5DAwMcObMGe7fv8/GxgYFBQWcPHmS3t5eLly4gN1uJy0tjYWFBdra2khMTCQnJ4fV1VXi4+Opq6sT33YwGMTpdHL69GncbjdWq5X19XW+/e1v895777G5uUlqairZ2dmEQiH6+/vZ3NykqKiIhYUFnj17xunTp/F6vSwuLrK5uYnf76e/v5/5+XmKi4tpbW2lsLCQhYUFAEKhENXV1fT19fHs2TP0ej12ux2TyURaWhomk4mKigoeP37M17/+dZRKJTMzM7S1tZGXl0cgEODdd98V/+zc3BwajQaTyYTD4UCr1bK2tobdbsdgMBAIBJicnKSrq4uKigo+//xziouLOXjwIGq1mo6ODpxOJ1//+tfFf0ej0eByuVhdXcXv9yNfXV01bmxsEBMTQygUEmdoTEwMUVFRXL9+HaVSyRdffMGxY8dYXl7GaDRy/PhxlEolk5OTmM1mnjx5QkxMDEajkZmZGV555RXsdrs4LxsaGsjPz+e9995jfn6enJwcUlJSmJiYYHV1leLiYj799FOio6OZmpqiubmZnp4exsfH0Wq1jI2NkZCQwObmJomJiSwuLnL48GHsdjulpaVoNJoXT5RcTnx8POnp6fj9fnQ6HaWlpdTV1fHb3/6WyMhIfD4fHo+HmZkZsrKyuH79Ounp6SwsLFBbW8vCwgJbW1tUVlZSXFzM9773PcrLy9HpdERFRSGTyRgeHmZ1dZVdu3bR3NzMwsICoVAIg8HA6OgoJpMJg8FAREQE4XCYoaEhCgoK0Gq1PHnyRDw48p/85CfG/Px8lpeXKSwsZHx8HI/HI564qKgoDAYDCoUCo9FIQkICw8PDtLS0YDabSUtLY3x8nPX1dZKSkigrK+Px48ekpKSIJ6SgoIA7d+6g1Wqpq6tDq9UyOzvLkydPCAQCzM7O8tJLL6HVallZWSEUCuF0OomPj8fpdPLKK68wNzeH2+0mNzeXXbt2kZWVRUdHB0ajkUAggEqlQq/X09/fz8zMDImJiUxOTnLy5Emmpqa4efMmCQkJLC8vo9VqSUxM5MaNG7S1tfGVr3yFcDhMSkoKMTExhMNhiouLaW9vZ2NjA6PRiNPpJCcnB7Vaze3bt4mLi6OsrIz4+HiePn2KXC7HarXyzjvvsLS0hF6vJzIyErPZjEwmY2dnh7i4OGZnZ9m/fz8dHR1otVrkhw8fNsbGxuJ2uxkaGhJvwsWLF4mIiCArKwu32y1++fj4eACio6NJTk6mp6eHnJwcXC4XDocDjUZDdnY2u3btYnJykvj4ePr6+lhaWhJncHd3NydPnmTPnj14PB7efPNNent7KSgowOfzsXv3bmZnZyktLWV7exuHw0FeXh4qlQqv10tERASBQICuri4KCgrQaDT09/eLD/3NN99kamqKxMREjEYjDoeDwsJCRkdHiYqKYmpqCoD9+/eTmJhIQkIC/f39rK+v4/f7MZvNbG5uolarSUhIIBwOi+O2u7ub6upqjh07xvz8PJGRkSwvL3Pu3Dk+/vhjhoaGWFhYoKmpCZvNxuzsLM+fP6ewsBCXy4Xdbufx48dERESQm5uLfN++fcaFhQV8Ph8DAwNkZ2czPz+P2+0GoLu7m/n5efbs2YPD4aCjo4N3332X6upqFAoF2dnZdHR0IJfL0el0pKam8vTpU9bX13E4HCQnJzM+Ps6xY8dQqVQEAgGKi4vRarW8++67HD58GJvNxuLiItnZ2bjdbpKSkrDb7eJpqa+vx263ExsbK34hmUzG2bNnee+991AoFAwODpKRkcGuXbv47LPP0Ol01NXV0d/fz/j4OBaLhfn5eY4dO4bL5aKmpoatrS1GRkZYXl6mtrYWlUpFTEwMt27dora2lsHBQW7cuEFCQgLJyckUFxczPj7O8PAwhw8fZmZmhsXFRZaWlnj+/Dnf+c53cLlcKBQKJicnaWxsZGhoiLq6OgKBADKZjKWlJfbt20dzczMzMzPIU1NTjXNzc5jNZuLi4oiIiCA+Pp7u7m5KS0tRKpVotVr8fj+JiYmEQiESExOpr69nYGCAyclJ5ubmyM/PZ35+no2NDfHkVldXs7m5iUqlYnNzk1AoRHZ2Nk6nE4vFwv79+5mfn8dutzM+Pk5sbCzhcFhc4ltbW2xsbOBwOHA6naytrREMBikuLkapVNLR0cHRo0dJTEykoqKClZUVnE6n+ID/6Z/+ieTkZGJjY2lqasJoNDIwMIDT6WR1dZWIiAi0Wi0ymQyLxYJMJiMrKwu73U5kZCRHjx4lIyODjY0NTCYTN2/eJD4+nlOnTiGTybh8+TKNjY2cOHGC6elpAoEANTU1WCwWsrKymJiYoLOzk+zsbNbW1jCbzRw7dozFxUW6u7sxmUzIL126ZKytreXOnTuiLKyvrycmJobp6WnW1tbY2trC4XDg9XrxeDwcPXoUi8WCw+EgKiqKM2fOEAwGSUhIIC0tjezsbO7cucPS0hLPnj2jtrYWl8tFIBDA4XCQm5uLz+djdnaW6upqnj9/TkREBN/85jd5/PgxbrdbfOFZWVmo1WrR7IyPj5Oenk5JSQlJSUlMTk4SGxvLyMgIKpWKiYkJMjIyCIVCpKenk5ubS2NjI+FwmJmZGUKhENHR0Xi9XmJjY9Hr9cjlcmJiYlAqlSwsLLC9vS0Kjra2NlFmJyUlUVxcLI7kyspK0S/pdDrW19e5cuUK2dnZNDQ00NvbS0JCAoWFhWxubmKxWEhOTmZ9fZ2EhIQX/dSZM2eMbrebsrIyysvLqaurY2FhgYSEBMbGxqitrcVkMuHz+djY2CA+Pp4HDx6QmpqK0Whkfn6ecDhMWloaer0ehULB8+fP0el0REZG0tjYyN69e4mOjqaoqIjMzEw++OADTCYT4XCY9PR06urqmJ2dxWq1kpSUxPr6Ojs7O3i9XtLT02ltbaWsrAyPx0N1dTU5OTl8+eWXTE9PYzabaW9vB0Cj0ZCWlibO+vT0dEwmE3/7t39LQ0MDer2esbExVlZWaGhoYGlpicjISJKSkpidnUWtVmMwGMjJySEmJgaNRkMwGEShUPDWW2+Jt/DRo0ekpqbS2trK8vIyPT09hMNhoqOjWVpaIhQKsbq6yszMDF6vl4WFBaanp6mtreX27dtkZWWhVCrp7+9H3tjYaFxcXGRoaAiPx8PS0hIpKSlotVqmpqYIBoPo9Xry8/P54IMPuHTpEltbW1RVVTEwMEAwGCQmJoaEhAQmJyd5//33OXjwIE+ePCEiIgKLxcKnn37K1NQUY2Nj2O12cnNzCQQCTExMEA6HUalUpKamisYpLS2N4uJiysvL6ezsRKvVkpubS2pqKnq9nr/+67+mtLSUy5cvc+LECaKiotDr9YRCIUpLS/F6vVRUVODz+XA6nZSUlGC32+ns7KS5uZm8vDwWFhbIzs7GYDBw48YN8cVbrVa0Wi0PHz5kbm4OnU4nPos9e/bw6NEjcnNzaW1tpbq6moKCAsrKyrBYLACcOHECn89Hbm4u8/PzXLp0ieTkZBITExkYGCA5OZlgMIjX633x9tXX1xuNRiP79+/no48+wu/3MzIywsbGBnNzc9TX17OxscHs7CyJiYlsb28TFRXF2toai4uLVFVV8fjxYyorK/mbv/kbjh8/zvDwMCdPnqSvr4/vfve7PHv2jD//8z8nHA6jUCiIiYnhxIkTGI1GfvOb39Dc3Mzc3BxPnjyhuLiYO3fuoFAoWFhYYHl5mYKCAm7dukUoFKK3t5eSkhJOnDhBSkoKPT09REdHi852bW2NyMhI1tfXmZubw2g0Eh8fz8jICGlpafh8PtLT04mLi6OjowOA2dlZgsEgycnJ5OXlERsbi8fjYXp6mqysLFZXV9HpdIyNjWE2m1EqleTn5zM+Pk5iYiIdHR0kJiZy6NAhRkdHGRwcpK6ujpSUFMLhMLOzs0RERBAREcHa2hrNzc0MDQ29aMRqamqMUkMTFRVFWloaZWVlZGVlMTY2RlVVFQsLC7hcLjQaDWazmZKSEmZnZ0lLSxN3RjgcxuPxEBcXR0NDAx999BElJSVsb28zMjKC0+kkIiKC9PR0WlpaRDN14sQJdnZ28Hg85Ofn8/nnnxMZGYnL5UImk1FVVcVvfvMboStJJV9nZyc1NTWYzWZ6enqYnp7mG9/4Bt3d3VgsFoqLi5HJZMzMzAgZJCIiApPJRH9/P4uLixQUFLCzs0NTUxObm5tERETQ29tLXV0d9+7do66ujtHRUTIyMtDr9dy6dQuVSsW9e/fYt28fVquVR48eodPpqK+vJxQKodPpmJ+fZ21tjaKiIm7duiXuH6fTyYkTJ0RXHR8fj/w73/mOUS6XMzIyQjAYZH5+nrKyMnp6etjY2CAiIgK1Wk1hYSGpqal0dHQwMDAAwMDAAGazGbVazcrKilD9du3ahd1up6qqip2dHVQqFcvLyyQlJfH8+XMyMzPxeDxYrVZRGw8NDREVFYVOp2Nubo68vDxkMhlWq5XZ2VkOHTpEVlYWeXl5OBwOce52dnbyne98h8XFRba3t2lrayMyMhKv1ysqO6VSya1btzhy5AgPHz7kzJkz4jKNjo7miy++4E/+5E+Ynp6murqaW7dukZuby/DwsFCGpYs5FAoJven06dPYbDaam5v58Y9/zPLyMlFRUURERPDOO++gVqu5cuUKwWCQjIwMLly4gMfjYXV1lUePHrGxsYF8YGDAODMzQ1FREcnJyYyOjqJSqdi3bx9yuRy/309KSgpbW1ssLCwQCARQq9XExsYSERFBY2MjAImJibz00ksUFBQAoFQqcTgcHDt2jPb2dlQqFYuLi+Tn5xMdHU1qaiput5vu7m7Kysqorq7G4/GgVCqpra2lrKyMpaUlJiYmKCwsxOfzcfv2bcrLyxkcHKSmpobt7W1kMplQbBcWFqisrKS0tJRgMCgeEIVCwRtvvCEuz56eHm7evEl0dDRarRabzcbz58+ZmZmhqqqKubk5MjMzcTqd4k29ceMGRqMRlUrFlStXSE9Pp7+/H6fTidfrZX5+noaGBjIyMnjy5AkzMzMolUqUSiU7Ozs4nU78fj82m424uDjGx8c5c+YM8rfffttYX1/P8PCwuCQWFhZYWFggJSUFs9nM0tISVquVQCBAfn4+ubm5WK1W0YFGRkai0Wj47ne/i9lspq+vj2vXrlFXV0dvby8pKSkMDw/zR3/0R0xOTrKyskJhYSERERFUVFQQHx/PP//zP/OVr3yFiYkJlEolcrmcsbExKioqyMjIYHNzk8rKSq5duwbA/Pw86enp/PCHP+TKlSsA6HQ6MjIy2Nraoqenh2PHjjE3N0dcXBz/8A//gMvloqSkhEePHnH06FEUCgUul4u0tDRiYmIwm80MDg4SGxvL66+/jkKhEF2/Wq3GaDSyvLzM8ePHGRgYoK2tjYKCAvLz8/n2t7/N5uYmt27dwmw2Y7PZxD1qtVrZvXs329vbbG1toVAoeP3113n+/DnypqYmY3JyMq2trZw+fZq5uTnxVJWWlnLz5k3R+PT391NWVsbDhw/FxSKTyUhPT6e7u5s//uM/ZmlpCafTSVJSErGxsdy6dYv+/n4yMjKIiIhga2sLuVwuqiOdTseXX37JW2+9xdDQEHK5HK1Wi8fjISYmRnwR09PTpKSkcOzYMTIyMggGg8TFxfHhhx8SGxvLwsICBoOB6upqVlZWaGxsFL1NKBSitrZWVFjBYJCqqioUCgXt7e1kZmaytLSE2Wxmbm6O+Ph4Jicn+e///b9js9nIyMhAqVSSlZVFMBjk4cOHVFVVoVariYmJweFwsLy8zK1bt8Q84oc//CEtLS3I5XLkcjk+n49AIIDZbMbr9WK325mfn0d+6NAhY1paGlFRUYTDYR4/fszBgwcJh8NotVr+9V//VWgj6enpjI+Pk5mZKaZEEREReDwe5HI5q6urzM3NMTQ0xFtvvcVvfvMb9u7dy9bWFmlpaYyNjaHVapmfn8dms3H06FHKy8sxGo2sra0xMTFBbGwsarWaqakp8vPzWVxcJDExkZ2dHVwuFz6fD5/Ph1qt5tmzZ+zs7KBQKOjq6mL//v2MjIywurpKT08PtbW1eDwejhw5wtzcHJ2dnWIoZLFYWF9fJzY2FkA0SAsLC4yNjeFyuTh+/Dh1dXWUlpZy/fp1oqKicLvdaLVaIiMjhdLp8/mIi4ujpqaGhoYG/H4/Dx48IDk5Ga/Xy+HDh5mamsJkMtHa2opKpUKpVNLU1IS8oKDAKJfLuXr1Kh6PR5zNcXFx+P1+nE4npaWl9Pf3c+7cOTY3N9ne3mZpaQmAyMhIVlZWRMWTlZVFXFwcAIFAgL/7u7/j4cOHRERE0NDQQEpKCtPT0ywvL+NwOMQHoVQqqa+vJz4+nv7+fgoLC4mMjCQrK4upqSk2NjaoqKgQgtiRI0dEfd/b20t+fj4rKyvExcVx7949/sN/+A8kJSXx5MkTrly5gtFopKSkhJSUFDQaDV6vlydPnlBbW4vBYGB8fBylUklMTAxarZbl5WWSk5O5c+cORUVFWK1WzGYzs7OzZGZmsr6+TkpKClarVfQODoeDGzduiIcsLy+PnZ0dNjc3+cY3vsHo6ChZWVlC5R0aGkL+rW99yxgdHc1nn33G/v37iYyMZHt7m9LSUnp6ejhw4ADDw8PExMQQERHB0NAQCoVCdHkFBQXEx8fz6NEjHA4Hb775Jg8ePGB2dpaysjL+7d/+Db1eT2lpKXK5nIGBAZqbm4mIiCAuLo6EhARkMhkpKSmsra3R09NDRkYGVqtVaEAFBQVERkaSkpKCUqlkdXWVrq4u+vv7SU1NZdeuXVRXV9PS0kJZWRlVVVUkJSVx/fp1VCoVKysroiQdHx/HbrdjsVhobGxEqVQSGRnJ5uYmWVlZxMTEcP/+fXJzcxkaGkKn04lKrrS0lKamJux2O16vl83NTQwGA5WVlczOzlJQUIBKpaKmpoampiZycnKYn59neHiYL774gtjYWHp6ehgZGRFvvfzYsWPG/Px81Go1cXFxPHv2jJKSEvr6+lhfX6e1tZW3336bL7/8EofDQXZ2tpCiY2JiGBoaIjMzk+joaGZmZsjLy2N+fp66ujpu3Lghfvj5+XkyMjK4e/cuOp2O6elpCgsLxdFy5swZhoaGqK2tpaWlhfT0dAwGA1FRUczOzmK32/nf//t/iw/UaDRSWVlJY2MjFouFnZ0d0tLS2NnZwefz8fTpU/x+P3FxcVy8eBGNRkNzczNdXV1UVlaSl5dHdHQ0jx8/pru7W7wBR48eJRgMMjY2Rn19PTKZDLVajcvl4smTJ6L/kWbi7e3tlJWVsbOzQygUoqysjOHhYfEFxcTEUFRUxJ49e5DJZMhkMn7wgx8wOTlJZmYm8rS0NOPly5cxGAzodDrKy8vx+XwUFhZSWFhIdXU1w8PDZGZmotfrWVhYYM+ePdy5c4e4uDhSUlL48MMPxf/A7XYTCAR4/Pgxu3fvJiEhgdLSUnQ6HZ999hm///u/T1RUFGazme3tbaanpykqKqKtrY3vfOc7fPnll3i9XrRaLfX19QwODtLS0sJ3v/tdIWpVV1czMTHB+Pg4BoOB4eFhtFotq6urxMbG4nQ6aWlp4cCBA8zMzKBWq1lcXCQ+Ph6Px8Pdu3eJi4sjJiYGhUKByWTi93//98Wxur6+zuzsLB6PB61WS3R0NAsLC2xuboqm0eFw4HA4eOONNxgbG8NisaDVasnKyhJlZ2dnJwMDAygUCpxOJ48fP8br9bKyssKXX375AiI4deqUsampiZiYGNLS0khNTUUulzMxMcGePXuIjIxEoVAwMDBAZmamOM9bW1vJyMggPz+f+Ph4iouLWV5eFpVOVVUVbrebwsJC4uLiWFpaYn19nfj4eEwmE263G5/PJ46wn/zkJ1RUVBAZGYnJZGJlZYVAIEBqaipOp5OUlBRcLheNjY243W52dnZITk4WP19UVBQWi4XBwUExH3a73WRnZ3Pt2jVcLhcmk4mFhQVKS0uZnJxkaWmJ6Ohojhw5wsTEhJjkSSrsxMQESUlJHDlyhK6uLmpqanC73SwvL2MymaitrcXn89HV1YVer2d5eZnPPvtMCJuVlZV4PB727NkjpHappK6treXVV19Fnp2dbZyenqa8vJy5uTl+9atfCd19eHiYra0t9Ho9fr9fvI51dXUcP36chYUFJiYmePnll5mdnWVgYIChoSGSkpLIz89nYmICp9PJ6OgoycnJNDY2cu3aNTY3N3G73SwtLTEwMEBKSgp5eXmEQiFSU1Pp7+8nJycHu93O1tYWBQUFLC4u8vz5c4G+jI2N0d7eTmpqKgkJCcTExJCdnY3X6xU6TXl5OSaT6XeaSZ1OR1VVFaOjo1y4cIGnT58yPz/P0tIShYWFLC0todFocDqdvP322ywtLdHd3S1k8VAohMfjYWdnB7lcjlKpJC4ujnA4TF5eHhqNhqioKOLi4tjc3BTCXTAYxGq1UlVVxeLiIiMjIy9mwq+//rrx6dOnOBwOGhsbMRqNxMTEMDY2xhtvvIFcLsfr9dLf309ubi7FxcX09vbicDjEdKuzs5OlpSXm5uYIhUIcOHCAuLg4dDod+fn5TE9PEwqF8Hq9aDQaDhw4wO3bt4mOjiYuLo6ZmRny8/P5+c9/TkVFBXFxcWxsbFBVVUVTU5P4AlNTU3G5XMzNzaFQKDh27Bg2m4309HSCwSC9vb2kpqaysbFBQkIC+fn5WCwWURnV1NSIecO5c+fQarUsLS3hcDioqqrC6XSKid7evXsJhUJ8+umnyOVy1tbWSE1N5dq1a+zZswe5XC64qY8++ojNzU08Hg/l5eXMz8/T39+PVqsV2E44HCYnJ4djx45x/fp1du3a9eJLrK2tNb711ltiiD4/P4/T6aS2tpaRkRGsViuJiYlYLBbcbjcJCQl4vV5RqaSnp2O1Wtm/fz8ZGRlkZmaSnp7O6OgoIyMjFBYWsr29LcrEoqIirl27xvb2tjhSWlpaGB0dJTY2lujoaEKhEGNjY8TFxTE6Okp2djYREREMDAyg0+nErNrr9aJSqVCr1SwtLZGVlcX6+jrBYFCUgKmpqYRCIWJjY5HJZELPmp6epri4mJWVFW7cuEFBQQEGg4Hnz5/zV3/1V6yuroryOCsrS7xdkpqrVCoxmUx0d3ezd+9ewTP5/X4GBgY4cuSImI2YzWaWl5fZ2tpie3tbIDw2mw15ZmamMRwO87Of/YyvfOUruN1ukpOTCQQC2O120RUaDAYyMzN58uQJZ86c4dq1a+zdu5fe3l5WVlYE77KysoLD4RDoSXd3NzKZTEBeq6urACgUCrxeLzs7OxQVFZGYmCgG8XK5HJlMRk9PDysrKzQ1NREVFUUoFGJgYICmpiYcDgcVFRV0d3ej0+lYXV0lOjqaiYkJiouL6e/vF5fzxsYG169fF1VSZmYmFy9e5OOPP0atVrO5ucny8jIASUlJDAwMIJfLCYVCmEwmMa4cGhoiOzubyMhIZmdn+ad/+icqKip444036OnpwW63o1KpaGpqYmFhQTzMWq2WxcVF8vLyhLgnLuGsrCxjdnY2NTU1uFwu/H4/bW1tPH/+nIsXL9LX18frr7/O+++/j8/nE31CTk4O/f39FBQUiCNmYmIChUKB2+3GbDbzrW99i5/97GeCMdLpdGJU19DQwOrqKuXl5Xg8HqKiopDL5dy/fx+n00lxcbHoR371q18RExNDTEwMV69eJTU1lcbGRn7zm9/Q2NgocMDR0VF8Ph+rq6vIZDIiIiKYnZ2lsrKSUCjE7OwsbrebjIwM/v7v/56DBw9iMBgEnSExR5GRkWRmZmKxWJiZmWFqaoqoqCiMRiOZmZmCHzp58iSTk5PcuXMHAL1ej8PhwGg0iiZSegCKiooYHBwUIuG+ffu4fPky8j//8z83SnPNnZ0dgsEge/fu5fDhw/T393P06FE+++wz9u7dS0pKChaLhfT0dDEr6OzsZHFxkWAwSGlpKfHx8cTFxTE5OSkUQAlZXFxc5JNPPuHkyZM4HA4iIiLIy8tjYGCAjIwMFAoFf/mXf8lHH31ESkoKer2e+Ph4vF4vDoeD4uJiIbqNjY2RmprK3bt3USgUbG1todVqqaqqIioqSlQdu3fv5smTJ8TGxjI/Py+GKSaTiVu3bmE0Gpmbm8Nut1NWVsbq6ipyuRy1Ws34+Dj19fUEg0EAKioqmJubY2lpiZWVFTY3NxkdHeXQoUPs7OwwOjoqSJE7d+5w8uRJrl69SmZmJu+//z6NjY04nU4kDstsNiP/q7/6K6PD4WBiYgKj0cg///M/ExUVRVJSEqOjo2xsbGC1WikoKGBtbQ2j0UhKSgq7du3C5XLR2trKiRMnSEpKYnBwkJGREaKiolCr1Xg8Hlwul7g33G43VVVVjI2NMTg4SGZmJlFRUbz66qv8p//0nzAYDLS0tFBXV8f4+Dh6vR6dTif4IrPZjEaj4fr163zta1+jpaVFjCClJz86Opq+vj5GR0eRyWR4PB5aW1tpbm5mY2ODuro60Q+UlpaysLCAx+NhamoKo9HI5uYmN2/eJCsri6amJqxWK7m5uTgcDlFubm1tYbVaqa6uRq/XMzExQVxcHHq9noKCAtLS0rDZbLS0tPDKK69QX1+P0+lkZWWFtbU1dDodwAthsr6+3tjR0YFSqWR8fJy/+Iu/wGQyERkZycjIiDh/o6KiUCqVrKyssL6+ztWrVwkGg2RmZjI8PIzRaKS5uRmv18va2hqBQACTycSRI0ew2+0Eg0EmJiZISUkhJSUFuVxOVFQUk5OT+P1+jh49CkBKSgper5dAIMD6+jpra2skJycDoFKp2Nra4uDBg1gslhcjPbmc58+f88YbbwjN6OLFiwwMDIgL2mAwABAfH09UVBTj4+MkJCRgtVrJycmhuLhYlMPx8fHY7XauX79OXl4e09PTGI1G0VV7PB4kkG11dVUUA3FxcQSDQZaXl+ns7KSxsZGlpSUUCgXvvfce5eXlJCcns7W1xeDgIAkJCeh0OuRms9kIUFtbi0wmY2pqiri4OCYmJvD7/RiNRqxWK8nJyfT29pKWlkZhYaGgzrRarZgu+f1+AoEAly5doq+vj8LCQq5du0ZmZibZ2dmMj49z/Phxbt68yfb2NsnJyeLtWlpa4v/8n/8jus28vDwheZvNZoaGhtBoNDx8+JDMzEzi4uJ4+vQpjx8/RqPRkJWVhcPhoKamhsuXL6NWqzGZTBQUFLC+vs7MzAxJSUlsbGwQGxuL3W7H4/EA8JOf/IRz585RWFhIMBjE5/NhMBg4cOAAc3NzoiNeXFwkNjaWyspK7HY758+fx2KxoFKpRGedkpJCbGwsQ0NDvPTSS4yPjxMREUFhYSEAOzs7ZGRkkJCQQG1tLfIjR44YpctJAlqnp6fJzc0lKSlJPAHDw8PIZDIhM0jimWQ4iIiIYGpqiu3tbZ4/f87x48e5fPkyRUVFxMfHc+PGDRQKBf39/czNzXHx4kWmpqZYX19neXkZpVJJRkaG4DL7+vqIjY0lMTGR0dFR0tPTmZ2d5Qc/+AFXr15FLpezuLgocJf5+XkiIiJwuVxUV1ezb98+cnJyePbsGc3NzYKm9vl8bG1tcfjwYWZnZ/H7/bz22mtMTExgt9uFT+Hx48fYbDZ27drF06dPaWpqYm1tDaVSyeLiIk+ePGFubk70GWlpaTx79gyXy8Vvf/tbUlNTBYeUnZ2N0WgUoPGDBw/Izs5mcHAQ+c7OjnH37t0sLy8LHUMul1NUVMTz589FE/H/L6WSk5OxWCwMDAxw4sQJ4uPjUSgUpKenU1NTQyAQEJ2n5KaJiooiLy+PI0eOoNfrUavVNDU1UVpaKubCr7/+Ou3t7XR3d7OyssKFCxe4deuWGOY0NTXxox/9SPycu3fvZnNzk9jYWCF/SNpQMBjkV7/6Fenp6UiNZl1dHYcOHcLhcDA2NkYoFCIvL4+xsTGKi4spKirC4/GwuLjI6dOn8Xg8tLW18fbbb5OWlkZsbCxTU1P84z/+IwcPHqSqqopwOExtbS1ffvkl+fn5REREUFxczNDQEKmpqcTGxuJwOGhtbUWtVjM/P09jYyPx8fGEw2Hk3/3ud40S9fXJJ59gNpvJyMjg6dOn5Ofn09HRIcZ8ubm5eL1ejhw5wg9+8AOys7NF4zMxMYHNZuPWrVssLi5isVg4duwY4+Pj/OEf/iHBYJCpqSlBoV27do3bt29TWVkpnrD5+Xl6enq4cOECxcXFxMTEIJPJSEhIEPfFxYsXUSgUZGZmMj4+Tn5+vgCzUlJSGBkZIRwOi4G+1Bi63W56enooLi4W8ohcLqe1tZW5uTmePXvG4uIicXFxAtSqrKzEbDZz9+5dcQIkJSVx8eJFurq66Orq4p133hFdtsPhoLu7m0OHDmEwGCgrK8Pn8zExMUF+fr649PV6PQkJCdy7dw95aWmp0WAwkJqaSnR0tDjnlpeX0ev1mM1mQUYbjUYxZisqKiIuLo74+HgKCgqET0xSUo1GI62trSQkJLCwsEBiYiI2m409e/awvr5OTk4OOTk5gsmRWNDs7GwKCwuFk0TShp48eUJubi7r6+ukp6eTnZ3N5OQkiYmJolPWaDRERkZSX1/Pw4cPmZmZobS0VBg01tfXiYiIYGJigvr6ehwOB0qlkosXL4pqqLKykpWVFa5du8aBAwe4c+eO0JsOHz7M4OCg6ITr6+v58MMPMZvNTE1NsbS0RF1dHWq1mkAgwPDwMCaTCavVSlZWFqFQSIAOPp+PiIgI5AcOHDCmpaVx+fJlzp49i0qlwu/3i75gdXWVgoICQqEQGo0GpVLJtWvXBLQbGxvL9evXMZlM6HQ6ZDIZUVFRXLhwgaWlJU6ePMnMzAw9PT3k5ubS3t6Ox+Phgw8+oLCwELvdzp49e9jY2BBkWiAQoK+vj7m5OXbv3o3D4eDgwYPiC/D5fKJsdDqdeDwe/H6/kEtGRkbIycnh3LlztLW1sby8zPDwMElJSSQnJ7O6uopCoeDmzZvU1NQgk8nw+/2srKyQlpbGxsYGX//617l16xZJSUmEQiG0Wi0/+9nPOH36NGtra6ytrbG6ukpFRQVyuZzNzU3i4uJQqVSMjY3hdrvZ3t7G6XTidDpZX18X/orNzU3+23/7by+4oHPnzhlzc3MpLS3l+fPnrK2t4Xa7uXDhgkDMc3JyiIiI4F//9V/R6XS89NJLYhAfExNDXV0dAMPDwwLQnZ6eZnR0lL179zIxMcHw8DCRkZF8/vnnJCUlUVVVxenTp1lYWBBlnCRlNzQ0IJPJBL/Z398v6DyPx4NOp2N5eZmxsTHq6urQ6/UsLi4KqjkUCrGyssLY2BhFRUXExsaSmprK5OQkarWaw4cPMzc3h8lk4utf/zpDQ0O4XC4OHz4sZAitVovdbmdqaoqGhgZiYmKYn5/H6/WSmZnJ9vY2ZrMZu93OwsLCi6f5/1VHP/nkEzweD0VFRWRkZOD1eklLS2NkZESAXo2NjWg0GuQGg8EYCoUEVKpSqURHLJPJOHLkCDKZjPHxcYLBIDU1NfT19VFRUUFXVxdarZbS0lJmZ2cpLi4Wekx6err4BU6cOCEassjISE6ePMmzZ894/vy5YGqGhobQarXirRsbG2N0dBSPx0NCQgJLS0skJCSws7Mj8EDJLPLkyRPq6+uJiIjA5/ORlZWFzWbjzTffxG6309raysrKCrGxsWKwHxsbK6yvkjQQFRXFzZs3MRqNrKys4PV6OXbsGBsbG6ysrLC6uiq+rLW1NWZnZ+nq6mJrawuj0UhiYqLoqDMzMwV8PDk5idFoZHZ2lgsXLhAREUFCQgLBYBD52bNnjdLEq6SkhP/1v/4X77zzjsAHW1paxLkLUFNTg9PpJBgMEggEALBarZhMJnJychgfH2dycpKNjQ3hzR0aGhLwan19vTDdlZeXo9FoxGBm//79YlAeDAbJz89HpVIhl8vF4EVyYd67dw+z2YzRaCQuLg6r1cq9e/doamoS98DHH3+MQqFAq9UKb0BiYqL4QIuLi2lra0Or1ZKSkkJbWxvnz59HoVCwuLgo6vb19XUiIyPZ2dlh3759rK2tCThN0sWUSiU9PT3YbDZOnTolyuLx8XFOnz7N5OSkuNO6urqIjo5+QcZ997vfNRoMBux2O2azmT/5kz/hl7/8Jbt378btdpOYmEh/fz8Oh4NDhw7x/PlzVlZWxLhRr9czPj6OSqUiMTGRy5cvI5PJ0Gq1HDlyRLTesbGxQsKVLETJyckMDQ1x9OhR7Ha7KFmnp6cJh8NMT08zPT3NuXPncLvdokt+8OAB1dXVwvkiGQvNZjOBQIClpSVWV1dpamoSr/rS0hLl5eVkZ2cL4Gx7exuFQoHP5+P+/fscP35cGK4lsNbr9XL06FGGh4f52te+RkdHB5ubmyQnJ3Px4kUcDgcpKSl89tlnXLx4UfwOtbW1zM3NUVhYyMDAANvb25SXl5OUlIRMJsPn873wCbtcLuP//38mmdIeP34sBC2VSkV7eztutxuVSkVubi5dXV08evSIxsZG/H6/4EgrKyvR6XQEg0EcDodwnBgMBq5fv04wGOT+/fusra2J+yA7O5vV1VXsdjt+v18Q0dJgRalUolKp8Hg8orOurKykv7+f06dPs7y8THp6ulAuvV4vBw8epLW1lRs3bpCens7Dhw+Jjo4mHA6zsbEhXJK//vWvhT7kcDhQq9Xii6yrq6OhoYHW1lY8Hg+ff/45paWltLa28vLLLzMxMcHMzAwmk4nt7W0sFguHDh2ir68PmUzG9vY2xcXFeDwe6urqCIVCPH36VJS9tbW1yLe3t42xsbHcv3+fmJgYDAYD7e3taDQaNjc30el0PHv2jIMHD6JSqbBYLMzNzbFv3z5SU1NZXl5mcnISjUZDb28vPT09wui3uLjI9PQ0OTk5zMzMsLGxwbe//W0+/PBDwW9WVFQwOTlJWlqaGFW+/PLLWK1WoqKiiIyMFG+YBAlsbW2JDrO9vZ3m5mYsFgtPnjzh2LFjOBwOAGECATh06BB3796lr69PzKRPnTpFUVGRmB8/fvyY5eVl8dANDg5is9kwGAxYrVaMRiMTExO8+uqr/I//8T/Iz88nKSmJX/ziF2RlZbFv3z4ePnyITqdDoVAI9XR0dJSHDx8yNDREVVUVT548oaamhvT09BdknMlkori4mLy8PG7dukVBQYEoMx8/fsyRI0cYHR1Fp9Ph9Xr56le/yrNnz2hqaqKlpYWYmBhR3+/atUvMcCXiIDMzk8jISPbv309LSwtxcXECNbTZbCgUCnp7ewkEAkRHRxMdHS0c5xUVFRQVFQny4MqVK9hsNvR6PTk5OVRXVzM3NyeqlTt37pCXl8fg4CAqlYq6ujrKysro6uoSbnyVSsWhQ4dYXl7G5/Ph9/uprq5me3ubhIQEvvWtb/H555+Tl5cnjq6lpSUiIiLQ6XTo9Xo2NjYYGhpCpVKRnJxMVlaWUGAzMjIEPWe32wWll5qais/nE6dGVlYW8uPHjxt3797N06dP+fLLLzGbzfzxH/+xMC8UFBRgs9leaNdyORcvXhQfjkQ5jIyMkJmZKSxDNpuN3NxcysvLiYiIYHh4GJ/PJ/BFuVwuzB45OTksLy+LWe7o6ChFRUWkpqYKlESSDg4ePEh7ezt79uwhNTWVmzdvUlJSwuPHj2lubmZqaora2lo2Nzf55je/icPhIDIykvn5efx+P2tra1RUVFBQUMDm5qaQQBISErh58yaJiYncv3+f6elpMW4MBAKkpaWJo1cyeeTk5JCUlERJSQktLS3o9XpxxktVktSnhMNhmpubsVqtGAwG7t+/T1dXFyUlJcj/83/+z8b/8l/+C8XFxRw9ehSDwUBvby8KhYK5uTlqamowmUxsbW3x8ccfs2/fPp4/f47BYKCiogKFQiEMejExMQwPDxMdHc21a9dEekhdXR09PT1UV1cTCAQ4fPgwY2Nj/Nmf/RnDw8MEAgH0ej3Pnj3j5MmTzM/PC0/we++9R39/PyUlJXR3d/Pqq6/S09ODyWQiKiqKjIwMPB4PGxsbTE9PEx8fj9FopKOjQ/jZdnZ2MBgMuN1uiouLcblc9Pf3Mzs7K4ZH0jFz/vx5QXtXVlZy48YN0byp1Wo2NjbY2dkhMTGRX/3qV9hsNi5dukRmZia3b98mPz8fjUYjGs7k5GS0Wq1AN2NjY4U9ye/3I7948aLxpZdeoru7G4CPPvqIS5cu8eDBAw4fPoxGo+GTTz7B7Xbz0ksvoVQqGR0dZXJyku3tbWJiYmhtbcVut1NcXEwoFGJ6epqysjLhZJTYyS+++IKysjJxPHV1dbG9vU12djYWi4Xt7W3x96UfPiMjg/Lycux2O6+88gpXrlzh0qVL3LhxA4C5uTlycnIEKjIyMkJJSYkoCiSzRlJSEgqFQsBlIyMjHDx4kM3NTeRyOb/4xS8oKSkhKioKm81GdHS0IL8tFgs5OTlsbW2xuLjInTt3mJmZ4dy5c2xvb3P16lUAjEYjMplMgMxLS0v09PSgVqtJTU3lo48+oqioiI6Ojv/PqK3Vao02m02Y844cOcJvfvMb9u/fj8fjIRwOc/fuXV5++WXu3buHx+MhFAqJCZTFYiEvL4+cnByGhoZIS0sjMjKS3Nxcbty4gVqtFrPk/Px8QbDpdDoRSzA1NSUuJQlxVCqVnD17lnA4TEtLC4cPHxZfnM1mE02j1+sVkTjr6+vs2bNHSMZra2tCSGxqauKHP/whnZ2dwpYkDdf1ej3FxcXC0vruu+/yve99D7fbzfz8PPn5+aytraHVatHpdFRXV2Oz2UhKSmJ+fh6z2Sx0raioKIFHzs7OiuCO6upqkQawtbVFfHw8zc3NL+6A7Oxs4QTc2toiOjoav98vzHPz8/OcPXtWeLzKy8uZmJgQsTUej4f19XViYmIErba0tMTu3bv56U9/SnFxMRqNRnSxUu7C4uIiGRkZyOVybDaboJatVis1NTW0tLTg8/m4d+8eWVlZ3LlzhyNHjoi4F8mPVVZWxtTUFBkZGSQmJgoR0eFwMD4+Tm5uriggvvGNb+D3+/nFL35BTk4Ox48fFzE3Ho+H999/H4/Hg8ViEa5RKUwkIyODX//616ysrJCVlcXGxgb379/nxz/+MePj46jVaq5du0Z+fj79/f3s3r2bra0t4S7y+/3s7Oxw9epVjh8/Tm9vL/J/+Zd/MXZ1dXHlyhXeeecd+vr6hKktOjqavLw8IT6Fw2FGRkaYmZnBaDQSDAYpLCzk6tWr1NfXi8u1p6cHr9crNJ7NzU3B2fT29rK1tcXY2JiIR6irq2NnZ4e1tTX6+/tpaGhgamoKhUIhINjc3Fyh1aenpxMOh0lOTqa0tFRI6EtLS7hcLmZmZoiPj0eKYJibmyM2NhabzcZ7773HsWPHKCsrEzNgqfz1eDxERESwurqK2+2mpqaGgoICZDIZY2NjAmCW/r3Z2VlSUlJwOp0COQmFQuj1ejQaDeFwWMzXHz9+zOuvv87ExAQajYaLFy++UJbj4+ONdrudN998k+9///ui5Dx//jwmk0m4U6qrq6mpqRFpWLt37+bOnTsEg0Fyc3OFea2vr0+gfnFxccKtbjAY6O/vZ+/evSwtLXHkyBGcTqfQSPLz83E6nfzZn/0Za2trwvopPb0+nw+9Xs/AwAA2m42mpiYGBwcJhULs7OyIC7G2tpalpSWWl5eprq4WMNnOzg7Pnz8Xrhdp2H737l3W19eZnJwUF2NTU5PwCoRCISIjIzEajWxsbDA/P09nZye1tbXCfC39+dzcHImJiXR3d5Oenk56erowOfp8Pubn5zl06BAymYzR0dEXJpfs7Gyj1LDk5ORQUVGBwWAgFArxxRdfsLOzg16vF35Xj8cjWE6Px8Pa2hq1tbUitiYzM5N79+5x6tQpNjc3OXr0KP39/VRWVuJ2u3G5XITDYbq6ulAqlQIXlIiCtrY2tra2MJlM6PV6fvnLX3L06FEBOkmIolarZWRkRKSwvPLKK8K9Mjs7i8lkYnp6ms3NTWpqalhZWWF7e5sjR47w29/+lo2NDdrb2/l3/+7fEQgExIMixcpIvJHBYMDj8YgCQavVCqe+ZGbR6/XExMQAsLa2RmZmJjKZDJVKxYcffkhFRQV1dXWoVCoePHgg/HVmsxn5a6+9Zrxz5w6ffPIJBw4coKamhp/+9Kf4fD7hmE9OTubq1auCLs7IyBBBTT09PUxMTGC1Wtna2sJisRAZGcnW1pYAdScmJmhpaSEjI4POzk4qKyuRyWScPHmS2dlZvF4vxcXFzM7OEhMTw3/9r/+VjIwM1tbWuHjxIp988gkmk0kgi5GRkSLDKC4ujsTERDweD0lJSWxubmK1WomLiyM6OpqDBw/y6aefcujQIebm5khISODTTz+ltLSU3t5eJiYmiIyMJDY2lo6ODuLi4hgYGCA/P1+E+5lMJu7fv49KpWJycpJdu3YRGxvL0aNHsdls+P1+cZnr9Xo8Hg8ymQy5XC7iEdra2lhcXEQul1NXV0d0dDT3799/kRXh9/v52te+xpdffonRaEQul5OQkIDf7xe5C8nJyZhMJoxGIwaDQVyOBw8eZGpqSohx0v2xa9cuvF4vExMTrKys8A//8A/cu3ePvLw8AXHdvXuX2dlZDAYDU1NTTExM0NPTw6VLlwgEAqK1NxgMFBcX8+WXX/LSSy9htVoFOBARESEgrZKSEhQKhXDMK5VKvF6vgAlycnK4fPkyhw4dEpi8SqXi6NGj4ghaWVkhOjoaq9UqPA1Pnz7FZDLh9XoJBoNoNBpWV1fZ2toSmOHhw4fFgEkiyw0GAxMTE8zOzlJXV0dOTo64T6empjh79uwLKSIcDrO2tkZeXh5Go5Hp6WkWFhZEeuLz58+Jj49neXkZp9OJz+dje3ub48ePs7KyIsq0qKgoEXCXmJjI0aNHxRxVYoLW19dFZEFdXR0+n4+enh4OHz5MXFwcMpmM9fV1Pv74YzE/Tk1NxWq1sr29jdfrJTExkfz8fAKBAImJiTx9+pScnBxWVlbo6ekhPj5eXJJWq1XwphqNhszMTCIiInj27BkGgwGlUily5KTytqGhAYvFQn5+vjBoP336lNjYWPLz85mdnRUIzPXr18nOzqa0tJSYmBisVquYS0v9wOnTp4WcLqkEKSkpL3qQxsZGYyAQoLq6mszMTJ49e0ZycjLl5eWkp6cLbr+8vJz29nb6+/tJSEggNjaWTz75BK1WK+RgKd3Q5XKJSVdMTAzj4+OUlZWJAD5pwC7NAt58803++q//GoDY2FiKiorEDFUyxsXGxlJaWiqMcxL4JaEkkpMzIyOD+Ph4VldXaW5uRqfTEQ6HSUhI4MMPP2R0dJTV1VUOHTrE1tYW6+vrPH36lIWFBfbu3YtOpyMUCokwwurqarq6unj55ZdFkxkfH88rr7zCv/7rv4pOd2tri7m5OZqbm1lfXxd3nt1ux+fziag0iTYxm80vqqAf/OAHxtu3b+PxePD5fLjdbiYmJjCZTNy+fRuj0ShMaxkZGWJgbrVaSU1NpaioSDjhA4EAi4uL7OzscOfOHTIyMvD7/ZSUlIgSU6lUCnlaCtwbGxujoaGBcDiMWq1Go9EwNzdHUVERer0em81GZGSkcMjr9XqKioqwWCwsLS2RlJREXl4e6enpotqIj49Hp9PR0dFBcXExT58+paqqisrKShFXWVBQwMLCglAvY2NjMZlMLC4ucu3aNYqLi/H5fFitVqHpSLNdKWzw0aNHJCYmsnv3bmJiYsSbJF26knNfwjR7e3tJTk6mq6uLI0eOvEjMOn/+PHNzc+JD2bt3L11dXZw8eRKn08nAwAAzMzPCOFFdXc3Tp08Fkp6cnMzu3bux2Wz09fXx8ssvk56eTnt7u/BLSU+Vy+USXWtCQgIejwe1Ws2HH34oFM6ioiIMBgM/+9nPxFw5EAiII+D69euC4dna2hJSSElJCdPT0wJltFgsVFVVCQFQyqeQ0ML4+HiRhWq1WqmtrRWGkOHhYfbu3cvz58+pqqoSF7UUJJKfn4/f7+f1118XTVZfXx9VVVWsrKwIX4MkJEqsq0SfrK6uvgjtUygUxqioKBwOB5mZmbjdbo4cOcLKygput5tf//rXJCYmcu7cOaFnX7t2jYqKCqanp0VJ6PV6GRsbY3t7G71ej8/no6SkhNHRUaqrq1leXqa/v5+oqCgqKiqEPXRnZ4elpSUuXrxIMBikra2NZ8+eCcVx3759/PjHP+bIkSOkpKRw584dDh8+zMOHD1EoFGxvb/PVr34Vs9mM3++ntbUVjUZDT08PaWlpyGQyMjMzcTgcwpQn5TRYLBYRlSChihIDWl5ejs1mo6ioiCdPniCTyejv72fXrl1If7lcLt59911SUlIwGAxotVpiYmLIysoSSu7Vq1eF87Ouro7Lly8Lu+vIyAjy73//+8bk5GR+/vOfY7VahYNFLpfz1ltvUV9fT3R0tICapBiZ6upqfvvb33Lu3Dm6u7vJz8/H7XYLGULyTX3/+9/H5/PhcDiEi0Uul3P79m3S0tLEQP/evXvU19dz6NAhfD4f8fHx4tWVogvW19fRarUkJCQwNDRETk4OoVCIn//855SWluJwOLDZbIyOjvLyyy9TVFTE1NQUMzMzAuQKhULs3buXK1euUFdXh8ViIS0tjfv37/N7v/d74m7q6ekRM21pUJWTk0MgEODWrVsiWeDf//t/T0pKCu3t7UxOTgp4Tcq1+MM//EMsFgtnz55leXmZhIQEbDYbOTk5/PVf/zXyN954wyglVZ08eVIEMUlu7rGxMSYmJsRrKNnvpYtOGoZICSmSW7Guro4rV67Q3t7O//yf/5PXXnsNs9nM4uKicNdLGXC5ubmoVCoA7ty5g91uFyUbIFyS0mhQmvFaLBZ8Ph/f+973aGtrEy7373//+zx8+BC1Wo1er0cmk+F0OhkeHqa+vp7q6moiIiIoKSkRVRnA6uoqCQkJIhtVUlQlb1thYSFPnz7lm9/8Jn6/n1AoxC9+8Qt2795NTU2NuMCnp6f55JNPSElJoaWlBbvdztzcHJubm2KI1NnZ+cIlmZmZaVxdXSU9PZ3h4WERbLS6uorT6WT//v1sbW0xMzMjyje/34/VahWMS3FxsThjpUTYnJwckbr49a9/nZs3bwq8fG5uTjgpk5KSUKvV4qKVGiyFQsEXX3zB5uYm0dHR+Hw+GhoaROr6o0eP+MM//EN6e3t59uwZERERuN1u5HI5nZ2d4h64d++ekAskoru9vZ3CwkL+5V/+RZhMpBq+vr6eyclJkUs0MzNDTk4OBQUFdHd3Mzg4SFVVFW1tbWRlZeHxeJiYmMDr9fKTn/xESA8Sh/T6668LsKurq0ugNPHx8S+GVAcOHDBKyFxGRgYOhwO5XI7ZbCYYDLKxscHW1hY2m419+/aJIA2Px0NaWhper/d3Luj+/n7Onz/P06dP2dnZoaOjg+HhYUKhkFBF/X7/78xdt7a2KC8vp7+/XzRqUVFRpKSkUF1dTWJiolAaCwsLiYqKEhhKVlYWlZWVIs1cekOkSZgU8lpSUkIgECAUCjE0NMT8/Dzr6+tkZmaKvLjk5GTa2tpwu90iD+LAgQNkZ2fzi1/8go2NDX7/938fh8NBSUkJBoMBh8PBxYsXiYqKor6+XszSNzY28Pv9LC4u4vP5SExMFIkzkrNSp9O9iK18+vQpq6urREVFUV1dLSJnEhISuHv3LouLixw4cACv18v29jYajUYAvAqFgsTERPLy8sSA5sGDByLiJS8vj8jISF577TU+/PBDCgoK6OzsZH19neLiYuGcAfjGN77BzZs3kclklJeXMzk5ydmzZ3n//feJiori4MGDOBwOrFYrKysrVFRUkJeXx+TkpND8dTodKpVKCHIHDhxgdXWV8fFxfD4fSqVS+AC0Wi39/f0Eg0Fh9pDJZIIOkeJrpFGiZOgDRIi4xBlptVo++eQTKioqWFhYoKSkhLKyMvbu3StiGT766CNOnDjB1atXqaysxOl0IpfL5cbq6mpcLhdOp5O5uTnC4TDZ2dnYbDaioqJYX18nLy8Pt9uNUqkUE6/09HQuXbrE0NAQRqOR/Px8EcsiterS7PfmzZv84Ac/4PPPP+fEiROicTMYDJjNZnFWj4yMiIRDSbQaGBhgeXmZuLg4YZ6QvGGSvywmJkZc3pcuXeLmzZtUVFSws7PDysqKiFBTq9V4vV6mp6dpb28nMTGRffv2YTKZePr0KSkpKVRVVZGcnMyDBw/QarUinOTixYuCgMjKykImk6HT6Xj33XeJjY0VbpmRkREiIyNFyN/k5KQwkG9vb/O1r32NrKysF9CZpAVNTk5SX19PUlIS4XCYyclJka0sURNLS0tUVlaKEFer1SrSDSX2fXFxkddeew2NRsPy8jLx8fFsb28LTE96RVUqFQqFAqVSKTZY2O12RkZGKC4u5uTJkxw6dAibzUZERASnT5+mr68Pl8slnDM/+MEPRBVkMpno6emhoKCAy5cvEwwGSUpKIiMjQ8jD/f39wkus1+tRqVRcuHCBjo4OUlJSKCgo4OHDh/h8PmEMNBqNREdHMzw8LGg+SXqWfMvl5eWi4bTZbKjVao4ePYpKpUImk4m3dHl5mdOnT/N3f/d3eL1eGhsbkVdUVBjLysrw+/0iRDszM1OMF3d2dpidnSUyMpLFxUXcbrfgJhcXF0lISBB3xIEDB8S6k5GRESorK1lYWBBCVyAQYGVlhdTUVKKioigrK+PmzZtibru1tUVmZqaQMK5cuUJ8fLwIOg2FQmITxq5duwTBduHCBZqbm1lbWxM+MMnf63K5BGglORidTiebm5sial8qbycnJ1lbW2P37t1YrVYWFxfF2LGiooKJiQkh/vl8vt9J5+rr6yMYDNLf38/Zs2d59uwZDx8+FKDCa6+9RlxcHDdv3hQmlf7+/hfh3S6Xi42NDcFM+nw+dDods7OzHDhwQGzHkIwJGxsbjI+PI5PJyM/Pp7OzU3ilQqEQe/bs4cGDB5SUlPCzn/2Mt99+m0Ag8DvTLukclaLDxsbG8Hq9YpOF3+8nPj5e6CkSYxQVFSWM3ePj45w9e5aNjQ26u7vR6/Xs7OxgtVpFze1yuXjvvfc4cuQId+/eJTExUVhMc3NzmZycJBAIiHTFQCAgpPXKykoh4EmfS0VFBd/61rfIzs7m4cOHIlFAq9Xi8/nY2dnh8ePHIi1d2h1jt9uZnp7GYDCwuLiISqUiOjr6RSMmRbBIr+zMzIyIhGxoaGBhYYGsrCz+/u//nmfPnrFv3z5hoh4bG+PAgQNoNBoAEhIS6O7uFrZSg8EgouB1Oh3b29vU1dUJRPHOnTsikFXiRSXwSpKKpQhNhUJBfHw8nZ2ddHR0cOfOHTIzM+nr6xND/aSkJAKBAFlZWTx+/JjS0lLS09Mxm82EQiG2t7dZXV3l1VdfZXR0VFDXIyMj7N69m6ysLMLhsNgLcOzYMYaHhzl+/Djj4+PCxLKxsSFcOaFQiFAohNVq5dSpU0RGRqJSqYiKihKziq985SukpKT8zoKM/v5+In784x/nS7Syz+cTMJbL5WJ+fp6ioiJBj9XU1NDa2srk5KSAY/fu3SsIgLS0NKxWK+FwmMHBQbxeLw0NDRw/fpyf/exn5OXlicTEgYEBEew3OzuLVqsVc165XC6iDHp7e4mPjycjIwOXy0Vqaiq3bt0Sl3ZeXh5WqxW/309RUZHouKuqqgQcJQX/SQYTyTQumfji4uIoKSnhgw8+EASfZDTZ3t4W5HNsbCyxsbG0tbWJnQK7du0iEAhw7949kpKSRI0vmcelU2RnZ4e7d+8Kl6lEeMgLCgqMdXV1dHd3s3v3bmpra3n8+DF1dXXCHSmtcnr06BGhUIiHDx+yubmJ2WwWUkFycjJFRUWEw2G+8pWviLJxdHSUcDhMaWmpCFMKhULY7Xays7Pp7++nsbGR7e1tTCaT8CZERUWxurrKxMQEp06d4tmzZxQXFwsyOTo6moSEBEKhEGq1Gq1WS1RUlODu1Wo1/f39eDweuru7BTEhqbtVVVU8fPhQ6Fb5+fkoFAouXbokmitpltHS0iK80k6nk9jYWM6fP4/H42F+fl509U1NTSwuLvIf/+N/ZGBgALvdLkBghUIhcEQp7xR4EVk2NDTE5uYm/f39InJ3ZmZGfDi9vb0i50Amk1FfX4/H4xEwltTguFwukbfT19fH8vIyDQ0NuFwubDYbbreb2dlZgbPodDqRbCi19pubm5SVlfHuu++KjAkp/NTv97Nr1y7m5+eF0Xp1dZWlpSX279/Pw4cP2dra4vd+7/eYn58X6mUwGCQnJ4eEhATa29tJSEigsrKS5eVl8vLyOHr0KB988IGwp964cYOLFy+KiaCUHz05OYlKpcLn89HX10dlZSWjo6O4XC4RW9bQ0MC1a9dob29HLpezf/9+EYXZ3NzMhx9+KJw6W1tbL7Sg9vZ2QT9LwGl8fDyHDh3iwYMHYh3T8ePHRTRxb28vWq2WoaEhzp8/z7Nnz3jw4IGo7yU49datW6jValpbW0VwtVqtxul08ujRIxYXF/F6vdTV1dHV1SWk4MTERORyOdHR0TQ3N9Pb28ujR4/Iy8ujr69PcPhSDyAlr8TExPDll1+yuLgoiInZ2VlWV1cpKSkhMzOT4uJi1tfXMRgMpKenMzg4KB6A9PR0kYa+urqKSqViZmaGt99+G7lczsOHDzlx4gR2u134wioqKqSmisnJSU6dOsXa2poAeKWozLW1NbFLTArIlaemphqlJ8zlchEbGytWguTm5qJWq5menhZD6ri4OK5evUpZWRlJSUlER0f/TiqJFJ7kdDqprKwUg5FwOExBQQHz8/OiZNzZ2aGxsZH09HQePXpESkoK3/zmN3E6nSQnJ/Od73yHvr4+bt++TTgcpqGhgaioKObn5xkbG6O5uZnl5WWBhUgkw9LSEkqlEp1OJ7DCQ4cOiS7W6/WKnOtf/epXlJSUvKhI5HJ2dnZEGrCUc6rX64Ve5Ha70Wg0xMTECCZW4p7KyspE0Png4CAymYzi4mJOnDjBzZs3WV5exu12i2zUsrKyF075/Px8YTmKjIwUYz1pAQ7A6Oio2IUl7WqR8joXFhZ+xyu1sLAgBi7j4+PI5XIyMzOZn5+noKCAa9euMTMzw7Fjx9BqtYJS3tnZ4f79+7hcLpEvVF5eTk9PjzCHT01N8dWvfpX6+nqxVC0+Ph6lUsnf/u3f4nQ6OXPmDFevXuWrX/0qaWlpKJVKwYBKae8SYPbtb3+b8fFxwuEwZrNZDFR0Oh1LS0tkZmayZ88ehoeHmZycxGaz4XQ6sdvtpKSkAPDFF18I0kGtVvP8+XOampqE67OlpYVgMEhWVhb5+fk8fPhQJLHIs7OzjefOnWNhYYHBwUGam5vRaDRcvXqVnZ0dKioquHnzJk1NTRgMBmpra1EqlTx69EgopNJMViKq9+3bx+Liohhtbm9viznp/fv3KS4uprq6mu7ubnw+n8jiCYVCQhWVFjJIxuaRkRHBB0mJjjabTVB2kkf3zJkzLCwsiMyioaEhgUNKRg+ZTCaSe3/729+yZ88esZFDemolZWBwcFBEL7/66qusra1hs9nE0F7awalQKOjp6aGoqAiVSiXWdkkmx87OTjIzM1leXqarq4u33nrrRYW2e/duY2trq1gB4vV6hU/LaDSK1SHhcBi5XM69e/dob2/n29/+tpAFSktLmZubY3V1Fb1ez9OnT4U4tr6+jsvlEuKTz+ejt7cXj8dDU1MT7e3tnD59ms7OTgYHB0lNTeXo0aP09fWRnp4ujN4nTpwQWOBPf/pT8baq1WoaGhpEgfCb3/yGQCDAyy+/LByPd+/eFZEBJSUlYkXLZ599JhyX0mao7e1tkRckiYvSuT0+Pi6O45ycHBobG7l+/TqZmZmsra0JFmlubk74CiRooampSfRQer1epNTLTSaTsaqqitraWpFyKPGWSUlJ/OM//qNY1PPgwQP0ej25ubkiOffevXtUVVUxMjLCkSNHyM3NFVmgBQUFZGRkoNFo6OzsRKfTYbVaefPNNwWp8Mtf/lIQ1/Hx8QINl6LvJZTbYrEIIS0QCPDrX/+atLQ0JicnWV9fF7Ngn89HVVUVVquVxsZG1tbWqKurw+VyidHj7OwsSUlJYpi+sLAgtuWtrKyI+UJ6ejqLi4ukpKSIRT3S4EWpVLK0tERubi4ul0tM395++21GRkZwuVyCwEhOTmZ6eprjx4/T39/PysoK6enpL5JzL1y4YBwdHWVzc5Pu7m6xys/tdgucxGQycfnyZc6cOSNypYuKinjw4AGZmZliG0VPTw8zMzO89dZbQi+RUBPpn83LyyMiIkJUMo2NjajVasLhMH6/n/T0dFwul9iGKmHh0dHRmM1mJiYm6O3t5fLly2IGKwVENTQ0iPVbcXFx1NbWCgZTyrMIBAJcvHhReLny8vK4e/cuSqVSrLwyGo1YLBZ2796Nx+NhYWEBq9VKW1sbubm5WCwW2tvbaWxsZH19XQz2pS0fQ0NDNDc3o1QqcblcYsdNQkICGo2G27dvI5fLX4R3nzlzxri2toZMJuOrX/0q//iP/8ilS5fEZSrBUWlpaYRCIfLz84U0IM0AkpKS2LVrF1evXhVExcLCAkqlEoBwOCw+VGl/ZFZWFjqdDp1Ox9DQkDBKNzU1IZPJ6Ovr4+DBg5SVlYljSCI2pEUPs7OzTE9P4/f7xTHp8/nEKsSlpSUyMjK4fPmy2AiYnJzM8vIyZ86cwWw28+jRI9FoSrE4d+/eZd++fbS0tPDee+9x6tQp7HY7Z8+eZW5ujoaGBsbHxxkYGODkyZMkJiYSCARoaWmhsrKSV155RUgs29vbZGZmsrm5ye3bt/F6vVy8eJHp6ekXlddbb71llLRvKXbx1q1bpKSk0N3dTXJyshhgSAEe0opaaZ3tyZMnaW1tJT8/H4Dt7W1UKhXp6elMTEyg0+lIT09naGgIm80mcBDJrSItOlYqlchkMn75y1+SmpqK3W4Xs4Camhri4+MFd2MymUTKV2ZmpgjKW11dFdRZUlISCwsLFBUVicVtUqhSR0cHfr+fc+fO8eTJE548eYLT6RSuyJ///OcsLS3xzjvv8OWXX9Lc3IzBYODv/u7vqKqqEmZCv9/P/Pw8BoOBc+fOMTk5yQcffCBifEpKSlhZWSEpKUkUCJOTk7z00ksvEltefvllo+S5khx/crmcffv24Xa7ycnJ4cGDB2JD9c7OjjAaLy8vi3hem80mVj5JBm4pJC8iIgKFQiGG6NI0Sgrd3tjYICcnh9/+9rdER0cLSUGv1/PBBx/w9ttvs7GxQXJyMhqNRvit8vLy6O7uJjY2lsnJSbKzs1EoFJSUlIg3IBAIMDMzQ0dHh0Aol5aWRCrM1atXhXNHo9EwPDxMfn4+zc3NxMTECK4zMjKS3t5e/u///b8ieVEK8xsfH2dnZ4eFhQXi4uJEUkpOTo5YBG2322lvb0er1XLr1i2qq6tRq9UvvoC1tTVeeukl5HI5H3/8sTh3BwcHRdykTCbjwIED+P1+0Ua//fbbLC8v8+TJExFVLCmrnZ2dTE9Piw/qRz/6Ea+88gr379/HYDCwtbUlzmapG961a5dAu6WhyDvvvMONGzfY2NggEAiQnJzMv/3bv1FbWyuG3ffu3cNkMhEIBMQKXqk0ttlsaLVaEUJoNBpRKpVUVlYyPDyM2+0WEEJBQQHhcJjnz5+L6Za0K0cKgpLIO4fDIfJGpY2pUlBJT08Pb7/9tsAed3Z2AATm+Gd/9md8+umnLyouk8lknJubo6enR5yZUv5lb28veXl5HDt2jPT0dDFskejhtrY2MQkaGhoiHA6j1+vp7e3lzJkz1NTUUFJSIv5c+vIKCws5c+YMV65coaCggLq6Op4/f86lS5dEHJlk7pCyTL1eL19++SURERGcP3+eBw8eEB0djUajISUlRawIkYLHpbQtpVLJ9vY2arWakpISoe5K1ENNTQ1JSUlERUWJoczrr78u8ovW1tZIT0/nzp077NmzB41GIyI9q6uriYqK4t69eyKoMCkpifLycu7fvy/2cn788cecO3cOjUbDlStXRIMXGRmJ/Hvf+56xtLRUbJybn59Hq9WSkZEhsnpKS0vp6uoSYNXw8DBms5nPP/8cp9MpQi1UKpWII46NjaWzs5OkpCSxnmR5eZmioiLMZjMfffQR4+PjNDU1AQgjX3NzM48fPyYYDIoHQlqz+9prrwn3+9TUlOi0CwoK0Ol0gr4uKCjA4/GIpQ82m43V1VUGBwdRKBSkpaVht9vF3nhpu7UUiSwFMhUVFREMBhkcHOTkyZNcv36drKwsfv3rXwOIp/3kyZOkpqYSDAbFZyBpUDk5OcJd4/f7RUK9Wq1+EVZbU1NjTE5OZm5uTpyPkjQtCW8/+clPxAYgqVOWYlmKiorE0uapqSlR3UjmNokdlcBfqReIi4sTJnBp36/k05IClKRw1YiICGpra+nu7sZqtTI4OEhlZSWdnZ0cPXqU2dlZbt26JTBH6UiQ6A7pqb948SLDw8OoVCo+//xzXnrpJaanp4mLiyMnJ0ekx0vb+R48eCC2e0sL3gDcbjdGo5GHDx9SVFSEzWajsLAQuVzO9PQ0MzMzImBWrVYjLUlaXFwU4X4ajYYHDx68mAlLWW5er5eysjKamprY3t4W+1EiIyPFskrpSdbr9SQmJorMUKkqsFgsjI2NkZOTw+TkJDk5OXR0dHD+/HmGh4c5f/48MpmM3NxcEai9sbHB0aNHefDgAaFQSHCdEpCVnZ2N3W4XA5i8vDyR4GIymejr6xOl3r59+6ioqODBgwe8/vrrrKysiH3BJpNJ7Er+gz/4AwKBAO+//75Y2iZ5A6R98a+//jp3797FYDAIN70UY1leXi6GUH19ffT19ZGYmEhSUhL9/f0iuLC3t5fx8XEUCgXl5eW8//77/NVf/RUpKSmUl5cjb25uNkrI3PT0NBcuXBCObymJSqvVsrm5SUJCAomJiWxtbeFyudja2qKmpobo6GhRbUi7VqxWq2BIw+EwS0tLbG1tsbm5KZanXb9+XYRpDw8Pi/1kUpyM9GRdv36diIgIampqxHIGaaXt48ePee2111Cr1YyMjDA8PEw4HGZ5eRm/38/S0hKjo6MsLi5itVpFGkpLS4s4aiMiInj06JHQjurq6jCbzYyNjfHqq68yNzcnfHK5ubksLi7i9/tpbGzEZrMJd5AkVj579ky8dWq1Wmzjljri0dFRgerIz549a5RynJ1OJ729vfz5n/85V69epaCgQEjDkmNmYmJCDBXy8/MFCiiFYBw/fpz33nuPpqYmsYFVWubs9/vF4meHw0FZWZmIeLTZbKSmplJZWYnJZBKckgTFSnHAiYmJANy8eVN8SVKPIlUxUiCey+Vienqaw4cPi1zUYDCIXC4XG5akrDu9Xg9AVVUVqamprKysiHSYhoYGhoeHycvL48033xQK8d27d7Hb7XznO9/BarUyPj7O0tKSmCmvrq6Sl5cnoGaHw0FGRgaHDx8Wb5a8oKDAKGkZgEj0k+Tp7e1tMXxITU1lfn6eP/iDPyA/P5+dnR0mJyd55ZVXRBJie3s7L7/8sqDFcnNzBWArQUoAp06dAhBaS25uLk6nk5mZGdbW1lAoFBw6dIgrV66I9JQ33niDmzdvUlBQIEx7FRUVYqvFvn37ePr0qaAPKioqCAQCqFQqiouLUSgUAjCWduFsbW1RUVEhApqys7NFOSstrrDZbCJG82/+5m/w+/309PRgNBo5fvy4IAGbmpq4desW9fX16HQ6kpKSSEhIICIiQiwGampqIisrS2wJkb/xxhtGpVKJRqMhNjaWmpoapqamUCqVHDhwQGwtkjbbFRQUMDs7K7LTYmJicLvdSNGXs7OzWCwWgXeHQiHC4bBYkCxFE0hD68nJSf70T/+Ur3/96yLG3uPxCPdkbW2tMDxrNBrR4geDQRGG7Xa72djY4PHjx8jlcvLy8kRmW2pqKu+//z5bW1tMTEyg1WrFYmapipLwEYVCIYwVLpdLXKJqtVqsZ5QiPRsaGpibmyMYDOJyuYiMjMRisXD69GnkcrnImPj0008pKioSOdSS41+SL+RZWVnGUChEa2srKSkpom12uVyi0wXEoHt9fR2pbN23bx+RkZH89Kc/FXsjpTclPz+ft956SwS66vV6oqOjmZqawmw209HRIXBDKf5Y6qIXFhaIjo7GbrdTV1dHR0cHu3btoq+vj4sXL/L48WMSEhL4/PPPefXVV8X2prfeeovz58+jUqlISEhgenqa4eFhFAoFp0+f5tGjRyQnJ7N37168Xi8tLS1iwVxLSwtbW1tMT0+zs7PDzMwMGRkZdHR0sLOzw5MnT/iLv/gLCgoK2N7eRqvVkp+fT35+Pq2trYRCIbFzZmNjg6mpKVJSUgQeKeHqXq8XpVLJ8PDwCzi3qKjIqNVqKSsrIzo6GpVKhV6vZ3Nzk2fPnrGxsYHFYhERNklJSSiVStxuNw8ePBDbtCsrK+no6ODgwYMsLS2h0+m4efMm6enpohmSrJvd3d289NJLyGQy9u/fz69//WvefvttFAoFS0tLlJSUiF1ceXl5fPbZZ0g/4/Pnz9m7dy8Wi4XExERxiXo8HgwGAz/60Y/IyMigtbVVVGZms5lwOMzx48dJS0vj+fPnBINB3G43v/d7v8fa2prwIJw8eVLQgcvLy6hUKgwGg6Djurq6xL61t99+W6iz0k6Fvr4+MSBaWVkRVlkpGfizzz4jPT2dxsZGOjs7X9DRMTExDA4OEhERwcjICFVVVWKVeUJCAkajEY/Hg9PpxGKxMDExQU1NjVgt+PTpU/FhSmrnxsYGSqVSLGFISkrC7XZz6NAh7Ha7MPxJttO+vj5BVjidTnZ2djh79iyff/45ZrOZpqYmZmZm2LVr1+8g59euXUOn09HU1CQmcEePHhVP+L59+/inf/onkfYo6fHhcJi//Mu/5Ec/+hELCwvid5SER0m9VSgUAsWXpGVp2qZUKrlx4wZHjhwhIyND7JTcv38/Xq+X0tJSoqKiCAaDInny1KlTtLW1kZeX92KQn52dbZRSytva2vjWt74lIitlMhkKhUJk+EsCmbSBOxAI0NPTg16vx2g0cvv2bbFtW6FQEAqFxGoSQMR3ScaGgYEB8vLyePTokdhwur6+jk6nIxAIMDAwQGxsLBaLBbPZjM/nE/t6FxYWxFEpQbVPnjwhOjqa7u5u1Gq1KFnLy8sZHh5mbm6OiIgI5ubmyM/PF75giVOqqKggGAzy/vvv893vflcs4ZGEOmlXTUpKCjExMVRWVrK4uCgia6SlP06nU3CwEjaztbVFbW0tra2t+P1+xsbGOHToEP8PXsONckmvMRcAAAAASUVORK5CYII=");
             --tag-bg-color: #ffffff;
             --tag-text-color: #6b7278;
@@ -45,6 +57,8 @@
             /* スマホは画面幅が狭く1行の文字数が少ないため、同じ行間・文字サイズの数値でも間延びして見える。狭い画面では少し詰める */
             --line-height-scale: 1;
             --font-size-scale: 1;
+            /* 読者が自分で調整できる文字サイズ倍率(Filterパネル内のA-/A+ボタンで変更、localStorageに保存) */
+            --user-font-scale: 1;
             /* スマホでは文字自体を縮小する一方、字間は据え置きだと相対的に間延びして1行の文字数がさらに減るため、字間も詰める */
             --letter-spacing-scale: 1;
             /* bodyの左右余白(px-5 / min-[450px]:px-8 / md:px-12 / lg:px-0)と同じ値。ハンバーガーメニューの右端をコンテンツの右端に揃えるための計算に使う */
@@ -95,27 +109,56 @@
            1023pxのウィンドウ幅では#card-viewが672px固定のままになり、auto-fillが2列にしかならず
            カードが大きくなりすぎていた。700pxからvwベースで広げることでこの帯を解消する */
         @media (min-width: 700px) {
+            /* 左右のガターは一定に保つ。カードが大きくなりすぎる問題は、余白で押し込むのではなく
+               .card-grid側でカード自体の最大サイズ(--card-max)を直接制限して解決する */
+            :root { --wide-gutter: 3rem; }
             body.wide-page-active #card-view {
-                max-width: min(1700px, 97vw);
+                max-width: min(1700px, calc(100vw - 2 * var(--wide-gutter)));
             }
             body.wide-page-active #tag-view {
-                max-width: min(1700px, 97vw);
+                max-width: min(1700px, calc(100vw - 2 * var(--wide-gutter)));
             }
             body.wide-page-active header {
-                max-width: min(1700px, 97vw);
+                max-width: min(1700px, calc(100vw - 2 * var(--wide-gutter)));
             }
             body.wide-page-active footer {
-                max-width: min(1700px, 97vw);
+                max-width: min(1700px, calc(100vw - 2 * var(--wide-gutter)));
             }
         }
         /* 「更新をメールで受け取る」は一旦非表示にする */
         body.card-home #subscribe-cta { display: none; }
-        /* 5列並ぶだけの幅がある画面では、auto-fillに任せず列数を5に固定する。
-           そうしないと、単に#card-viewの幅を広げただけでは6列目が湧いてカードが小さいままになってしまう */
-        @media (min-width: 1400px) {
-            body.card-home .card-grid {
-                grid-template-columns: repeat(5, 1fr);
-            }
+        /* Instagramストーリー用ページ: サイトタイトル・サブタイトルとこの記事のカードだけを見せ、
+           スマホでスクショしてもらう想定なので、それ以外のUIは全部隠す */
+        body.story-view-active #scroll-progress,
+        body.story-view-active #hamburger-btn,
+        body.story-view-active #card-sticky-header,
+        body.story-view-active #card-fixed-footer-bar,
+        body.story-view-active #menu-overlay,
+        body.story-view-active footer {
+            display: none !important;
+        }
+        body.story-view-active { padding-top: 2rem !important; }
+        /* headerには margin-bottom: var(--header-spacing, 18rem) というインラインstyleが直接付いている
+           ため、通常のクラスセレクタでは勝てない。!importantで上書きする */
+        body.story-view-active header { margin-bottom: 5rem !important; }
+        /* この画面だけ左右の余白をとる */
+        body.story-view-active header,
+        body.story-view-active #article-list {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+        }
+        /* フェードの開始/終了位置(行数ベース)はJS側でmax-height・mask-imageを一緒に計算して
+           inline styleで入れる(何行目からフェードするかを変えても、この2つがズレないようにするため) */
+        .story-excerpt {
+            position: relative;
+            overflow: hidden;
+        }
+        .story-image {
+            display: block;
+            width: 100%;
+            max-height: 45vh;
+            object-fit: cover;
+            margin-bottom: 1.25rem;
         }
         /* ページ最上部からタイトルまでの余白と、タイトルから本文(カード一覧など)までの余白を
            揃え(どちらも6rem)、タイトル+台形アイコンがその間で均等な位置に来るようにする。
@@ -125,17 +168,70 @@
            上書きできなかったことがあったため、同じ轍を踏まないための予防策) */
         body.card-home { padding-top: 4rem !important; }
         body.card-home header { margin-bottom: 6rem; }
-        /* サブタイトルは非表示にする */
-        body.card-home #site-subtitle { display: none; }
-        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
-        /* 記事ページの関連記事用グリッド。card-gridと違って1400px以上での5列固定の対象にしない
-           (記事本文の狭い幅の中に置かれるため、5列固定にすると不自然に小さくなってしまう) */
-        .related-articles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
+        /* alignHeaderToCards()が左右に同じpaddingを入れてタイトルの左端をカードの左端に合わせる。
+           Tailwindのpreflight(box-sizing:border-box)が未読込でも幅が膨らまないよう自前で指定する */
+        header { box-sizing: border-box; }
+        /* サブタイトルはタイトルと同じくheader内の通常要素なので、headerに入れたpadding
+           (layoutCardGrids()がカードの左端に合わせて調整する)にそのまま追従する */
+        /* カードは正方形(aspect-ratio:1/1)なので、横幅がそのまま高さになる。画面幅に応じて余白を
+           足し引きしてカードサイズを間接的に抑えようとすると、幅の帯域ごとに破綻して収拾がつかない。
+           そこでカード自体の最小・最大サイズを直接決め、1行に何枚並ぶかはブラウザに任せる。
+
+           Gridのrepeat(auto-fill, minmax(...))は使わない。1frのトラックを作るとカードはトラック内で
+           中央寄せになり、余りが「左端・カード間・右端」に分散して、2列のときだけ中央の隙間が
+           両隣ぶん合算されて極端に広く見えてしまうため(実際にその不具合が出た)。
+           Flexboxならカードは行の余りを分け合って--card-min〜--card-maxの間で伸び縮みし、
+           全カードが上限に達すると余りが出るが、これをjustify-content:centerで吸収すると最下段の
+           半端な枚数まで中央に寄ってしまい、上の行と左端が揃わない。そこで行は常に左詰めにし、
+           余りはグリッド自体の左右paddingとしてalignHeaderToCards()がJSで入れる。
+           こうすると「全体は中央に置かれる/どの行も同じ左端から始まる」が両立し、同じ量のpaddingを
+           タイトル(header)にも入れることでタイトルの左端もカードの左端に揃う */
+        /* --related-card-min: 関連記事だけの下限。記事本文幅(約650px)だと下限200pxのままでは3列になって
+           カードが216px程度まで縮み小さすぎたため、240pxに引き上げて強制的に2列にしている。
+           2列になるとカード自体は330px前後まで大きくなるので、代わりにgapを広げて余白を確保している。
+           元に戻すときはこの値を--card-minと同じにし、gapも0.75remに戻せばよい */
+        /* --related-card-max: 関連記事だけの上限。ウィンドウ幅を最小まで狭めて1列表示になったときは
+           記事本文幅いっぱいまでカードを大きく見せたいため、通常カードの上限(350px)よりだいぶ広くとる。
+           記事本文の幅(--content-width)自体が実質の天井になるので、これより大きな値でも害はない */
+        /* --card-squeeze-min: 「右側が大きく余るくらいなら1列増やす」ときに、カードが縮んでよい下限。
+           列数は--card-minで決めるがカード幅は--card-maxで頭打ちになるため、その間の幅では
+           1列のまま大きく余ってしまう帯ができる。そこを埋めるための値。
+           --card-minと同じ値にすれば、列を増やさず余白のままにする以前の挙動に戻る */
+        :root { --card-min: 280px; --card-max: 350px; --card-squeeze-min: 240px; --related-card-min: 240px; --related-card-max: 640px; }
+        .card-grid,
+        .related-articles-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            gap: 0.75rem;
+            box-sizing: border-box;
+        }
+        .related-articles-grid { gap: 2rem; }
+        .card-grid > .article-card,
+        .related-articles-grid > .article-card {
+            /* カード幅はlayoutCardGrids()が1行に並ぶ枚数から逆算して--card-wに入れる。伸縮させると
+               枚数が半端な最下段だけカードが大きくなってしまうため、伸び縮みはさせず固定幅で置く */
+            flex: 0 0 var(--card-w, var(--card-min));
+            max-width: 100%;
+            /* flexアイテムの既定(min-width:auto/min-height:auto)だと中身の最小サイズより縮められず、
+               特にタイトルが長く複数行になったカードで、正方形(aspect-ratio:1/1)より縦に伸びてしまう
+               ことがある。両軸とも0にして、aspect-ratioの指定を確実に優先させる */
+            min-width: 0;
+            min-height: 0;
+            /* 高さもJSが計算した幅(--card-w)から直接指定して、確実に正方形にする。
+               aspect-ratio:1/1だけに任せると、環境(古いブラウザ、flexの実装差、container-typeとの
+               組み合わせなど)によっては正方形にならず縦横比が崩れる報告があったため、
+               幅と同じ値を高さにも入れて縦横比を確定させる。
+               --card-wはlayoutCardGrids()がそのグリッドの実幅から逆算しており、必ず
+               コンテナ幅以下になるので、max-width:100%で幅だけ縮められて縦長になることはない。
+               JSが動く前(--card-w未設定)はこの指定自体が無効になり、上のaspect-ratioが効く */
+            height: var(--card-w);
+        }
         /* 関連記事セクションの下の区切り線は、この後にまだ記事が続く場合だけ表示する
            (単体記事ページのように後に何も続かない場合は区切り線が浮いて見えるため出さない) */
         .related-section:not(:last-child) { border-bottom: 0.5px solid var(--divider-color); }
         /* 記事下部のSNSシェアアイコンはすりガラス背景を無くし、白い丸線のみのフラット表示にする */
-        .glass-icon.share-icon-flat { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; border-color: color-mix(in srgb, white 60%, transparent); }
+        .glass-icon.share-icon-flat { background: none; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; border-color: var(--divider-color); }
         .article-card {
             display: block;
             overflow: hidden;
@@ -143,6 +239,10 @@
             aspect-ratio: 1 / 1;
             padding: 0.75rem;
             border: 0.5px solid var(--divider-color);
+            /* Tailwindのpreflight(box-sizing:border-box)が未読込(CDN未読込/遅延)の環境だと、この
+               padding・borderがlayoutCardGrids()の計算した幅の外側に足されてしまい、2列に並ぶはずの
+               幅でも1列しか入らなくなる(headerと同じ理由。134行目付近のコメント参照)。自前で指定する */
+            box-sizing: border-box;
             transition: opacity 0.3s ease, background 0.2s ease, border-color 0.2s ease;
             /* カード自身の実際の幅を基準にタイトル・本文の文字サイズを決める(コンテナクエリ)。
                列数が変わって1枚あたりの幅が変わっても、体感の文字サイズが極端に変わらないようにする */
@@ -175,12 +275,13 @@
             }
         }
         .card-excerpt {
-            /* clampで上下限を切ると、カード幅によって文字量の見え方が変わってしまうため、
-               あえて上限・下限を設けずcqiだけに比例させ、カードの大きさに関わらず
-               文字量(密度)が常に一定に見えるようにする */
-            font-size: calc(4cqi * var(--card-font-scale, 1));
+            /* 基本はcqiに比例させ、カードの大きさに関わらず文字量(密度)が一定に見えるようにする。
+               ただしカード自体の上限を上げた結果、文字だけが記事本文より大きくなると不自然なため、
+               記事本文と同じtext-sm(0.875rem)を上限としてmin()で頭打ちにする */
+            font-size: min(0.875rem, calc(4cqi * var(--card-font-scale, 1) * var(--user-font-scale, 1)));
             font-family: var(--card-excerpt-font, inherit);
-            color: var(--card-text-color, color-mix(in srgb, white 95%, transparent));
+            color: var(--text-color-solid);
+            opacity: var(--body-text-opacity);
             line-height: 1.6;
             text-align: justify;
             text-align-last: justify;
@@ -189,9 +290,12 @@
         /* 枠線を引かず、文字組みだけで見えない枠を感じさせる。タイトルは両端揃えだが最後の行だけ右揃えにする
            (本文の方は最後の行まで均等に伸ばす。card-excerptの均等揃えと使い分ける) */
         .card-title {
-            font-size: calc(4.5cqi * var(--card-font-scale, 1));
+            /* 記事タイトルと同じtext-lg(1.125rem)を上限にして、カードが大きくなっても
+               記事本文を開いたときのタイトルより大きく見えないようにする */
+            font-size: min(1.125rem, calc(4.5cqi * var(--card-font-scale, 1) * var(--user-font-scale, 1)));
             font-family: var(--card-title-font, inherit);
-            color: var(--card-text-color, color-mix(in srgb, white 95%, transparent));
+            color: var(--text-color-solid);
+            opacity: var(--title-text-opacity);
             text-align: justify;
             text-align-last: left;
             text-justify: inter-character;
@@ -267,7 +371,21 @@
            Filterボタンだけはカード一覧を絞り込む機能なので、実際にカードグリッドを表示している
            ときだけ付くcard-page-activeクラス(renderCardPage()が付け、hideAllViews()が外す)で
            表示を切り替える */
-        #card-fixed-footer-bar { display: none; }
+        /* position:fixedをTailwind(CDN)の .fixed クラス任せにすると、CDNの読み込みが遅い・
+           ブロックされる環境ではクラスが当たらず、これらのUIが固定されないまま本文と一緒に
+           スクロールしてしまう(実際にiPad+VPN環境でフッターバーが画面中央に流れる不具合が出た)。
+           bodyの基本レイアウトと同じ理由で、位置指定は素のCSSでも必ず効くようにしておく */
+        #card-fixed-footer-bar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+        #hamburger-btn { position: fixed; }
+        #card-sticky-header { position: fixed; top: 0; left: 0; }
+        #scroll-progress { position: fixed; top: 0; left: 0; }
+        #menu-overlay { position: fixed; inset: 0; }
         body.card-home #card-fixed-footer-bar { display: block; }
         body.card-home #hamburger-btn {
             top: auto;
@@ -298,7 +416,7 @@
             max-height: 60vh;
             overflow-y: auto;
             padding: 1rem;
-            background: color-mix(in srgb, var(--bg-color) 88%, transparent);
+            background: color-mix(in srgb, var(--bg-color) 40%, transparent);
             backdrop-filter: blur(14px) saturate(180%);
             -webkit-backdrop-filter: blur(14px) saturate(180%);
             border: 1px solid color-mix(in srgb, white 15%, transparent);
@@ -332,27 +450,27 @@
         body.gradient-smooth-1 {
             background-image: var(--noise-tile), url("data:image/webp;base64,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");
             background-repeat: repeat, repeat-y;
-            background-size: 96px 96px, 100% 2400px;
+            background-size: 96px 96px, 100vw 2400px;
         }
         body.gradient-smooth-2 {
             background-image: var(--noise-tile), url("data:image/webp;base64,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");
             background-repeat: repeat, repeat-y;
-            background-size: 96px 96px, 100% 2400px;
+            background-size: 96px 96px, 100vw 2400px;
         }
         body.gradient-smooth-3 {
             background-image: var(--noise-tile), url("data:image/webp;base64,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");
             background-repeat: repeat, repeat-y;
-            background-size: 96px 96px, 100% 2400px;
+            background-size: 96px 96px, 100vw 2400px;
         }
         body.gradient-smooth-4 {
             background-image: var(--noise-tile), url("data:image/webp;base64,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");
             background-repeat: repeat, repeat-y;
-            background-size: 96px 96px, 100% 2400px;
+            background-size: 96px 96px, 100vw 2400px;
         }
         body.gradient-smooth-5 {
             background-image: var(--noise-tile), url("data:image/webp;base64,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");
             background-repeat: repeat, repeat-y;
-            background-size: 96px 96px, 100% 2400px;
+            background-size: 96px 96px, 100vw 2400px;
         }
         /* コンテンツ本体(.content-widthで中央寄せ)の右端と、ハンバーガーボタンの右端を揃える */
         #hamburger-btn { right: max(var(--body-pad), calc((100vw - var(--content-width)) / 2)); }
@@ -369,11 +487,20 @@
         ::selection { background: var(--selection-bg-color); color: var(--selection-text-color); }
 
         html {
-            font-size: calc(var(--base-font-size) * var(--font-size-scale));
-            /* トグルを開いてページが長くなりスクロールバーが出現/消滅する瞬間に、
-               コンテンツの横位置がずれないよう常にスクロールバー分の余白を確保しておく */
-            scrollbar-gutter: stable;
+            font-size: calc(var(--base-font-size) * var(--font-size-scale) * var(--user-font-scale));
+            /* 何かが画面幅をわずかに超えると横スクロールが生まれ、右側に本来見えないはずの余りが
+               現れて中身が左にずれてしまう。横方向のはみ出しは常に切り捨てて画面幅にぴったり収める
+               (clipはスクロール領域を作らないのでposition:stickyなどに影響しない。未対応環境向けに
+               hiddenも先に書いておく)。
+               なお「ピンチアウトで縮小すると右に帯が出る」件はこれとは別で、背景グラデーションが
+               横方向に繰り返されておらず画面幅の外側を覆えていなかったことが原因(background-repeat参照) */
+            overflow-x: hidden;
+            overflow-x: clip;
         }
+        /* かつてはscrollbar-gutter: stableで「スクロールバーが出る瞬間の横ずれ」を防いでいたが、
+           環境によっては右端に使われない帯として残り、その分コンテンツの中心が左にずれて見えた。
+           記事を開けばどのみちスクロールバーが出る作りで恩恵が小さい一方、副作用が大きいため廃止した。
+           (メディアクエリで環境を絞る形も試したが、それでも帯が出る端末があったため完全に削除) */
 
         body {
             /* Tailwind(CDN版)の読み込みを待たずに最低限のレイアウトが効くよう、素のCSSでも指定しておく */
@@ -440,15 +567,18 @@
             100% { background-position: 0 0, 20% 90%, 80% 10%, 0 0; }
         }
 
-        /* テスト実装: タイトルに重なる不定形の台形の線。読み込むたびに少し形が変わり、カーソルを乗せて動かすとゆらゆら揺れる。
-           不要なら #title-rect-wrap のdivとCSS、JSのsetupTitleRectSway()/randomizeTitleShape()呼び出しを削除すれば元に戻ります */
+        /* テスト実装: タイトルに重なる不定形の台形の線。読み込むたびに少し形が変わり、カーソルを乗せて動かすとゆらゆら揺れる。 */
         .title-rect-wrap { position: absolute; left: 0; z-index: 20; perspective: 500px; }
         .title-rect { width: 100%; height: 100%; overflow: visible; transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
-        .title-rect polygon { fill: none; stroke: currentColor; stroke-miterlimit: 10; }
+        .title-rect polygon { fill: none; stroke: #ffffff; stroke-miterlimit: 10; }
 
-        .article-title { color: var(--text-color-solid); opacity: 0.85; line-height: inherit !important; transition: opacity 0.8s ease, color 0.5s ease; font-family: var(--article-title-font, inherit); }
+        .article-title { color: var(--text-color-solid); opacity: var(--title-text-opacity); line-height: inherit !important; transition: opacity 0.8s ease, color 0.5s ease; font-family: var(--article-title-font, inherit); }
         /* コピペした本文の段落タグなどに行間のインラインスタイルが残っていても、必ずサイト設定の行間が効くようにする */
         .content-body, .content-body * { line-height: inherit !important; }
+        .content-body { opacity: var(--body-text-opacity); }
+        .category-label[data-category="log"], .category-filter-item[data-category="log"] { font-family: var(--log-font, inherit); }
+        .category-label[data-category="sketch"], .category-filter-item[data-category="sketch"] { font-family: var(--sketch-font, inherit); }
+        .category-label[data-category="essay"], .category-filter-item[data-category="essay"] { font-family: var(--essay-font, inherit); }
         .group:hover .article-title { opacity: 1; }
 
         .article-snippet {
@@ -495,17 +625,42 @@
         }
         .content-body blockquote { border-left: 1px solid var(--text-color-solid); padding-left: 1.5em; margin: 2em 0; font-style: italic; opacity: 0.7; }
         .content-body h2 { font-size: 1.2em; margin: 2em 0 1em 0; opacity: 0.9; }
-        .footnote-ref { color: var(--footnote-color); background: var(--footnote-bg-color); padding: 0.02em 0.2em; border-radius: 0; }
+        .footnote-ref { color: var(--footnote-color); background: var(--footnote-bg-color); padding: 0; border-radius: 0; }
         .footnote-ref a { color: inherit; text-decoration: none; }
         .footnote-list { margin-top: 2.5em; padding-top: 1.2em; border-top: 0.5px solid var(--divider-color); font-size: 0.8em; list-style: none; }
-        .footnote-list li { display: flex; gap: 0.5em; margin-bottom: 0.6em; }
+        .footnote-list li { display: flex; align-items: flex-start; gap: 0.5em; margin-bottom: 0.6em; }
         .footnote-list li span:first-child { flex-shrink: 0; }
-        .footnote-list a.footnote-back { opacity: 0.5; text-decoration: none; margin-left: 0.3em; }
-        .search-highlight { background: #ffffff; color: #000000; border-radius: 2px; padding: 0 0.1em; }
+        .footnote-list a.footnote-back { opacity: 0.5; text-decoration: none; margin-left: 0.3em; display: inline-flex; vertical-align: middle; }
+        .footnote-list a.footnote-back svg { display: block; }
+        .search-highlight { background: #ffffff; color: #6b7278; border-radius: 2px; padding: 0 0.1em; }
         /* パターンB(ハブ)のWorkFlowy風アウトライン */
         .outline-toggle { user-select: none; }
         /* 記事一覧の項目間にうっすら区切り線を入れる(最初の項目の上と最後の項目の下には出さない) */
         .outline-article-row + .outline-article-row { border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
+        /* PC(マウスカーソルがある環境)だけ、標準カーソルを丸いドットに置き換える。
+           mix-blend-mode:differenceで背景色と反転させ、白背景の上ではグレー、グレーの上では
+           白、というように背景に応じて自動で色が変わるようにする(タッチ端末には出さない) */
+        @media (hover: hover) and (pointer: fine) {
+            /* cursor-pointerクラスやリンク・ボタン自体に付いている個別のcursor指定の方が詳細度で勝って
+               標準の矢印/指カーソルが出てしまうため、全要素にまとめて!importantで上書きする */
+            body, body * { cursor: none !important; }
+            #custom-cursor {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background: #fff;
+                mix-blend-mode: difference;
+                pointer-events: none;
+                z-index: 9999;
+                transform: translate(-100px, -100px);
+                opacity: 0;
+                transition: opacity 0.2s ease;
+            }
+            #custom-cursor.visible { opacity: 1; }
+        }
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -524,6 +679,7 @@
     </script>
 
     <div id="scroll-progress" class="fixed top-0 left-0 h-[2px] z-50" style="width: 0%; background: var(--text-color-solid); opacity: 0.5;"></div>
+    <div id="custom-cursor" aria-hidden="true"></div>
 
     <div id="toast" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50">保存されました</div>
 
@@ -541,12 +697,18 @@
     </div>
 
     <!-- パターンCだけ: ハンバーガーメニュー(右、CSSで移動)を乗せる固定フッター -->
-    <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 2rem; background: color-mix(in srgb, var(--bg-color) 25%, transparent); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%); border-top: 0.5px solid var(--divider-color);"></div>
+    <!-- 背景・ぼかしはサイドバー(#menu-panel内)と同じ設定にして、すりガラスの質感を揃えている -->
+    <div id="card-fixed-footer-bar" class="fixed bottom-0 left-0 right-0 z-30" style="height: 2rem; background: color-mix(in srgb, var(--bg-color) 5%, transparent); backdrop-filter: blur(10px) saturate(190%); -webkit-backdrop-filter: blur(10px) saturate(190%); border-top: 0.5px solid var(--divider-color); box-shadow: inset 0 1px 0 color-mix(in srgb, white 25%, transparent), 0 -4px 16px color-mix(in srgb, black 10%, transparent);"></div>
 
     <!-- パターンCだけ: Filter。.fade-inの中(transformを持つ祖先)に置くとposition:fixedが効かなくなるため、
          他の固定UIと同じくbody直下に常設し、中身(カテゴリ/タグ行)だけrenderCardPage()が差し替える -->
-    <button id="card-filter-toggle" onclick="toggleCardFilterPanel(this)" class="inline-flex items-center gap-1 px-1.5 py-0.5 cursor-pointer hover:opacity-90 transition-opacity" style="font-size: 0.6rem;">
-        <span>Filter</span>
+    <button id="card-filter-toggle" onclick="toggleCardFilterPanel(this)" class="inline-flex items-center gap-1 px-1.5 py-0.5 cursor-pointer hover:opacity-90 transition-opacity" style="font-size: 0.6rem;" aria-label="Filter" title="Filter">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+            <line x1="2" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            <circle cx="17.5" cy="7" r="3.4" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <circle cx="6.5" cy="17" r="3.4" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <line x1="11" y1="17" x2="22" y2="17" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
         <span id="card-filter-dot" class="hidden" style="width: 3px; height: 3px; border-radius: 9999px; background: currentColor;"></span>
     </button>
     <div id="card-filter-panel" class="hidden"></div>
@@ -554,39 +716,49 @@
 
     <div id="menu-overlay" class="fixed inset-0 z-50 pointer-events-none">
         <div id="menu-catcher" class="absolute inset-0 pointer-events-none opacity-0" onclick="toggleMenu()"></div>
-        <div id="menu-panel" class="absolute top-0 left-0 h-full w-36 max-w-[55vw] pointer-events-auto transform -translate-x-full transition-transform duration-300 ease-out">
+        <div id="menu-panel" class="absolute top-0 left-0 h-full w-32 max-w-[55vw] pointer-events-auto transform -translate-x-full transition-transform duration-300 ease-out">
             <!-- backdrop-filterはtransformと同じ要素に付けるとSafariで正しくぼけない(透けて見えなくなる)ため、
                  スライドさせる外側とガラス表現(ぼかし)の内側を別要素に分けている -->
             <!-- 閉じる(×)ボタンは、フッター左下のハンバーガーメニューの真上に来るよう固定配置にする
                  (ハンバーガーがX字に変わったように見せるため)。menu-panel自体がposition:absoluteの
                  スライド元なので、このボタンもabsoluteにしておけばパネルと一緒にスライドする -->
-            <button onclick="toggleMenu()" class="absolute z-10 opacity-50 hover:opacity-100 transition-opacity text-lg leading-none" style="left: 1.5rem; bottom: 2.25rem;" aria-label="閉じる">×</button>
+            <button onclick="toggleMenu()" class="absolute z-10 opacity-50 hover:opacity-100 transition-opacity text-lg leading-none" style="left: 1.5rem; bottom: 1rem;" aria-label="閉じる">×</button>
             <div class="h-full p-5" style="background: color-mix(in srgb, var(--bg-color) 5%, transparent); backdrop-filter: blur(10px) saturate(190%); -webkit-backdrop-filter: blur(10px) saturate(190%); color: var(--text-color); border-right: 1px solid color-mix(in srgb, currentColor 30%, transparent); box-shadow: inset -1px 0 0 color-mix(in srgb, white 25%, transparent), 4px 0 16px color-mix(in srgb, black 10%, transparent);">
-                <div id="sidebar-title" onclick="toggleMenu(); goHome();" class="cursor-pointer opacity-90 hover:opacity-100 transition-opacity mb-8 font-medium tracking-widest" style="font-size: var(--menu-font-size);">fragments</div>
-                <nav class="flex flex-col gap-3" style="font-size: var(--menu-font-size);">
-                    <a href="/about" onclick="toggleMenu(); return goToSection('about', '/about');" data-i18n="nav_about" class="opacity-80 hover:opacity-100 transition-opacity">About</a>
-                    <a href="/contact" onclick="toggleMenu(); return goToSection('contact', '/contact');" data-i18n="nav_contact" class="opacity-80 hover:opacity-100 transition-opacity">Contact</a>
-                    <a href="/tags" onclick="toggleMenu(); return goToSection('tag-list', '/tags');" data-i18n="nav_tag" class="opacity-80 hover:opacity-100 transition-opacity">Tag</a>
-                    <a href="/search" onclick="toggleMenu(); return goToSection('search', '/search');" data-i18n="nav_search" class="opacity-80 hover:opacity-100 transition-opacity">Search</a>
-                    <button onclick="toggleMenu(); openSubscribeModal();" data-i18n="nav_subscribe" class="glass-chip self-start -ml-2.5 -mt-1.5 px-2.5 py-1 hover:opacity-90 transition-opacity" style="background: var(--subscribe-bg-color); color: var(--subscribe-text-color); font-size: 0.75em; font-family: inherit; box-shadow: none;">Subscribe</button>
+                <div id="sidebar-title" onclick="toggleMenu(); goHome();" class="cursor-pointer opacity-90 hover:opacity-100 transition-opacity mb-8 font-medium tracking-widest" style="font-size: var(--menu-font-size); font-family: var(--site-title-font, inherit);">fragments</div>
+                <nav class="flex flex-col gap-3" style="font-size: var(--menu-font-size); font-family: var(--site-title-font, inherit);">
+                    <a href="/about" onclick="toggleMenu(); return goToSection('about', '/about');" data-i18n="nav_about" class="opacity-80 hover:opacity-100 transition-opacity">about</a>
+                    <a href="/contact" onclick="toggleMenu(); return goToSection('contact', '/contact');" data-i18n="nav_contact" class="opacity-80 hover:opacity-100 transition-opacity">contact</a>
+                    <a href="/tags" onclick="toggleMenu(); return goToSection('tag-list', '/tags');" data-i18n="nav_tag" class="opacity-80 hover:opacity-100 transition-opacity">tag</a>
+                    <a href="/search" onclick="toggleMenu(); return goToSection('search', '/search');" data-i18n="nav_search" class="opacity-80 hover:opacity-100 transition-opacity">search</a>
+                    <button onclick="toggleMenu(); openSubscribeModal();" data-i18n="nav_subscribe" class="glass-chip self-start -ml-2 mt-1 px-2 py-0.5 hover:opacity-90 transition-opacity font-bold" style="background: var(--subscribe-bg-color); color: var(--subscribe-text-color); font-size: 0.75em; font-family: var(--body-font, inherit); box-shadow: none;">Subscribe</button>
                     <div class="flex gap-2 mt-2 pt-3" style="border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent); font-size: 0.75em;">
                         <span id="locale-btn-ja" onclick="setLocale('ja')" class="cursor-pointer opacity-100 hover:opacity-100 transition-opacity" style="text-decoration: underline;">JP</span>
                         <span class="opacity-40">/</span>
                         <span id="locale-btn-en" onclick="setLocale('en')" class="cursor-pointer opacity-50 hover:opacity-100 transition-opacity">EN</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 mt-2 pt-3" style="border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);">
+                        <button onclick="adjustUserFontScale(-0.1)" class="glass-chip w-6 h-6 inline-flex items-center justify-center hover:opacity-80 transition-opacity" style="box-shadow: none; font-size: 0.65rem;" aria-label="文字を小さく" title="文字を小さく">A-</button>
+                        <span class="font-scale-value opacity-60" style="font-size: 0.65rem; min-width: 2em; text-align: center;"></span>
+                        <button onclick="adjustUserFontScale(0.1)" class="glass-chip w-6 h-6 inline-flex items-center justify-center hover:opacity-80 transition-opacity" style="box-shadow: none; font-size: 0.65rem;" aria-label="文字を大きく" title="文字を大きく">A+</button>
                     </div>
                 </nav>
             </div>
         </div>
     </div>
 
-    <header class="w-full content-width pt-8 mb-40 opacity-0 fade-in relative" style="animation-delay: 0.2s; isolation: isolate;">
+    <header class="w-full content-width pt-8 opacity-0 fade-in relative" style="animation-delay: 0.2s; isolation: isolate; margin-bottom: var(--header-spacing, 18rem);">
         <div class="title-rect-wrap cursor-pointer" id="title-rect-wrap" aria-hidden="true" onclick="goHome()">
             <svg class="title-rect" id="title-rect" viewBox="0 0 210 205" preserveAspectRatio="none">
                 <polygon points="30,30 180,6 124,130 30,97" />
             </svg>
         </div>
         <h1 id="site-title" class="font-medium tracking-widest cursor-pointer inline-block relative z-10" onclick="goHome()">fragments</h1>
-        <p id="site-subtitle" class="mt-4 relative z-10">空間にまつわる議論をプロトタイプする</p>
+        <!-- サブタイトルは英語(上)・日本語(下)を同じ<p>内の連続したテキストとして流し込む。
+             英文が1行に収まるときだけ<br>で強制改行し、英文が折り返すときはその折り返した
+             最後の位置から日本語がそのまま続く(updateSubtitleBreak()が幅に応じて<br>を切替) -->
+        <!-- 帯(背景)は<p>ではなく中の<span>に敷く。<p>に敷くと折り返して短くなった行でも
+             ブロックの幅いっぱいまで色が伸びてしまうが、インラインの<span>なら行ごとに文字幅で止まる -->
+        <p id="site-subtitle" class="mt-4 relative z-10"><span id="site-subtitle-en"></span><br id="site-subtitle-break" style="display:none"><span id="site-subtitle-ja">空間にまつわる議論をプロトタイプする</span></p>
     </header>
 
     <main id="article-list" class="w-full content-width flex flex-col gap-16 relative"></main>
@@ -606,6 +778,7 @@
     <main id="tag-view" class="hidden w-full content-width relative"></main>
 
     <main id="search-view" class="hidden w-full content-width relative">
+        <h2 id="search-page-heading" class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">search</h2>
         <div class="relative mb-10">
             <input id="search-input" type="text" placeholder="タイトル・本文・タグで検索" class="w-full bg-transparent border text-sm px-3 py-2.5 pr-9 focus:outline-none" style="border-color: color-mix(in srgb, currentColor 30%, transparent); border-radius: 0;">
             <button id="search-clear" onclick="clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100 transition-opacity leading-none" aria-label="検索をクリア">×</button>
@@ -670,6 +843,7 @@
         let siteAboutContent = '';
         let siteAboutContentEn = '';
         let siteSnsXUrl = '';
+        let siteSnsFacebookUrl = '';
         let siteSnsInstagramUrl = '';
         let siteSnsWebsiteUrl = '';
 
@@ -678,7 +852,7 @@
         let currentLocale = localStorage.getItem('siteLocale') === 'en' ? 'en' : 'ja';
         const I18N = {
             ja: {
-                nav_about: 'About', nav_contact: 'Contact', nav_tag: 'Tag', nav_search: 'Search', nav_subscribe: 'Subscribe',
+                nav_about: 'about', nav_contact: 'contact', nav_tag: 'tag', nav_search: 'search', nav_subscribe: 'Subscribe',
                 search_placeholder: 'タイトル・本文・タグで検索',
                 subscribe_title: '購読する',
                 subscribe_desc: '新着記事をメールで受け取れます(週1回、更新があった週だけ届きます)',
@@ -692,7 +866,7 @@
                 search_no_results: '見つかりませんでした。',
             },
             en: {
-                nav_about: 'About', nav_contact: 'Contact', nav_tag: 'Tag', nav_search: 'Search', nav_subscribe: 'Subscribe',
+                nav_about: 'about', nav_contact: 'contact', nav_tag: 'tag', nav_search: 'search', nav_subscribe: 'Subscribe',
                 search_placeholder: 'Search by title, body, or tag',
                 subscribe_title: 'Subscribe',
                 subscribe_desc: 'Get new posts by email (sent at most once a week, only when there’s an update).',
@@ -739,6 +913,27 @@
 
         const listContainer = document.getElementById('article-list');
         let displayedCount = 0;
+
+        // 読者が自分で文字サイズを調整できる機能(環境によって読みづらい場合のため)。
+        // サイト設定の文字サイズ(--base-font-size)を基準に、そこから何%拡大/縮小するかだけをlocalStorageに保存する
+        const USER_FONT_SCALE_MIN = 0.8;
+        const USER_FONT_SCALE_MAX = 1.4;
+        const USER_FONT_SCALE_STEP = 0.1;
+        let userFontScale = parseFloat(localStorage.getItem('userFontScale')) || 1;
+
+        function applyUserFontScale() {
+            document.documentElement.style.setProperty('--user-font-scale', userFontScale);
+            document.querySelectorAll('.font-scale-value').forEach(el => {
+                el.textContent = Math.round(userFontScale * 100) + '%';
+            });
+        }
+
+        function adjustUserFontScale(delta) {
+            userFontScale = Math.min(USER_FONT_SCALE_MAX, Math.max(USER_FONT_SCALE_MIN, +(userFontScale + delta).toFixed(2)));
+            localStorage.setItem('userFontScale', userFontScale);
+            applyUserFontScale();
+        }
+        applyUserFontScale();
 
         // サイト全体の表示設定(管理画面で設定され、DBの1行に保存されている)を反映する
         async function applySiteSettings() {
@@ -814,8 +1009,8 @@
             document.documentElement.style.setProperty('--tag-description-color', data.tag_description_color || data.text_color);
             document.documentElement.style.setProperty('--footnote-color', data.footnote_color || data.text_color);
             siteFootnoteColor = data.footnote_color || data.text_color;
-            // 注釈番号の背景色(空欄なら注釈番号の色を薄くした自動生成の背景に従う)
-            document.documentElement.style.setProperty('--footnote-bg-color', data.footnote_bg_color || 'color-mix(in srgb, var(--footnote-color) 18%, transparent)');
+            // 注釈番号の背景色(空欄ならハッシュタグ・Subscribeボタンと同じ真っ白に揃える)
+            document.documentElement.style.setProperty('--footnote-bg-color', data.footnote_bg_color || '#ffffff');
             document.documentElement.style.setProperty('--footnote-text-color', data.footnote_text_color || data.text_color);
             siteFootnoteTextColor = data.footnote_text_color || data.text_color;
             siteFootnoteTextFont = data.footnote_text_font || 'inherit';
@@ -833,12 +1028,20 @@
             siteFontSize = data.font_size;
             document.documentElement.style.setProperty('--base-font-size', data.font_size + 'px');
             document.body.style.fontFamily = data.font;
+            document.documentElement.style.setProperty('--body-font', data.font);
             // 記事タイトルのフォント(空欄なら本文フォントに従う)
             if (data.title_font) {
                 document.documentElement.style.setProperty('--article-title-font', data.title_font);
             } else {
                 document.documentElement.style.removeProperty('--article-title-font');
             }
+            // カテゴリ別フォント(空欄なら本文フォントに従う)
+            if (data.log_font) document.documentElement.style.setProperty('--log-font', data.log_font);
+            else document.documentElement.style.removeProperty('--log-font');
+            if (data.sketch_font) document.documentElement.style.setProperty('--sketch-font', data.sketch_font);
+            else document.documentElement.style.removeProperty('--sketch-font');
+            if (data.essay_font) document.documentElement.style.setProperty('--essay-font', data.essay_font);
+            else document.documentElement.style.removeProperty('--essay-font');
             siteLineHeight = data.line_height;
             document.documentElement.style.setProperty('--base-line-height', data.line_height);
             document.documentElement.style.setProperty('--base-letter-spacing', data.letter_spacing + 'em');
@@ -847,17 +1050,43 @@
             if (data.content_width) document.documentElement.style.setProperty('--content-width', data.content_width + 'px');
             if (data.page_title) document.title = data.page_title;
             const titleEl = document.getElementById('site-title');
-            const subtitleEl = document.getElementById('site-subtitle');
             if (data.site_title) titleEl.textContent = data.site_title;
             titleEl.style.fontFamily = data.site_title_font || data.font;
+            document.documentElement.style.setProperty('--site-title-font', data.site_title_font || data.font);
             titleEl.style.fontSize = (data.site_title_size || 14) + 'px';
             titleEl.style.color = data.site_title_color || data.text_color;
-            if (data.site_subtitle) subtitleEl.textContent = data.site_subtitle;
-            subtitleEl.style.fontSize = (data.site_subtitle_size || 12) + 'px';
-            subtitleEl.style.color = data.site_subtitle_color || data.text_color;
+            // サブタイトルは英語(上)・日本語(下)を同じ<p>内で連続したテキストとして扱う。
+            // 未入力の言語はその<span>だけ非表示にする(改行の要否はupdateSubtitleBreak()が決める)
+            const subtitleWrapEl = document.getElementById('site-subtitle');
+            const subtitleEnEl = document.getElementById('site-subtitle-en');
+            const subtitleJaEl = document.getElementById('site-subtitle-ja');
+            const subtitleSize = (data.site_subtitle_size || 12) + 'px';
+            const subtitleColor = data.site_subtitle_color || data.text_color;
+            // 空欄なら本文フォントに従う
+            const subtitleFont = data.site_subtitle_font || data.font;
+            const subtitleBg = data.site_subtitle_bg_color || '';
+            // 白帯に重なった部分の台形の線を反転させる(syncTitleShapeOverlays)ときの線色に使う
+            document.documentElement.style.setProperty('--subtitle-text-color', subtitleColor);
+            if (subtitleWrapEl && subtitleEnEl && subtitleJaEl) {
+                if (data.site_subtitle_en) subtitleEnEl.textContent = data.site_subtitle_en;
+                if (data.site_subtitle) subtitleJaEl.textContent = data.site_subtitle;
+                subtitleWrapEl.style.fontSize = subtitleSize;
+                subtitleWrapEl.style.color = subtitleColor;
+                subtitleWrapEl.style.fontFamily = subtitleFont;
+                // 帯はrenderSubtitleBandBg()がRangeのgetClientRects()を使って描く(選択時のハイライトと
+                // 同じく、最後の行以外は折り返し位置まで塗られた見た目にするため)。色はdatasetに預ける
+                subtitleWrapEl.dataset.bg = subtitleBg;
+                const enHasText = !!subtitleEnEl.textContent.trim();
+                const jaHasText = !!subtitleJaEl.textContent.trim();
+                subtitleEnEl.style.display = enHasText ? '' : 'none';
+                subtitleJaEl.style.display = jaHasText ? '' : 'none';
+                subtitleWrapEl.style.display = (enHasText || jaHasText) ? '' : 'none';
+            }
+            scheduleAlignHeaderToCards();
             siteAboutContent = data.about_content || '';
             siteAboutContentEn = data.about_content_en || '';
             siteSnsXUrl = data.sns_x_url || '';
+            siteSnsFacebookUrl = data.sns_facebook_url || '';
             siteSnsInstagramUrl = data.sns_instagram_url || '';
             siteSnsWebsiteUrl = data.sns_website_url || '';
             // パターンA/Bは廃止しパターンC固定にしたため、DBのhomepage_layout設定は読まない
@@ -865,7 +1094,9 @@
             document.documentElement.style.setProperty('--card-font-scale', data.card_font_scale || 1);
             if (data.card_title_font) document.documentElement.style.setProperty('--card-title-font', data.card_title_font);
             if (data.card_excerpt_font) document.documentElement.style.setProperty('--card-excerpt-font', data.card_excerpt_font);
-            if (data.card_text_color) document.documentElement.style.setProperty('--card-text-color', data.card_text_color);
+            document.documentElement.style.setProperty('--body-text-opacity', data.body_text_opacity != null ? data.body_text_opacity : 0.75);
+            document.documentElement.style.setProperty('--header-spacing', (data.header_spacing != null ? data.header_spacing : 288) + 'px');
+            document.documentElement.style.setProperty('--title-text-opacity', data.title_text_opacity != null ? data.title_text_opacity : 1);
             const footerTitle = data.site_title || document.getElementById('site-title').textContent;
             document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} ${footerTitle}`;
         }
@@ -888,6 +1119,13 @@
         // 実行順序やレンダリング経路によって適用されないことがあったため、生成の起点を一本化した)。
         // 注釈は本文中に埋め込まず、記事の末尾に番号付きでまとめて表示する(参照元は番号リンクのみ)。
         // 同じページに複数の記事が並ぶ(一覧など)ことがあるため、アンカーIDは記事IDで名前空間を分ける
+        function navigateFootnote(fromId, toId) {
+            const target = document.getElementById(toId);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                target.focus();
+            }
+        }
         function applyFootnoteStyling(html, articleId) {
             const container = document.createElement('div');
             container.innerHTML = html;
@@ -900,12 +1138,12 @@
                 notes.push(noteText);
                 el.id = `fnref-${articleId}-${n}`;
                 el.style.setProperty('color', siteFootnoteColor, 'important');
-                el.innerHTML = `<a href="#fn-${articleId}-${n}">[${n}]</a>`;
+                el.innerHTML = `<a href="javascript:void(0)" onclick="navigateFootnote('fnref-${articleId}-${n}', 'fn-${articleId}-${n}'); return false;">[${n}]</a>`;
             });
             let notesHtml = '';
             if (notes.length > 0) {
                 notesHtml = `<ol class="footnote-list">${notes.map((text, i) => `
-                    <li id="fn-${articleId}-${i + 1}"><span class="footnote-ref" style="color:${siteFootnoteColor};">[${i + 1}]</span><span style="color:${siteFootnoteTextColor}; font-family:${siteFootnoteTextFont};">${escapeHtml(text)}<a href="#fnref-${articleId}-${i + 1}" class="footnote-back">↩</a></span></li>
+                    <li id="fn-${articleId}-${i + 1}"><span class="footnote-ref" style="color:${siteFootnoteColor};">[${i + 1}]</span><span style="color:${siteFootnoteTextColor}; font-family:${siteFootnoteTextFont};">${escapeHtml(text)}<a href="javascript:void(0)" onclick="navigateFootnote('fn-${articleId}-${i + 1}', 'fnref-${articleId}-${i + 1}'); return false;" class="footnote-back"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></a></span></li>
                 `).join('')}</ol>`;
             }
             return container.innerHTML + notesHtml;
@@ -913,17 +1151,21 @@
 
         // 実験的機能: 関連記事。この記事に付いているタグ1つ1つについて、同じタグを持つ他の記事を
         // 新しい順にlimitPerTag件集め、「#タグ名についての関連記事」としてタグごとにグループ化する。
+        // 複数のタグに同じ記事がまたがる場合は先のタグ側にだけ出し、後のタグ側では除外したうえで
+        // (usedIds)、空いた枠には次点の記事を繰り上げる。記事全体を通して重複が出ないようにするため
         // 不要ならこの関数とbuildArticleHtml内のrelatedHtml関連の3行を削除すれば元に戻ります
         function relatedArticlesByTag(article, limitPerTag) {
             if (!article.tags || article.tags.length === 0) return [];
+            const usedIds = new Set();
             return article.tags
-                .map(tag => ({
-                    tag,
-                    articles: articles
-                        .filter(a => a.id !== article.id && (a.tags || []).some(t => t.id === tag.id))
+                .map(tag => {
+                    const picked = articles
+                        .filter(a => a.id !== article.id && !usedIds.has(a.id) && (a.tags || []).some(t => t.id === tag.id))
                         .sort((a, b) => new Date(b.date) - new Date(a.date))
-                        .slice(0, limitPerTag),
-                }))
+                        .slice(0, limitPerTag);
+                    picked.forEach(a => usedIds.add(a.id));
+                    return { tag, articles: picked };
+                })
                 .filter(group => group.articles.length > 0);
         }
 
@@ -936,19 +1178,14 @@
         }
 
         function buildArticleHtml(article) {
-            // この記事だけの文字組みが設定されていれば、サイト全体の設定を上書きする(行間・頭出し高さはforceLineHeightがJSで適用する)
-            let overrideStyle = '';
-            if (article.font != null) {
-                overrideStyle = `style="font-family:${article.font}; font-size:${article.font_size}px; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};"`;
-            }
             const tagsHtml = (article.tags && article.tags.length > 0)
                 ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<a href="/tag/${encodeURIComponent(t.slug)}" onclick="event.stopPropagation()" class="glass-chip tag-chip px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: color-mix(in srgb, var(--article-tag-bg-color) 55%, transparent); color: var(--article-tag-text-color); font-size: var(--article-tag-font-size); font-family: var(--article-tag-font);">#${t.name}</a>`).join('')}</div>`
                 : '';
-            const relatedGroups = relatedArticlesByTag(article, 3);
+            const relatedGroups = relatedArticlesByTag(article, 2);
             const relatedHtml = relatedGroups.length > 0
                 ? `<div id="related-${article.id}" class="hidden related-section text-left mt-8 pb-8">${relatedGroups.map(g => `
                     <div class="mb-8">
-                        <div class="text-xs opacity-40 mb-3"><span class="glass-chip tag-chip inline-block px-2 py-0.5" style="background: #ffffff; color: #6b7278;">#${escapeHtml(g.tag.name)}</span>についての関連記事</div>
+                        <div class="text-xs mb-3"><a href="/tag/${encodeURIComponent(g.tag.slug)}" onclick="event.stopPropagation()" class="glass-chip tag-chip inline-block px-2 py-0.5 hover:opacity-80 transition-opacity" style="background: #ffffff; color: #6b7278;">#${escapeHtml(g.tag.name)}</a><span style="color: #ffffff;">についての関連記事</span></div>
                         <div class="related-articles-grid" onclick="event.stopPropagation()">${g.articles.map(a => articleCardHtml(a)).join('')}</div>
                     </div>
                 `).join('')}</div>`
@@ -958,14 +1195,18 @@
                 ? `<div class="text-left mb-5"><div class="text-xs opacity-40 mb-2">この記事へのリンク</div><div class="flex flex-col gap-1.5">${backlinks.map(a => `<a href="/article/${a.id}" onclick="event.stopPropagation()" class="text-xs opacity-70 hover:opacity-100 transition-opacity">${escapeHtml(a.title)}</a>`).join('')}</div></div>`
                 : '';
             const title = localizedTitle(article);
+            const rawTitle = (currentLocale === 'en' && article.title_en) ? article.title_en : article.title;
+            const titleHtml = article.category
+                ? `<span class="category-label" data-category="${escapeHtml(article.category)}">${escapeHtml(article.category)}</span> | ${escapeHtml(rawTitle)}`
+                : escapeHtml(rawTitle);
             const content = localizedContent(article);
             return `
-                <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" style="border: 0.5px solid var(--divider-color); padding: 1.5rem;" ${overrideStyle}>
+                <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" data-category="${article.category || ''}" style="border: 0.5px solid var(--divider-color); padding: 1.5rem;">
                     <div class="cursor-pointer group" onclick="toggleArticle(this, event)">
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
-                        <h2 class="text-lg font-normal mb-4 article-title">${title}</h2>
+                        <h2 class="text-lg font-normal mb-4 article-title">${titleHtml}</h2>
                         ${tagsHtml}
-                        <div class="article-snippet text-sm opacity-70 content-body">${applyFootnoteStyling(content, article.id)}</div>
+                        <div class="article-snippet text-sm"><div class="content-body">${applyFootnoteStyling(content, article.id)}</div></div>
                     </div>
                     <div class="mt-8 text-center hidden close-btn">
                         ${backlinkHtml}
@@ -974,11 +1215,71 @@
                             <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleShareUrl(article.id))}" target="_blank" rel="noopener noreferrer" class="glass-icon share-icon-flat opacity-70 hover:opacity-100 transition-opacity" title="Facebookでシェア" aria-label="Facebookでシェア">${SHARE_ICONS.facebook}</a>
                             <button onclick="shareToInstagram(${article.id})" class="glass-icon share-icon-flat opacity-70 hover:opacity-100 transition-opacity" title="リンクをコピー(Instagram用)" aria-label="リンクをコピー(Instagram用)">${SHARE_ICONS.instagram}</button>
                             <button onclick="shareArticle(${article.id})" class="glass-icon share-icon-flat opacity-70 hover:opacity-100 transition-opacity" title="共有" aria-label="共有">${SHARE_ICONS.share}</button>
-                            <button onclick="event.stopPropagation(); openSubscribeModal()" class="glass-chip hover:opacity-90 transition-opacity px-3 py-1.5" style="background: var(--article-subscribe-bg-color); color: var(--article-subscribe-text-color); font-size: 0.6rem; box-shadow: none;" title="更新をメールで受け取る" aria-label="購読">Subscribe</button>
+                            <button onclick="event.stopPropagation(); openSubscribeModal()" class="glass-chip hover:opacity-90 transition-opacity px-3 py-1.5 font-bold" style="background: var(--article-subscribe-bg-color); color: var(--article-subscribe-text-color); font-size: 0.6rem; box-shadow: none;" title="更新をメールで受け取る" aria-label="購読">Subscribe</button>
                         </div>
                     </div>
                 </article>
                 ${relatedHtml}`;
+        }
+
+        // Instagramストーリー用ページ。関連記事・注釈・シェアボタンなどは含めず、
+        // 折りたたみ状態(タイトル・日付・タグ・抜粋)だけを見せる。story-view-activeクラスが
+        // ヘッダー以外のUI(サイドバー・フッターなど)を隠すので、あとはスマホでスクショしてもらう想定
+        function renderArticleStoryView(id) {
+            hideAllViews();
+            document.body.classList.add('story-view-active');
+            document.getElementById('article-list').classList.remove('hidden');
+            const container = document.getElementById('article-list');
+            const article = articles.find(a => a.id === id);
+            if (!article) {
+                container.innerHTML = '<p class="text-xs opacity-40 py-2">記事が見つかりませんでした。</p>';
+                return;
+            }
+
+            // タイトル・台形アイコン・サブタイトルをこの画面だけ一回り縮小する。zoomだと
+            // Rangeベースのサブタイトル帯計測の座標がズレる(Chromiumの既知の癖)ため使わず、
+            // 文字はfont-size、台形アイコンは文字サイズに連動しない固定サイズなのでtransformで
+            // それぞれ縮小する(台形の3D揺れ用transformは内側の#title-rectに掛かるので競合しない)
+            const STORY_SCALE = 0.85;
+            const titleEl = document.getElementById('site-title');
+            const subtitleWrapEl = document.getElementById('site-subtitle');
+            const shapeWrap = document.getElementById('title-rect-wrap');
+            if (titleEl) titleEl.style.fontSize = (parseFloat(getComputedStyle(titleEl).fontSize) * STORY_SCALE) + 'px';
+            if (subtitleWrapEl) subtitleWrapEl.style.fontSize = (parseFloat(getComputedStyle(subtitleWrapEl).fontSize) * STORY_SCALE) + 'px';
+            if (shapeWrap) {
+                shapeWrap.style.transform = `scale(${STORY_SCALE})`;
+                shapeWrap.style.transformOrigin = 'top left';
+            }
+
+            const title = localizedTitle(article);
+            const content = localizedContent(article);
+            const tagsHtml = (article.tags && article.tags.length > 0)
+                ? `<div class="flex flex-wrap gap-2 mb-4">${article.tags.map(t => `<span class="glass-chip tag-chip px-2 py-0.5" style="background: color-mix(in srgb, var(--article-tag-bg-color) 55%, transparent); color: var(--article-tag-text-color); font-size: calc(var(--article-tag-font-size) * ${STORY_SCALE}); font-family: var(--article-tag-font);">#${escapeHtml(t.name)}</span>`).join('')}</div>`
+                : '';
+            const imageUrl = getFirstImageUrl(content);
+            const plainText = stripHtml(content);
+            const fontSize = siteFontSize * currentFontSizeScale();
+            const lineHeight = siteLineHeight * currentLineHeightScale();
+            // 3行目あたりからフェードが始まり、7行目までになめらかに消える(続きを読みたくなる見せ方)。
+            // 表示しきれない分はmask-image+overflow:hiddenで見た目上切るだけなので、
+            // 「…」を付けず全文を流し込んでおく
+            const fadeStartLine = 3;
+            const fadeEndLine = 7;
+            const fadeStartPct = (fadeStartLine / fadeEndLine) * 100;
+            const maskStyle = `linear-gradient(to bottom, black 0%, black ${fadeStartPct}%, transparent 100%)`;
+            container.innerHTML = `
+                <article style="border: 0.5px solid var(--divider-color); padding: 1.5rem; min-height: 70vh;">
+                    <div class="text-xs opacity-40 mb-2" style="font-size: ${0.75 * fontSize * STORY_SCALE}px;">${article.date}</div>
+                    <h2 class="font-normal mb-4 article-title" style="font-size: ${1.125 * fontSize * STORY_SCALE}px;">${escapeHtml(title)}</h2>
+                    ${tagsHtml}
+                    ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" class="story-image">` : ''}
+                    <div class="content-body story-excerpt" style="font-size: ${0.875 * fontSize * STORY_SCALE}px; line-height: ${lineHeight} !important; max-height: ${fadeEndLine * lineHeight}em; mask-image: ${maskStyle}; -webkit-mask-image: ${maskStyle};">${escapeHtml(plainText)}</div>
+                </article>
+                <p class="text-xs opacity-30 mt-4 text-center">${articleShareUrl(article.id)}</p>
+            `;
+            // 直前でheaderのmargin/paddingが変わる(story-view-active)ため、初回計測時の
+            // サブタイトル帯・台形の反転オーバーレイがずれないよう、レイアウト確定後に再計算する
+            scheduleAlignHeaderToCards();
         }
 
         function articleShareUrl(id) {
@@ -1012,6 +1313,44 @@
             displayedCount += items.length;
         }
 
+        // デモ用: 全記事を本文全開きの状態で縦一列に並べ、途中で「続きを読み込む」ボタンを挟んで
+        // 少しずつ追加していく。人にサイトを見せるとき、次々スクロールして流し見できるようにするためのモード
+        const ALL_ARTICLES_PAGE_SIZE = 5;
+        let allArticlesDisplayedCount = 0;
+
+        function renderAllArticlesPage() {
+            hideAllViews();
+            listContainer.classList.remove('hidden');
+            listContainer.innerHTML = '';
+            allArticlesDisplayedCount = 0;
+            renderAllArticlesBatch();
+        }
+
+        function renderAllArticlesBatch() {
+            const items = articles.slice(allArticlesDisplayedCount, allArticlesDisplayedCount + ALL_ARTICLES_PAGE_SIZE);
+            items.forEach(article => {
+                listContainer.insertAdjacentHTML('beforeend', buildArticleHtml(article));
+                const articleEl = document.getElementById(`article-${article.id}`);
+                forceLineHeight(article, articleEl);
+                const wrapper = articleEl.querySelector('.cursor-pointer.group');
+                openArticle(wrapper);
+                // 通常はタイトルクリックで開閉するが、このモードは常に全開きなので、
+                // クリックしてもホームへ遷移したりしないよう無効化しておく
+                wrapper.removeAttribute('onclick');
+            });
+            allArticlesDisplayedCount += items.length;
+
+            const existingBtn = document.getElementById('all-articles-load-more');
+            if (existingBtn) existingBtn.remove();
+            if (allArticlesDisplayedCount < articles.length) {
+                listContainer.insertAdjacentHTML('beforeend', `
+                    <div id="all-articles-load-more" class="text-center py-8">
+                        <button onclick="renderAllArticlesBatch()" class="px-5 py-2.5 text-xs border border-current rounded opacity-60 hover:opacity-100 transition-opacity">続きを読み込む</button>
+                    </div>
+                `);
+            }
+        }
+
         // 画面幅に応じた行間の倍率(CSSのmedia queryと同じ閾値をJS側でも再現する)
         function currentLineHeightScale() {
             if (window.matchMedia('(max-width: 640px)').matches) return 0.75;
@@ -1029,14 +1368,14 @@
         // 本文内の全要素にJSから直接「!important付きの行間」を書き込んで確実に反映する。
         // 頭出し(閉じているときのプレビュー)の高さも、実際に表示されるフォントサイズ・行間に合わせて計算する
         function collapsedSnippetHeightPx(article) {
-            const fontSize = (article.font != null ? article.font_size : siteFontSize) * currentFontSizeScale();
-            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
+            const fontSize = siteFontSize * currentFontSizeScale();
+            const lineHeight = siteLineHeight * currentLineHeightScale();
             return fontSize * lineHeight * previewLines;
         }
 
         function forceLineHeight(article, articleEl) {
             if (!articleEl) return;
-            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
+            const lineHeight = siteLineHeight * currentLineHeightScale();
             articleEl.querySelectorAll('.content-body, .content-body *').forEach(el => {
                 el.style.setProperty('line-height', String(lineHeight), 'important');
             });
@@ -1062,6 +1401,28 @@
         function getPathArticleId() {
             const m = location.pathname.match(/^\/article\/(\d+)\/?$/);
             return m ? Number(m[1]) : null;
+        }
+
+        // Instagramストーリー用: サイトタイトル・サブタイトルと、この記事のカード(折りたたみ状態)だけを
+        // 表示する専用ページ。他のUIを隠した状態でスマホでスクショしてもらう想定
+        // 連番のURL(/article/1/story, /article/2/story...)を適当に踏んで見られてしまわないよう、
+        // 英数字を織り交ぜた文字列をURLの末尾に要求する。本物の認証ではなく、リンクを知っている人
+        // だけがアクセスする程度の目的なので、鍵は特に隠さずこの関数自体で決まる(admin.html側にも
+        // 同じ関数を複製してリンク生成に使っている)
+        function storyPreviewToken(id) {
+            const raw = `story-${id}-fragments-preview`;
+            let hash = 0;
+            for (let i = 0; i < raw.length; i++) {
+                hash = (hash * 31 + raw.charCodeAt(i)) >>> 0;
+            }
+            return hash.toString(36);
+        }
+
+        function getStoryArticleId() {
+            const m = location.pathname.match(/^\/article\/(\d+)\/story\/([a-z0-9]+)\/?$/);
+            if (!m) return null;
+            const id = Number(m[1]);
+            return m[2] === storyPreviewToken(id) ? id : null;
         }
 
         // 旧形式の共有リンク(#article-数字)も念のため引き続き開けるようにしておく
@@ -1120,6 +1481,18 @@
             return location.pathname.replace(/\/$/, '') === '/search';
         }
 
+        // 実験的機能: 注釈(脚注)一覧ページ。/annotationsで直接アクセスするテスト用途で、
+        // まだサイドバー等からのリンクは用意していない
+        function isAnnotationsRoute() {
+            return location.pathname.replace(/\/$/, '') === '/annotations';
+        }
+
+        // デモ用モード: 全記事を本文全開きの状態で縦一列にざっと読み流せるページ。
+        // サイトを人に見せるとき用の専用URLで、サイドバー等からのリンクは用意していない
+        function isAllArticlesRoute() {
+            return location.pathname.replace(/\/$/, '') === '/allarticles';
+        }
+
         // ルートに応じて表示するビューだけを残し、他は隠す
         function hideAllViews() {
             document.getElementById('article-list').classList.add('hidden');
@@ -1138,6 +1511,7 @@
             // TOPのカード一覧・タグページで共通)ので、これも表示中のビュー以外では外す
             document.body.classList.remove('card-page-active');
             document.body.classList.remove('wide-page-active');
+            document.body.classList.remove('story-view-active');
             document.getElementById('card-sticky-header').classList.remove('card-sticky-header-visible');
         }
 
@@ -1189,8 +1563,48 @@
                 : '<p class="text-xs opacity-40">まだタグがありません。</p>';
 
             listView.innerHTML = `
-                <h2 class="glass-chip self-start inline-block text-sm font-medium px-2 py-0.5 mb-4" style="background: color-mix(in srgb, var(--list-heading-bg-color) 55%, transparent); color: var(--list-heading-text-color);">tag</h2>
+                <h2 class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">tag</h2>
                 ${tagsHtml}
+            `;
+        }
+
+        // applyFootnoteStyling()と同じ抽出ロジックだが、実際の表示は書き換えず注釈のテキストだけを読み取る
+        // (注釈一覧ページ用)
+        function extractFootnotes(article) {
+            const container = document.createElement('div');
+            container.innerHTML = article.content || '';
+            return Array.from(container.querySelectorAll('.footnote-ref')).map(el => {
+                const next = el.nextElementSibling;
+                return el.dataset.note || (next && next.classList.contains('footnote-note') ? next.textContent : '');
+            });
+        }
+
+        // 実験的機能: 注釈(脚注)一覧ページ。全記事の注釈をテキストだけ集めて並べる。
+        // クリックすると該当記事を開く(注釈の位置まで自動スクロールはまだ未対応のテスト版)
+        async function renderAnnotationsList() {
+            hideAllViews();
+            const listView = document.getElementById('title-list-view');
+            listView.classList.remove('hidden');
+
+            const items = [];
+            articles.forEach(article => {
+                extractFootnotes(article).forEach((text, i) => {
+                    if (text && text.trim()) items.push({ articleId: article.id, articleTitle: article.title, index: i + 1, text: text.trim() });
+                });
+            });
+
+            const bodyHtml = items.length > 0
+                ? `<div class="flex flex-col gap-5">${items.map(it => `
+                    <a href="/article/${it.articleId}" class="block hover:opacity-80 transition-opacity">
+                        <p style="font-size: 0.85rem;">${escapeHtml(it.text)}</p>
+                        <p class="opacity-40 mt-1" style="font-size: 0.7rem;">${escapeHtml(it.articleTitle)} · [${it.index}]</p>
+                    </a>
+                `).join('')}</div>`
+                : '<p class="text-xs opacity-40">まだ注釈がありません。</p>';
+
+            listView.innerHTML = `
+                <h2 class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">annotations</h2>
+                ${bodyHtml}
             `;
         }
 
@@ -1231,7 +1645,7 @@
             return `
                 <div class="outline-item outline-article-row transition-opacity" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}">
                     <div class="outline-toggle flex items-baseline gap-3 cursor-pointer py-2 opacity-80 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)">
-                        <span class="opacity-40 whitespace-nowrap flex-shrink-0" style="font-size: 0.65rem; min-width: 3.5em;">${escapeHtml(article.category || '')}</span>
+                        <span class="opacity-40 whitespace-nowrap flex-shrink-0 category-label" data-category="${escapeHtml(article.category || '')}" style="font-size: 0.65rem; min-width: 3.5em;">${escapeHtml(article.category || '')}</span>
                         <span class="text-sm truncate" style="min-width: 0;">${escapeHtml(article.title)}</span>
                         ${tagsHtml}
                     </div>
@@ -1251,14 +1665,11 @@
             `;
         }
 
-        // 記事本文と同じ計算式で文字組み(記事ごとの上書き含む)を再現し、そのまま展開表示する
+        // 記事本文と同じ計算式で文字組みを再現し、そのまま展開表示する
         function articleOutlineBodyHtml(article) {
-            const overrideStyle = article.font != null
-                ? `font-family:${article.font}; font-size:${article.font_size}px; letter-spacing:${article.letter_spacing}em; text-align:${article.text_align || 'left'};`
-                : '';
-            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
+            const lineHeight = siteLineHeight * currentLineHeightScale();
             return `
-                <div class="content-body text-sm opacity-90" style="${overrideStyle} line-height: ${lineHeight} !important;">${applyFootnoteStyling(article.content, article.id)}</div>
+                <div class="content-body text-sm" style="line-height: ${lineHeight} !important;">${applyFootnoteStyling(article.content, article.id)}</div>
                 <a href="/article/${article.id}" class="text-xs opacity-40 hover:opacity-80 transition-opacity mt-3 inline-block">→ ページで開く</a>
             `;
         }
@@ -1305,7 +1716,7 @@
         // Articleブランチだけは、全記事を常にフラット表示したまま、カテゴリ(ジャンル)フィルターで
         // 該当するものだけ強調・それ以外を薄くする形式にする(タグと違い1記事につき1カテゴリ)。
         // 一覧性を保ったまま絞り込める見せ方の参考: 一覧は隠さず色の濃淡だけで焦点を変える
-        const ARTICLE_CATEGORIES = ['エッセイ', 'ノート', '試論'];
+        const ARTICLE_CATEGORIES = ['log', 'sketch', 'essay'];
 
         // カテゴリ(1つだけ選べるジャンル)とタグ(複数選べる横串)は別軸なので、両方の絞り込み条件を
         // 掛け合わせて(AND)判定する。状態はrenderArticleCategoryList()のたびにリセットする
@@ -1441,14 +1852,14 @@
         const LATEST_PREVIEW_LINES = 5;
 
         function outlineLatestArticleHtml(article) {
-            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
+            const lineHeight = siteLineHeight * currentLineHeightScale();
             const maxHeight = latestSnippetMaxHeight(article);
             return `
                 <div class="mb-4" data-article-id="${article.id}">
                     <div class="text-sm opacity-90">${escapeHtml(article.title)}</div>
                     ${outlineBulletTagsHtml(article)}
                     <div class="opacity-40 mt-1" style="font-size: 0.65rem;">${escapeHtml(article.date)}</div>
-                    <div class="latest-snippet text-sm content-body mt-1" style="line-height: ${lineHeight} !important; max-height: ${maxHeight}px;">${applyFootnoteStyling(article.content, article.id)}</div>
+                    <div class="latest-snippet text-sm mt-1" style="line-height: ${lineHeight} !important; max-height: ${maxHeight}px;"><div class="content-body">${applyFootnoteStyling(article.content, article.id)}</div></div>
                     <div class="mt-1 text-center">
                         <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity latest-open-btn" style="font-size: 0.65rem;" onclick="toggleLatestSnippet(this)">↓ 続きを読む</span>
                         <span class="opacity-30 hover:opacity-100 cursor-pointer transition-opacity latest-close-btn hidden" style="font-size: 0.65rem;" onclick="toggleLatestSnippet(this)">↑ 閉じる</span>
@@ -1458,8 +1869,8 @@
         }
 
         function latestSnippetMaxHeight(article) {
-            const fontSize = (article.font != null ? article.font_size : siteFontSize) * currentFontSizeScale();
-            const lineHeight = (article.font != null ? article.line_height : siteLineHeight) * currentLineHeightScale();
+            const fontSize = siteFontSize * currentFontSizeScale();
+            const lineHeight = siteLineHeight * currentLineHeightScale();
             return fontSize * lineHeight * LATEST_PREVIEW_LINES;
         }
 
@@ -1571,7 +1982,9 @@
         // 日英対応: 英語版タイトル/本文があり、かつ現在の表示言語が英語ならそちらを使う。
         // 空欄の場合(まだ翻訳していない記事)は日本語にフォールバックする
         function localizedTitle(article) {
-            return (currentLocale === 'en' && article.title_en) ? article.title_en : article.title;
+            const title = (currentLocale === 'en' && article.title_en) ? article.title_en : article.title;
+            // カテゴリが設定されている記事は、タイトルの冒頭に「カテゴリ名 | 」を付ける
+            return article.category ? `${article.category} | ${title}` : title;
         }
         function localizedContent(article) {
             return (currentLocale === 'en' && article.content_en) ? article.content_en : article.content;
@@ -1579,7 +1992,10 @@
 
         function articleCardHtml(article) {
             const tagsAttr = (article.tags || []).map(t => t.slug).join(',');
-            const title = localizedTitle(article);
+            const rawTitle = (currentLocale === 'en' && article.title_en) ? article.title_en : article.title;
+            const cardTitleHtml = article.category
+                ? `<span class="category-label" data-category="${escapeHtml(article.category)}">${escapeHtml(article.category)}</span> | ${escapeHtml(rawTitle)}`
+                : escapeHtml(rawTitle);
             const content = localizedContent(article);
             const imageUrl = getFirstImageUrl(content);
             const plainText = stripHtml(stripPromoLinksForCard(content));
@@ -1590,14 +2006,14 @@
                 return `
                     <a href="/article/${article.id}" class="article-card article-card-image" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleCardTap(event, this)">
                         <img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" class="card-thumb-full">
-                        <div class="card-title">${escapeHtml(title)}</div>
+                        <div class="card-title">${cardTitleHtml}</div>
                         ${excerptText ? `<div class="card-excerpt">${excerptText}</div>` : ''}
                     </a>
                 `;
             }
             return `
                 <a href="/article/${article.id}" class="article-card" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleCardTap(event, this)">
-                    <div class="card-title">${escapeHtml(title)}</div>
+                    <div class="card-title">${cardTitleHtml}</div>
                     ${excerptText ? `<div class="card-excerpt">${excerptText}</div>` : ''}
                 </a>
             `;
@@ -1636,12 +2052,248 @@
             document.getElementById('card-filter-panel').innerHTML = `
                 <div class="category-filter-row text-sm mb-4">${categoryFilterHtml}</div>
                 ${tagFilterHtml}
-            `;
-            view.innerHTML = `
-                <div class="fade-in">
-                    <div class="card-grid">${articles.map(a => articleCardHtml(a)).join('')}</div>
+                <div class="flex items-center gap-3 pt-3" style="border-top: 0.5px solid var(--divider-color); font-size: 0.75rem;">
+                    <span class="opacity-60">文字サイズ</span>
+                    <button onclick="adjustUserFontScale(-0.1)" class="glass-chip w-6 h-6 inline-flex items-center justify-center hover:opacity-80 transition-opacity" style="box-shadow: none;" aria-label="文字を小さく" title="文字を小さく">A-</button>
+                    <span id="font-scale-value" class="font-scale-value opacity-60" style="min-width: 2.5em; text-align: center;"></span>
+                    <button onclick="adjustUserFontScale(0.1)" class="glass-chip w-6 h-6 inline-flex items-center justify-center hover:opacity-80 transition-opacity" style="box-shadow: none;" aria-label="文字を大きく" title="文字を大きく">A+</button>
                 </div>
             `;
+            applyUserFontScale();
+            // ピン留めされた記事(目安3件程度)を先頭に、それ以外は元の日付順のまま並べる
+            // (sortは安定ソートなので、ピン留め同士・非ピン留め同士の相対順序は元の日付順のまま保たれる)
+            const sortedForCards = [...articles].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+            view.innerHTML = `
+                <div class="fade-in">
+                    <div class="card-grid">${sortedForCards.map(a => articleCardHtml(a)).join('')}</div>
+                </div>
+            `;
+            scheduleAlignHeaderToCards();
+        }
+
+        // カードの並びをCSSだけで決めると、(1)枚数が半端な最下段のカードだけ余りを吸って大きくなる、
+        // (2)中央寄せにすると最下段だけ中央に寄って上の行と左端が揃わない、という問題が同時に起きる。
+        // 1行に並ぶ枚数から1枚あたりの幅を逆算して固定し、余りはグリッド自体の左右paddingとして
+        // 振り分けることで、「全カード同じ大きさ」「どの行も同じ左端から始まる」「全体は中央」を満たす。
+        // 同じpaddingをタイトル(header)にも入れれば、タイトルの左端もカードの左端に揃う
+        function layoutCardGrids() {
+            const rootStyle = getComputedStyle(document.documentElement);
+            const cardMax = parseFloat(rootStyle.getPropertyValue('--card-max')) || 350;
+            const cardMin = parseFloat(rootStyle.getPropertyValue('--card-min')) || 280;
+            const relatedCardMin = parseFloat(rootStyle.getPropertyValue('--related-card-min')) || cardMin;
+            const relatedCardMax = parseFloat(rootStyle.getPropertyValue('--related-card-max')) || cardMax;
+            // 「余白にするくらいなら1列増やす」ときに、カードが縮んでよい下限
+            const squeezeMinBase = parseFloat(rootStyle.getPropertyValue('--card-squeeze-min')) || 240;
+            let headerPad = 0;
+            document.querySelectorAll('.card-grid, .related-articles-grid').forEach(grid => {
+                grid.style.paddingLeft = '';
+                grid.style.paddingRight = '';
+                const width = grid.clientWidth;
+                if (!width) return;
+                const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
+                // 関連記事は置かれる幅が狭く端数が出やすいため、専用の下限・上限で枚数と大きさを決める
+                const isCardGrid = grid.classList.contains('card-grid');
+                const minWidth = isCardGrid ? cardMin : relatedCardMin;
+                const maxWidth = isCardGrid ? cardMax : relatedCardMax;
+                let perRow = Math.max(1, Math.floor((width + gap) / (minWidth + gap)));
+                let cardWidth = Math.min(maxWidth, (width - (perRow - 1) * gap) / perRow);
+                // 列数の判定は--card-min(280px)で行う一方、カード幅は--card-max(350px)で頭打ちに
+                // なるため、その間の幅(グリッド350〜571px)では「1列のままカードは350pxで止まり、
+                // 残りが全部余白になる」帯ができていた(最大220px・全体の39%が余白)。
+                // 余白が大きいときに限り、カードが--card-squeeze-minまで小さくなることを許して
+                // 1列増やす。少しの端数で列を増やすとPC幅でカードが不必要に小さくなるため、
+                // 余白が--card-maxの3割を超えるときだけ発動させる
+                const squeezeMin = Math.min(minWidth, squeezeMinBase);
+                const wasted = width - (perRow * cardWidth + (perRow - 1) * gap);
+                if (wasted > maxWidth * 0.3) {
+                    const nextPerRow = perRow + 1;
+                    const nextCardWidth = (width - (nextPerRow - 1) * gap) / nextPerRow;
+                    if (nextCardWidth >= squeezeMin) {
+                        perRow = nextPerRow;
+                        cardWidth = Math.min(maxWidth, nextCardWidth);
+                    }
+                }
+                grid.style.setProperty('--card-w', cardWidth + 'px');
+                // 中央に寄せるのは一覧ページのカードだけ。関連記事は記事本文の左端に揃えたいので寄せない
+                if (!isCardGrid) return;
+                const pad = Math.max(0, (width - (perRow * cardWidth + (perRow - 1) * gap)) / 2);
+                if (pad > 0.5) {
+                    grid.style.paddingLeft = pad + 'px';
+                    grid.style.paddingRight = pad + 'px';
+                    headerPad = pad;
+                }
+            });
+            const header = document.querySelector('header');
+            if (header) {
+                header.style.paddingLeft = headerPad ? headerPad + 'px' : '';
+                header.style.paddingRight = headerPad ? headerPad + 'px' : '';
+            }
+            // 台形アイコンはposition:absolute+left:0で置かれており、絶対配置の基準はheaderのpadding boxの
+            // 内側(=paddingが始まる前の位置)なので、headerにpaddingを入れてもタイトルのようには動かない。
+            // 同じ量だけleftをずらして、タイトルと一緒にカードの左端へ追従させる
+            const shapeWrap = document.getElementById('title-rect-wrap');
+            if (shapeWrap) shapeWrap.style.left = headerPad ? headerPad + 'px' : '';
+            updateSubtitleBreak();
+            renderSubtitleBandBg();
+            syncTitleShapeOverlays();
+        }
+
+        // 英語のサブタイトルが1行に収まる幅では、日本語をその下に改行して始める。
+        // 英語が折り返すほど幅が狭いときは、逆に<br>を消して英語の折り返し位置から日本語を続ける。
+        // 幅が変わるたびに折り返し状況も変わるので、<br>を一旦消してから測り直す
+        function updateSubtitleBreak() {
+            const enEl = document.getElementById('site-subtitle-en');
+            const jaEl = document.getElementById('site-subtitle-ja');
+            const br = document.getElementById('site-subtitle-break');
+            if (!br) return;
+            if (!enEl || !jaEl || enEl.style.display === 'none' || jaEl.style.display === 'none') {
+                br.style.display = 'none';
+                return;
+            }
+            br.style.display = 'none';
+            const wraps = enEl.getClientRects().length > 1;
+            br.style.display = wraps ? 'none' : '';
+        }
+
+        // サブタイトル全体(英語+日本語)をRangeで選択したときのgetClientRects()を使う。
+        // テキスト選択時のハイライトと同じ仕組みなので、折り返した行のうち最後の行以外は
+        // 折り返し位置(行末)まで含んだ矩形になり、選択したときのような帯の見た目を再現できる
+        function getSubtitleLineRects() {
+            const wrapEl = document.getElementById('site-subtitle');
+            if (!wrapEl || wrapEl.style.display === 'none') return [];
+            const range = document.createRange();
+            range.selectNodeContents(wrapEl);
+            const raw = Array.from(range.getClientRects()).filter(r => r.width && r.height)
+                .sort((a, b) => a.top - b.top);
+            // 英語フォントに日本語のグリフが無いとフォールバックで別フォントが使われ、同じ行の
+            // 途中(英日の境目)でもgetClientRects()の矩形が分かれることがある。縦位置が重なる
+            // 矩形は同じ行とみなして1つに結合しないと、行の一部だけ帯が塗られなくなってしまう
+            const lines = [];
+            raw.forEach(r => {
+                const last = lines[lines.length - 1];
+                const overlap = last ? Math.min(r.bottom, last.bottom) - Math.max(r.top, last.top) : 0;
+                if (last && overlap > Math.min(r.height, last.bottom - last.top) * 0.5) {
+                    last.left = Math.min(last.left, r.left);
+                    last.right = Math.max(last.right, r.right);
+                    last.top = Math.min(last.top, r.top);
+                    last.bottom = Math.max(last.bottom, r.bottom);
+                } else {
+                    lines.push({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
+                }
+            });
+            // 行と行の間にわずかな隙間が出ることがあるため、次の行の開始位置まで
+            // 下端を伸ばして隙間を塞ぐ(色は隣接行と同じなので、伸ばしても見た目は変わらない)
+            return lines.map((l, i) => {
+                const bottom = i < lines.length - 1 ? lines[i + 1].top : l.bottom;
+                return { left: l.left, right: l.right, top: l.top, bottom, width: l.right - l.left, height: bottom - l.top };
+            });
+        }
+
+        // 帯(背景)はCSSのbackgroundを<span>に敷くと行ごとに実際の文字幅で途切れてしまうため、
+        // getSubtitleLineRects()の矩形をそのままheaderに重ねたdivとして描く
+        function renderSubtitleBandBg() {
+            document.querySelectorAll('.subtitle-bg-rect').forEach(el => el.remove());
+            const header = document.querySelector('header');
+            const wrapEl = document.getElementById('site-subtitle');
+            if (!header || !wrapEl) return;
+            const bg = wrapEl.dataset.bg || '';
+            if (!bg) return;
+            const rects = getSubtitleLineRects();
+            if (!rects.length) return;
+            const headerRect = header.getBoundingClientRect();
+            rects.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'subtitle-bg-rect';
+                div.style.position = 'absolute';
+                div.style.left = (r.left - headerRect.left) + 'px';
+                div.style.top = (r.top - headerRect.top) + 'px';
+                div.style.width = r.width + 'px';
+                div.style.height = r.height + 'px';
+                div.style.background = bg;
+                div.style.zIndex = '1';
+                div.style.pointerEvents = 'none';
+                header.appendChild(div);
+            });
+        }
+
+        // サブタイトルに白帯を敷くと、その上を通る台形の白い線が白同士で見えなくなってしまう。
+        // CSSの合成モードは「背景に対して一意の変換」しかできず、"灰色の上では白・白の上では灰色"を
+        // 同時には作れないため、帯の範囲だけに切り抜いたグレーの線のコピーを上に重ねて反転を表現する。
+        // 台形は毎フレーム頂点が動くので、コピー側にも同じ頂点を配る(animateTitleShapeを参照)
+        // 要素自身のtransform: scale(...)の倍率を取り出す(無ければ1)。
+        // clip-path: inset()は要素自身の変形前のローカル座標系で解釈されるため、
+        // ビューポート基準の px(getBoundingClientRect)をそのまま使うと、
+        // transformで縮小されている要素では倍率分だけズレてしまう
+        function getElementScale(el) {
+            const t = getComputedStyle(el).transform;
+            if (!t || t === 'none') return 1;
+            const m = t.match(/matrix\(([^,]+),/);
+            return m ? parseFloat(m[1]) || 1 : 1;
+        }
+
+        function syncTitleShapeOverlays() {
+            const header = document.querySelector('header');
+            const wrap = document.getElementById('title-rect-wrap');
+            if (!header) return;
+            header.querySelectorAll('.title-rect-overlay').forEach(el => el.remove());
+            if (!wrap || wrap.style.display === 'none') return;
+            const wrapRect = wrap.getBoundingClientRect();
+            if (!wrapRect.width || !wrapRect.height) return;
+            const wrapEl = document.getElementById('site-subtitle');
+            if (!wrapEl || !wrapEl.dataset.bg) return;
+            const stroke = getComputedStyle(document.documentElement).getPropertyValue('--subtitle-text-color').trim();
+            const scale = getElementScale(wrap);
+            // 帯(renderSubtitleBandBg)と同じ矩形を使うことで、帯の形どおりに線を反転できる
+            getSubtitleLineRects().forEach(r => {
+                if (!r.width || r.bottom <= wrapRect.top || r.top >= wrapRect.bottom) return;
+                const copy = wrap.cloneNode(true);
+                copy.removeAttribute('id');
+                copy.removeAttribute('onclick');
+                copy.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+                copy.classList.add('title-rect-overlay');
+                copy.style.zIndex = '21';
+                copy.style.pointerEvents = 'none';
+                // 帯と重なる矩形だけを残すよう切り抜く(scaleで割ってローカル座標系に変換する)
+                copy.style.clipPath = `inset(${(r.top - wrapRect.top) / scale}px ${(wrapRect.right - r.right) / scale}px ${(wrapRect.bottom - r.bottom) / scale}px ${(r.left - wrapRect.left) / scale}px)`;
+                const poly = copy.querySelector('polygon');
+                if (poly && stroke) poly.style.stroke = stroke;
+                header.appendChild(copy);
+            });
+        }
+
+        let layoutCardGridsRaf = null;
+        function scheduleAlignHeaderToCards() {
+            if (layoutCardGridsRaf) cancelAnimationFrame(layoutCardGridsRaf);
+            layoutCardGridsRaf = requestAnimationFrame(() => {
+                layoutCardGridsRaf = null;
+                layoutCardGrids();
+            });
+        }
+        window.addEventListener('resize', scheduleAlignHeaderToCards);
+        // 折りたたみスマホの開閉やタブレットの分割画面など、ウィンドウ自体の大きさは変わらず
+        // ビューポートだけ変わるケースでは、window の 'resize' が確実には発火しないことがある。
+        // その場合--card-wが古い(狭い)幅のまま固定されてしまい、実際は広くなったのにカードが
+        // 増えず右側が余白になってしまう。ResizeObserverでbody自体の実際のサイズ変化を直接監視し、
+        // resizeイベントの有無に関わらず再計算されるようにする
+        if (typeof ResizeObserver !== 'undefined') {
+            const layoutObserver = new ResizeObserver(scheduleAlignHeaderToCards);
+            layoutObserver.observe(document.body);
+            // カードを実際に入れている器も個別に監視する。bodyの幅が変わらなくても、
+            // wide-page-activeが後から付く・フォントや画像の読み込みでレイアウトが
+            // 確定するなど、器の幅だけが後から変わることがある。初回の計測が
+            // 「まだ広がる前の狭い幅」だと--card-wがその値のまま固定され、実際は
+            // 2列入る幅なのに1列のまま右側が余白になってしまうため。
+            // (これらの器自体はlayoutCardGrids()では変更しないので、監視して再計算しても
+            //  自分の変更で再び発火する無限ループにはならない)
+            ['card-view', 'tag-view', 'article-list'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) layoutObserver.observe(el);
+            });
+        }
+        // 画像やフォントの読み込みで最終的な幅が決まった後にも、もう一度計算し直す
+        window.addEventListener('load', scheduleAlignHeaderToCards);
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(scheduleAlignHeaderToCards);
         }
 
         // フィルターボタンを開閉する。カテゴリ/タグどちらかが選ばれている間は、パネルを閉じても
@@ -1741,28 +2393,32 @@
         // サイト運営者についての自己紹介文+SNSリンク。通常のAboutページと、パターンBのハブの
         // アウトラインの両方から呼べるよう、HTML組み立てを共通の関数にまとめている
         function aboutBodyHtml() {
-            const content = (currentLocale === 'en' && siteAboutContentEn) ? siteAboutContentEn : siteAboutContent;
-            const body = content
-                ? escapeHtml(content).replace(/\n/g, '<br>')
-                : `<p class="opacity-40">${currentLocale === 'en' ? 'Nothing here yet.' : 'まだ内容がありません。'}</p>`;
+            // 日本語の下に英文も並べて表示する(言語切り替えでの出し分けはしない)
+            const jaText = siteAboutContent ? escapeHtml(siteAboutContent).replace(/\n/g, '<br>') : '';
+            const enText = siteAboutContentEn ? escapeHtml(siteAboutContentEn).replace(/\n/g, '<br>') : '';
+            const body = (jaText || enText)
+                ? `${jaText}${enText ? `<div class="mt-6">${enText}</div>` : ''}`
+                : `<p class="opacity-40">まだ内容がありません。</p>`;
             // 記事本文と同じ行間になるよう、article本文と同じ計算式で!important付きの行間を直接指定する
             const lineHeight = siteLineHeight * currentLineHeightScale();
             const snsRow = (label, url, icon) => !url ? '' : `
                 <div class="flex items-center gap-3">
-                    <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="glass-icon shrink-0 opacity-70 hover:opacity-100 transition-opacity" title="${label}" aria-label="${label}">${icon}</a>
+                    <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="glass-icon share-icon-flat shrink-0 opacity-70 hover:opacity-100 transition-opacity" title="${label}" aria-label="${label}">${icon}</a>
                     <div class="min-w-0">
                         <div class="opacity-50" style="font-size: 0.65rem;">${label}</div>
-                        <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="hover:opacity-80 transition-opacity block truncate" style="color: ${siteFootnoteColor}; font-size: 0.75rem;">${escapeHtml(url)}</a>
+                        <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="hover:opacity-80 transition-opacity block truncate" style="color: var(--text-color-solid); font-size: 0.75rem;">${escapeHtml(url)}</a>
                     </div>
                 </div>
             `;
             const snsLinks = [
                 snsRow('X', siteSnsXUrl, SHARE_ICONS.x),
+                snsRow('Facebook', siteSnsFacebookUrl, SHARE_ICONS.facebook),
                 snsRow('Instagram', siteSnsInstagramUrl, SHARE_ICONS.instagram),
                 snsRow('Web', siteSnsWebsiteUrl, SHARE_ICONS.website),
             ].filter(Boolean).join('');
             const snsHtml = snsLinks ? `<div class="flex flex-col gap-3 mt-8 fade-in max-w-sm">${snsLinks}</div>` : '';
-            return `<div class="text-sm opacity-90 fade-in" style="line-height: ${lineHeight} !important;">${body}</div>${snsHtml}`;
+            const heading = `<h2 id="about-page-heading" class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">about</h2>`;
+            return `${heading}<div class="text-sm opacity-90 fade-in" style="line-height: ${lineHeight} !important;">${body}</div>${snsHtml}`;
         }
 
         function renderAboutPage() {
@@ -1781,8 +2437,8 @@
             if (currentLocale === 'en') {
                 return `
                     <div class="opacity-90 fade-in" style="font-size: 0.68rem; line-height: 1.9;">
-                        <h2 class="opacity-90 mb-3" style="letter-spacing: 0.05em;">Contact</h2>
-                        <form onsubmit="return submitInquiry(event)" class="flex flex-col gap-3 max-w-sm">
+                        <h2 class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">contact</h2>
+                        <form onsubmit="return submitInquiry(event)" class="flex flex-col gap-3">
                             <input id="inquiry-email" type="email" required placeholder="you@example.com" class="bg-transparent border-b px-2 py-1.5 focus:outline-none" style="font-size: 0.72rem; border-color: color-mix(in srgb, currentColor 30%, transparent);">
                             <textarea id="inquiry-message" required rows="4" placeholder="Your message" class="bg-transparent border px-2 py-1.5 focus:outline-none resize-none" style="font-size: 0.72rem; border-color: color-mix(in srgb, currentColor 30%, transparent);"></textarea>
                             <input id="inquiry-hp" type="text" name="url" tabindex="-1" autocomplete="off" aria-hidden="true" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;">
@@ -1790,7 +2446,7 @@
                         </form>
                         <p id="inquiry-status" class="opacity-50 mt-2 hidden" style="font-size: 0.68rem;"></p>
                     </div>
-                    <div class="mt-10 pt-8 opacity-50 fade-in" style="font-size: 0.68rem; line-height: 1.9; border-top: 1px solid currentColor;">
+                    <div class="mt-10 pt-8 opacity-50 fade-in" style="font-size: 0.68rem; line-height: 1.9; border-top: 0.5px solid var(--divider-color);">
                         <h2 class="opacity-90 mb-3" style="letter-spacing: 0.05em;">Privacy Policy</h2>
                         <p>This site's newsletter subscription form collects your email address solely to send update notifications. We do not provide or sell your information to any third party.</p>
                         <p class="mt-3">We use Resend to send emails and Supabase to store data. We also load Google Fonts to display text, which causes your browser to communicate with Google's servers.</p>
@@ -1800,8 +2456,8 @@
             }
             return `
                 <div class="opacity-90 fade-in" style="font-size: 0.68rem; line-height: 1.9;">
-                    <h2 class="opacity-90 mb-3" style="letter-spacing: 0.05em;">お問い合わせ</h2>
-                    <form onsubmit="return submitInquiry(event)" class="flex flex-col gap-3 max-w-sm">
+                    <h2 class="inline-block text-lg font-medium mb-6" style="font-family: var(--site-title-font, inherit);">contact</h2>
+                    <form onsubmit="return submitInquiry(event)" class="flex flex-col gap-3">
                         <input id="inquiry-email" type="email" required placeholder="you@example.com" class="bg-transparent border-b px-2 py-1.5 focus:outline-none" style="font-size: 0.72rem; border-color: color-mix(in srgb, currentColor 30%, transparent);">
                         <textarea id="inquiry-message" required rows="4" placeholder="お問い合わせ内容" class="bg-transparent border px-2 py-1.5 focus:outline-none resize-none" style="font-size: 0.72rem; border-color: color-mix(in srgb, currentColor 30%, transparent);"></textarea>
                         <input id="inquiry-hp" type="text" name="url" tabindex="-1" autocomplete="off" aria-hidden="true" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;">
@@ -1809,7 +2465,7 @@
                     </form>
                     <p id="inquiry-status" class="opacity-50 mt-2 hidden" style="font-size: 0.68rem;"></p>
                 </div>
-                <div class="mt-10 pt-8 opacity-50 fade-in" style="font-size: 0.68rem; line-height: 1.9; border-top: 1px solid currentColor;">
+                <div class="mt-10 pt-8 opacity-50 fade-in" style="font-size: 0.68rem; line-height: 1.9; border-top: 0.5px solid var(--divider-color);">
                     <h2 class="opacity-90 mb-3" style="letter-spacing: 0.05em;">プライバシーポリシー</h2>
                     <p>当サイトのニュースレター購読フォームでは、更新通知の送信のみを目的としてメールアドレスをお預かりしています。取得した情報を第三者に提供・販売することはありません。</p>
                     <p class="mt-3">メールの送信にはResend、データの保管にはSupabaseを利用しています。また、文字表示のためGoogle Fontsを読み込んでおり、その際にご利用のブラウザからGoogleのサーバーへ通信が発生します。</p>
@@ -1938,6 +2594,7 @@
                 </div>
                 ${cardsHtml}
             `;
+            scheduleAlignHeaderToCards();
         }
 
         // タイトル・本文・タグ名を対象にした検索
@@ -1992,12 +2649,12 @@
                 const plainContent = stripHtml(localizedContent(a));
                 const excerptHtml = plainContent.toLowerCase().includes(q.toLowerCase()) ? highlightExcerpt(plainContent, q, 40) : '';
                 return `
-                    <a href="/article/${a.id}" class="flex flex-col gap-1 py-4 border-b opacity-90 hover:opacity-100 transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent);">
+                    <a href="/article/${a.id}" class="flex flex-col gap-1 py-4 border-b transition-opacity" style="border-color: color-mix(in srgb, currentColor 30%, transparent); color: rgba(255, 255, 255, 0.9);">
                         <div class="flex items-baseline justify-between gap-4">
                             <span class="text-sm" style="font-family: var(--article-title-font, inherit);">${highlightText(title, q)}</span>
-                            <span class="text-xs opacity-60 whitespace-nowrap">${a.date}</span>
+                            <span class="text-xs whitespace-nowrap" style="color: rgba(255, 255, 255, 0.6);">${a.date}</span>
                         </div>
-                        ${excerptHtml ? `<p class="text-xs opacity-60" style="font-family: ${a.font || 'inherit'};">${excerptHtml}</p>` : ''}
+                        ${excerptHtml ? `<p class="text-xs" style="font-family: ${a.font || 'inherit'}; color: rgba(255, 255, 255, 0.6);">${excerptHtml}</p>` : ''}
                     </a>
                 `;
             }).join('');
@@ -2056,6 +2713,10 @@
                 renderTermsPage();
                 return;
             }
+            if (isAllArticlesRoute()) {
+                renderAllArticlesPage();
+                return;
+            }
             const tagSlug = getTagSlug();
             if (tagSlug) {
                 await renderTagPage(tagSlug);
@@ -2080,8 +2741,18 @@
                 await renderTagList();
                 return;
             }
+            if (isAnnotationsRoute()) {
+                await renderAnnotationsList();
+                return;
+            }
             if (isSearchRoute()) {
                 renderSearchPage();
+                return;
+            }
+            // トークンが無い/違う場合も、下の通常フィードにフォールスルーさせず(記事の一覧が
+            // 丸見えになってしまうため)、必ずこのルートで「見つかりません」を出す
+            if (/^\/article\/\d+\/story(\/.*)?$/.test(location.pathname)) {
+                renderArticleStoryView(getStoryArticleId());
                 return;
             }
 
@@ -2109,8 +2780,9 @@
         function toggleArticle(wrapperNode, evt) {
             const snippet = wrapperNode.querySelector('.article-snippet');
             const isOpen = snippet.classList.contains('open-full');
-            // 開いている間は、本文エリアのクリックでは閉じない(読んだり選択したりの邪魔をしない)。閉じるのはタイトル部分のみ
+            // 開いている間は、本文エリアとタイトルのクリックでは閉じない(読んだり選択したりの邪魔をしない)
             if (isOpen && evt && evt.target.closest('.content-body')) return;
+            if (isOpen && evt && evt.target.closest('.article-title')) return;
             const articleEl = wrapperNode.closest('article');
             const id = articleEl.dataset.id;
             if (isOpen) {
@@ -2135,7 +2807,11 @@
             snippet.style.maxHeight = 'none';
             wrapperNode.nextElementSibling.classList.remove('hidden');
             const relatedWrap = document.getElementById('related-' + wrapperNode.closest('article').dataset.id);
-            if (relatedWrap) relatedWrap.classList.remove('hidden');
+            if (relatedWrap) {
+                relatedWrap.classList.remove('hidden');
+                // 隠れている間はclientWidthが0でカード幅を計算できないため、表示してから測り直す
+                scheduleAlignHeaderToCards();
+            }
         }
 
         function closeArticle(wrapperNode) {
@@ -2254,6 +2930,19 @@
         window.addEventListener('scroll', updateScrollProgress, { passive: true });
         window.addEventListener('resize', updateScrollProgress);
 
+        // 実験的機能: PC(マウスカーソルがある環境)だけ、標準カーソルの代わりに丸いドットを追従させる
+        // (色の反転はCSS側のmix-blend-mode:differenceで実現しているので、ここでは位置更新だけ行う)
+        if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+            const customCursor = document.getElementById('custom-cursor');
+            if (customCursor) {
+                window.addEventListener('mousemove', (e) => {
+                    customCursor.classList.add('visible');
+                    customCursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+                }, { passive: true });
+                document.addEventListener('mouseleave', () => customCursor.classList.remove('visible'));
+            }
+        }
+
         // パターンCだけ: サイトタイトルの表示(文字・フォント・色)をそのまま複製して、
         // スクロール中に出てくる固定ヘッダーに反映する
         function updateCardStickyTitle() {
@@ -2349,7 +3038,6 @@
 
         // 台形の基準形。ページ読み込みのたびにこの中から1つをランダムに選び、さらに少しジッターをかける
         const TITLE_SHAPE_VARIANTS = [
-            [[30, 30], [180, 6], [124, 130], [30, 97]],
             [[130, 20], [180, 38], [123, 185], [30, 94]],
             [[71, 20], [30, 36], [42, 185], [180, 107]],
         ];
@@ -2366,7 +3054,9 @@
 
         // 何もしていない間も頂点ごとに違う周期のsin/cosでゆっくり辺の長さが揺れ続ける
         function animateTitleShape(timestamp) {
-            const polygon = document.querySelector('#title-rect polygon');
+            // 本体と、白帯に重なる部分用の反転コピー(.title-rect-overlay)の両方に同じ頂点を配る
+            const polygons = document.querySelectorAll('#title-rect polygon, .title-rect-overlay polygon');
+            const polygon = polygons[0];
             if (polygon && titleShapeBase) {
                 const t = timestamp / 1000;
                 const amp = titleShapeSettings.wobble;
@@ -2377,7 +3067,7 @@
                         return `${(x + ox).toFixed(1)},${(y + oy).toFixed(1)}`;
                     })
                     .join(' ');
-                polygon.setAttribute('points', points);
+                polygons.forEach(p => p.setAttribute('points', points));
             }
             requestAnimationFrame(animateTitleShape);
         }
@@ -2388,15 +3078,20 @@
             const wrap = document.getElementById('title-rect-wrap');
             const rect = document.getElementById('title-rect');
             if (!wrap || !rect) return;
+            // ホバー時の傾きも、反転コピー側に同じものを掛けないと重なった部分だけ形がずれてしまう
+            const applyTilt = (transform) => {
+                rect.style.transform = transform;
+                document.querySelectorAll('.title-rect-overlay .title-rect').forEach(el => { el.style.transform = transform; });
+            };
             wrap.addEventListener('mousemove', (e) => {
                 const bounds = wrap.getBoundingClientRect();
                 const relX = (e.clientX - bounds.left) / bounds.width - 0.5;
                 const relY = (e.clientY - bounds.top) / bounds.height - 0.5;
                 const k = titleShapeSettings.hoverIntensity;
-                rect.style.transform = `rotateX(${(-relY * 10 * k).toFixed(2)}deg) rotateY(${(relX * 16 * k).toFixed(2)}deg)`;
+                applyTilt(`rotateX(${(-relY * 10 * k).toFixed(2)}deg) rotateY(${(relX * 16 * k).toFixed(2)}deg)`);
             });
             wrap.addEventListener('mouseleave', () => {
-                rect.style.transform = 'rotateX(0deg) rotateY(0deg)';
+                applyTilt('rotateX(0deg) rotateY(0deg)');
             });
         }
         setupTitleRectSway();

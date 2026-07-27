@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理画面</title>
     <meta name="robots" content="noindex, nofollow">
+    <!-- 閲覧ページと同じグラデーション背景クラス(gradient-*)を共有するための埋め込み画像入りCSS -->
+    <link rel="stylesheet" href="/gradient-backgrounds.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -14,7 +16,7 @@
             background-color: #22262a;
             color: rgba(255, 255, 255, 0.9);
         }
-        .content-editor { min-height: 300px; line-height: 1.9; transition: outline-color 0.15s ease; }
+        .content-editor { min-height: 300px; line-height: 1.9; transition: outline-color 0.15s ease; caret-color: white; }
         .content-editor:focus { outline: none; }
         .content-editor.drag-over { outline: 2px dashed rgba(255,255,255,0.5); outline-offset: -2px; }
         .content-editor img { display: block; max-width: 100%; max-height: 70vh; width: auto; height: auto; object-fit: contain; border-radius: 0; margin: 1em auto; cursor: pointer; }
@@ -23,7 +25,6 @@
         .content-editor blockquote { border-left: 2px solid rgba(255,255,255,0.3); padding-left: 1em; margin: 1em 0; opacity: 0.8; font-style: italic; }
         .content-editor h2 { font-size: 1.2em; margin: 1em 0 0.5em; }
         .content-editor .footnote-ref { color: #7dd3fc; cursor: default; }
-        .content-editor .footnote-note { font-size: 0.8em; opacity: 0.65; border-bottom: 1px dotted currentColor; padding: 0 0.3em; }
         .article-preview { max-height: 3.2em; overflow: hidden; }
         /* ブラウザ既定のドロップダウン展開部は背景が白になることが多く、継承した白文字のままだと見えなくなるため明示的に指定する */
         select option, select optgroup { color: #1a1a1a; background-color: #ffffff; }
@@ -33,6 +34,26 @@
         .settings-tab-btn:hover { color: rgba(255,255,255,0.7); }
         .settings-tab-btn.active { color: #ffffff; border-color: rgba(255,255,255,0.6); }
 
+        /* 記事編集画面: セクション見出し・折りたたみ(英語版/SNS投稿)の矢印。
+           Tailwindのopen:バリアントに頼らず素のCSSで書く(CDN未読込でも見出しの開閉自体は
+           <details>のネイティブ機能で動くようにするため) */
+        .editor-section-summary {
+            cursor: pointer;
+            user-select: none;
+            list-style: none;
+        }
+        .editor-section-summary::-webkit-details-marker { display: none; }
+        .editor-section-summary::after {
+            content: '▾';
+            display: inline-block;
+            margin-left: 0.5em;
+            color: rgba(255, 255, 255, 0.3);
+            transition: transform 0.15s ease;
+        }
+        details[open] > .editor-section-summary::after { transform: rotate(180deg); }
+
+        #notion-panel { background-color: var(--admin-bg-color, #22262a); }
+
         /* タイプライターモード: 本文以外のUIをフェード+ぼかしで隠し、キャレットの行を画面上の一定位置にロックする */
         .tw-hide { transition: opacity 0.3s ease, filter 0.3s ease; }
         #app-screen.typewriter-mode .tw-hide {
@@ -40,9 +61,13 @@
             pointer-events: none;
             filter: blur(3px);
         }
-        #app-screen.typewriter-mode #editor-view {
+        #app-screen.typewriter-mode #editor-main-col {
             padding-top: 30vh;
             padding-bottom: 50vh;
+        }
+        /* Notionパネルを開いたままタイプライターモードに入っても、幅を専有して本文欄を狭くしないよう完全に隠す */
+        #app-screen.typewriter-mode #notion-panel {
+            display: none !important;
         }
         #app-screen.typewriter-mode #edit-content {
             background: transparent !important;
@@ -76,7 +101,7 @@
     </div>
 
     <!-- アプリ本体(ログイン後) -->
-    <div id="app-screen" class="hidden min-h-screen flex flex-col">
+    <div id="app-screen" class="hidden h-screen flex flex-col overflow-hidden">
         <header class="tw-hide border-b border-white/10 px-5 sm:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
             <div class="flex items-center gap-4 sm:gap-6 flex-wrap">
                 <h1 class="text-sm font-medium tracking-wide whitespace-nowrap">管理画面</h1>
@@ -86,10 +111,11 @@
                     <button id="nav-subscribers" onclick="showTab('subscribers')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">サブスクリプション</button>
                     <button id="nav-inquiries" onclick="showTab('inquiries')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">お問い合わせ</button>
                     <button id="nav-settings" onclick="showTab('settings')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">表示設定</button>
+                    <button id="nav-ai" onclick="showTab('ai')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">AI</button>
                 </nav>
             </div>
             <div class="flex items-center gap-4 text-xs">
-                <a href="index.html" target="_blank" class="text-white/50 hover:text-white transition-colors">閲覧ビューを見る ↗</a>
+                <a href="/" target="_blank" class="text-white/50 hover:text-white transition-colors">閲覧ビューを見る ↗</a>
                 <button onclick="logout()" class="text-white/50 hover:text-white transition-colors">ログアウト</button>
             </div>
         </header>
@@ -97,79 +123,137 @@
         <!-- 記事一覧ビュー -->
         <div id="list-view" class="flex-1 overflow-y-auto">
             <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
-                <button onclick="openNewEditor()" class="mb-4 w-full sm:w-auto px-5 py-3 text-sm bg-white/10 hover:bg-white/20 rounded transition-colors">＋ 新しい記事を書く</button>
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button onclick="openNewEditor()" class="flex-1 sm:flex-none px-5 py-3 text-sm bg-white/10 hover:bg-white/20 rounded transition-colors">＋ 新しい記事を書く</button>
+                    <button id="bulk-mode-toggle-btn" onclick="toggleBulkMode()" class="px-5 py-3 text-sm bg-white/10 hover:bg-white/20 rounded transition-colors">一括操作</button>
+                </div>
                 <input id="article-search" type="text" placeholder="タイトル・本文で検索" oninput="renderArticleCards()" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-6 focus:outline-none focus:border-white/30">
+                <div id="bulk-action-bar" class="hidden flex flex-wrap items-center gap-3 mb-4 p-3 bg-white/5 border border-white/10 rounded text-xs">
+                    <span id="bulk-selected-count" class="text-white/60">0件選択中</span>
+                    <button onclick="bulkSelectUntranslated()" class="text-white/50 hover:text-white transition-colors">未翻訳のみ選択</button>
+                    <button onclick="bulkSelectAll()" class="text-white/50 hover:text-white transition-colors">全て選択</button>
+                    <button onclick="bulkSelectNone()" class="text-white/50 hover:text-white transition-colors">選択解除</button>
+                    <div class="ml-auto flex flex-wrap items-center gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <select id="bulk-category-select" class="bg-white/10 text-white text-xs rounded px-2 py-2 border border-white/20 focus:outline-none focus:border-white/40">
+                                <option value="">カテゴリ未設定</option>
+                                <option value="log">log</option>
+                                <option value="sketch">sketch</option>
+                                <option value="essay">essay</option>
+                            </select>
+                            <button onclick="runBulkSetCategory()" class="px-3 py-2 bg-white/20 hover:bg-white/30 rounded transition-colors">カテゴリ設定</button>
+                        </div>
+                        <button onclick="runBulkTranslate()" class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded transition-colors">選択した記事を英訳する</button>
+                        <button onclick="runBulkDelete()" class="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded transition-colors">選択した記事を削除する</button>
+                    </div>
+                    <button onclick="toggleBulkMode()" class="px-3 py-2 text-white/50 hover:text-white transition-colors">キャンセル</button>
+                </div>
                 <div id="article-cards" class="flex flex-col gap-3"></div>
                 <div id="article-search-empty" class="hidden text-xs text-white/40 text-center py-16">一致する記事がありません。</div>
                 <div id="empty-state" class="hidden text-xs text-white/40 text-center py-16">まだ記事がありません。「＋ 新しい記事を書く」から始めてください。</div>
             </div>
         </div>
 
-        <!-- 編集ビュー -->
-        <div id="editor-view" class="hidden flex-1 overflow-y-auto">
-            <button id="typewriter-toggle" onclick="toggleTypewriterMode()" class="fixed bottom-6 right-6 z-50 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm transition-colors" style="opacity: 0.4;" title="タイプライターモード切り替え">✍️</button>
-            <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
-                <button onclick="backToList()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors mb-6">← 一覧に戻る</button>
+        <!-- 編集ビュー(Notionパネルを開くと、編集エリアとパネルが独立してスクロールする2段組みになる) -->
+        <div id="editor-view" class="hidden flex-1 overflow-hidden flex">
+            <button id="typewriter-toggle" class="fixed bottom-6 left-6 z-50 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sm transition-colors cursor-grab active:cursor-grabbing" style="opacity: 0.4; touch-action: none;" title="タイプライターモード切り替え(ドラッグで移動できます)">✍️</button>
+            <button id="notion-panel-opener" onclick="toggleNotionPanel()" class="tw-hide fixed top-[4.2rem] right-6 z-40 px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors" title="Notionのデータベースを横に表示します(参照用。編集画面には反映されません)">📋 Notion</button>
+            <div id="editor-main-col" class="flex-1 min-w-0 overflow-y-auto">
+            <div id="editor-form-col" class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
+                <div class="flex items-center justify-between mb-6">
+                    <button onclick="backToList()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors">← 一覧に戻る</button>
+                    <div class="flex items-center gap-4">
+                        <button onclick="reloadCurrentArticle()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors" title="他の場所で更新されている場合に備えて、サーバー上の最新の内容を読み込み直します(今の編集内容は失われます)">🔄 最新の内容を読み込み</button>
+                        <button onclick="quickSaveArticle()" class="tw-hide text-xs text-white/50 hover:text-white transition-colors" title="下書き・公開・予約投稿のいずれであっても、今のステータスのまま保存します">💾 保存</button>
+                    </div>
+                </div>
 
-                <div class="mb-6">
+                <!-- 基本情報 -->
+                <section class="mb-8">
+                    <h2 class="tw-hide text-xs font-semibold uppercase tracking-wider text-white/40 mb-3 pb-2 border-b border-white/10">基本情報</h2>
                     <label class="tw-hide text-xs text-white/50 block mb-1">日付</label>
                     <input id="edit-date" type="text" placeholder="2024.01.01" class="w-40 bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1 mb-4 block">
                     <label class="tw-hide text-xs text-white/50 block mb-1">タイトル</label>
-                    <input id="edit-title" type="text" placeholder="記事のタイトル" class="w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1 mb-4">
-                    <label class="tw-hide text-xs text-white/50 block mb-1">タイトル(英語。空欄なら英語表示でも日本語のまま)</label>
-                    <input id="edit-title-en" type="text" placeholder="Article title in English" class="w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1 mb-4">
-                    <label class="tw-hide text-xs text-white/50 block mb-1">カテゴリ(ジャンル。タグと違い1つだけ選ぶ)</label>
-                    <select id="edit-category" class="w-40 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
-                        <option value="">未設定</option>
-                        <option value="エッセイ">エッセイ</option>
-                        <option value="ノート">ノート</option>
-                        <option value="試論">試論</option>
-                    </select>
-                    <label class="flex items-center gap-2 mt-3 text-sm text-white/70 cursor-pointer w-fit">
-                        <input id="edit-pinned" type="checkbox" class="accent-white/80">
-                        ピン留め(パターンBのArticle一覧の上部に固定表示。目安として3件程度まで推奨)
-                    </label>
-                </div>
+                    <input id="edit-title" type="text" placeholder="記事のタイトル" class="w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1">
+                </section>
 
-                <label class="tw-hide text-xs text-white/50 block mb-1">本文</label>
-                <div class="tw-hide flex items-center flex-wrap gap-1 mb-2 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs">
-                    <button onclick="formatText('bold')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="太字 (Ctrl+B)">太字</button>
-                    <button onclick="formatText('italic')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="斜体 (Ctrl+I)">斜体</button>
-                    <button onclick="formatText('underline')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="下線 (Ctrl+U)">下線</button>
-                    <button onclick="formatText('strikeThrough')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">取消線</button>
-                    <span class="w-px self-stretch bg-white/10 mx-1"></span>
-                    <button onclick="formatText('formatBlock', 'H2')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">見出</button>
-                    <button onclick="formatText('formatBlock', 'BLOCKQUOTE')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">引用</button>
-                    <button onclick="formatText('formatBlock', 'P')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">本文</button>
-                    <span class="w-px self-stretch bg-white/10 mx-1"></span>
-                    <button onclick="formatText('insertUnorderedList')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">箇条書き</button>
-                    <button onclick="formatText('insertOrderedList')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">番号リスト</button>
-                    <button onclick="insertLink()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">リンク</button>
-                    <button onclick="insertFootnote()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="本文中に注釈番号を挿入します">注釈</button>
-                    <button onclick="insertImage()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">📷 写真</button>
-                    <button onclick="insertBookLinkCard()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="Amazonなどのリンク先のタイトル・画像を取得してカードを挿入します">🔗 リンクカード</button>
-                    <span class="w-px self-stretch bg-white/10 mx-1"></span>
-                    <button onclick="formatText('removeFormat')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="選択範囲の書式(太字・斜体など)だけ解除">書式クリア</button>
-                    <button onclick="convertToPlainText()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="本文全体を書式なしのテキストに変換します">プレーンテキスト化</button>
-                    <span class="w-px self-stretch bg-white/10 mx-1"></span>
-                    <button onclick="formatText('undo')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="元に戻す (Ctrl+Z)">↶ 元に戻す</button>
-                    <button onclick="formatText('redo')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="やり直す (Ctrl+Y)">↷ やり直す</button>
-                </div>
-                <div id="edit-content" class="content-editor bg-white/5 border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
-                <div id="edit-char-count" class="tw-hide text-xs text-white/30 mt-1 text-right">0文字</div>
+                <!-- 本文 -->
+                <section class="mb-8">
+                    <h2 class="tw-hide text-xs font-semibold uppercase tracking-wider text-white/40 mb-3 pb-2 border-b border-white/10">本文</h2>
+                    <div class="tw-hide flex items-center flex-wrap gap-1 mb-2 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs">
+                        <button onclick="formatText('bold')" class="w-7 py-1 font-bold hover:bg-white/10 rounded transition-colors" title="太字 (Ctrl+B)">B</button>
+                        <button onclick="formatText('italic')" class="w-7 py-1 italic hover:bg-white/10 rounded transition-colors" title="斜体 (Ctrl+I)">I</button>
+                        <button onclick="formatText('underline')" class="w-7 py-1 underline hover:bg-white/10 rounded transition-colors" title="下線 (Ctrl+U)">U</button>
+                        <button onclick="formatText('strikeThrough')" class="w-7 py-1 line-through hover:bg-white/10 rounded transition-colors" title="取消線">S</button>
+                        <span class="w-px self-stretch bg-white/10 mx-1"></span>
+                        <button onclick="formatText('formatBlock', 'H2')" class="w-7 py-1 font-bold hover:bg-white/10 rounded transition-colors" title="見出し">H</button>
+                        <button onclick="formatText('formatBlock', 'BLOCKQUOTE')" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="引用">❝</button>
+                        <button onclick="formatText('formatBlock', 'P')" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="本文(通常の段落に戻す)">¶</button>
+                        <span class="w-px self-stretch bg-white/10 mx-1"></span>
+                        <button onclick="formatText('insertUnorderedList')" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="箇条書き">•</button>
+                        <button onclick="formatText('insertOrderedList')" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="番号リスト">1.</button>
+                        <button onclick="insertLink()" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="リンク">🔗</button>
+                        <button onclick="insertFootnote()" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="本文中に注釈番号を挿入します">¹</button>
+                        <button onclick="insertImage()" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="写真を挿入">📷</button>
+                        <button onclick="insertBookLinkCard()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="Amazonなどのリンク先のタイトル・画像を取得してカードを挿入します">🔖 リンクカード</button>
+                        <span class="w-px self-stretch bg-white/10 mx-1"></span>
+                        <button onclick="formatText('removeFormat')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="選択範囲の書式(太字・斜体など)だけ解除">書式クリア</button>
+                        <button onclick="convertToPlainText()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="本文全体を書式なしのテキストに変換します">プレーンテキスト化</button>
+                        <span class="w-px self-stretch bg-white/10 mx-1"></span>
+                        <button onclick="formatText('undo')" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="元に戻す (Ctrl+Z)">↶</button>
+                        <button onclick="formatText('redo')" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="やり直す (Ctrl+Y)">↷</button>
+                    </div>
+                    <div id="edit-content" class="content-editor border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
+                    <div id="edit-char-count" class="tw-hide text-xs text-white/30 mt-1 text-right">0文字</div>
 
-                <label class="tw-hide text-xs text-white/50 block mb-1 mt-6">本文(英語。空欄なら英語表示でも日本語のまま。装飾ツールバーはなく、太字/斜体などはCtrl+B/Ctrl+Iなどのブラウザ標準ショートカットのみ対応)</label>
-                <div id="edit-content-en" class="content-editor bg-white/5 border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
+                    <!-- 本文中には[番号]の印だけを残し、実際の注釈文はここでまとめて編集する(閲覧ページの
+                         見た目と同じく、注釈は記事の最後にまとまる。data-note属性が実際に保存される値) -->
+                    <div id="footnote-list-panel" class="hidden mt-4 pt-4 border-t border-white/10">
+                        <label class="text-xs text-white/50 block mb-2">注釈(本文中の[番号]に対応する内容)</label>
+                        <div id="footnote-list-items" class="flex flex-col gap-2"></div>
+                    </div>
+                </section>
 
-                <div class="tw-hide mt-6">
+                <!-- 英語版(空欄なら英語表示でも日本語のまま。既に英語欄に何か入っていれば開いた状態で表示する) -->
+                <details id="english-section" class="tw-hide mb-8">
+                    <summary class="editor-section-summary text-xs font-semibold uppercase tracking-wider text-white/40 mb-3 pb-2 border-b border-white/10">
+                        英語版<span class="normal-case font-normal tracking-normal text-white/30 ml-2">(空欄なら英語表示でも日本語のまま)</span>
+                    </summary>
+                    <div class="pt-1">
+                        <label class="text-xs text-white/50 block mb-1">タイトル(英語)</label>
+                        <input id="edit-title-en" type="text" placeholder="Article title in English" class="w-full bg-transparent focus:outline-none border-b border-white/10 focus:border-white/30 pb-1 mb-4">
+
+                        <div class="flex items-center justify-between mt-2 mb-1">
+                            <label class="text-xs text-white/50 block">本文(英語。装飾ツールバーはなく、太字/斜体などはCtrl+B/Ctrl+Iなどのブラウザ標準ショートカットのみ対応)</label>
+                            <button id="ai-translate-btn" onclick="translateArticleToEnglish()" class="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap" title="上のタイトル・本文(日本語)をGeminiで英訳し、下の英語欄に入れます(今の英語欄の内容は上書きされます)">✨ AIで英訳</button>
+                        </div>
+                        <div id="edit-content-en" class="content-editor bg-white/5 border border-white/10 rounded px-4 py-3 text-sm" contenteditable="true"></div>
+                    </div>
+                </details>
+
+                <!-- ハッシュタグ・カテゴリ -->
+                <section class="tw-hide mb-8">
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-white/40 mb-3 pb-2 border-b border-white/10">ハッシュタグ・カテゴリ</h2>
                     <label class="text-xs text-white/50 block mb-2">ハッシュタグ(クリックで選択・解除)</label>
                     <div id="edit-tags" class="flex flex-wrap gap-2 bg-white/5 border border-white/10 rounded p-3 text-xs"></div>
                     <div id="edit-tags-empty" class="hidden text-xs text-white/30 mt-2">タグがまだありません。下から新しく作成できます。</div>
-                    <div class="flex gap-2 mt-2">
+                    <div class="flex gap-2 mt-2 mb-6">
                         <input id="new-tag-name" type="text" placeholder="新しいタグ名" class="flex-1 bg-white/5 text-xs rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30" onkeydown="if(event.key==='Enter'){event.preventDefault(); createTagFromEditor();}">
                         <button onclick="createTagFromEditor()" class="px-3 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap">＋ 追加</button>
                     </div>
-                </div>
+
+                    <label class="text-xs text-white/50 block mb-1">カテゴリ(ジャンル。タグと違い1つだけ選ぶ)</label>
+                    <select id="edit-category" class="w-40 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
+                        <option value="">未設定</option>
+                        <option value="log">log</option>
+                        <option value="sketch">sketch</option>
+                        <option value="essay">essay</option>
+                    </select>
+                    <label class="flex items-center gap-2 mt-3 text-sm text-white/70 cursor-pointer w-fit">
+                        <input id="edit-pinned" type="checkbox" class="accent-white/80">
+                        ピン留め
+                    </label>
+                </section>
 
                 <div id="image-resize-toolbar" class="hidden fixed z-50 bg-[#2f3438] border border-white/20 rounded shadow-lg px-2 py-1 flex items-center gap-1 text-xs">
                     <button onclick="resizeSelectedImage(25)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">25%</button>
@@ -179,102 +263,25 @@
                     <button onclick="resizeSelectedImage(null)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors text-white/50">元に戻す</button>
                 </div>
 
-                <!-- この記事だけの文字組み -->
-                <div class="tw-hide mt-6 pt-6 border-t border-white/10">
-                    <label class="flex items-center gap-2 text-xs text-white/70 mb-4">
-                        <input type="checkbox" id="edit-override-typography" onchange="toggleTypographyOverride()">
-                        この記事だけ文字組みを変える(オフの場合はサイト全体の表示設定に従います)
-                    </label>
-                    <div id="typography-override-fields" class="hidden flex flex-col gap-4 bg-white/5 border border-white/10 rounded p-4">
-                        <div>
-                            <label class="text-xs text-white/50 block mb-1">本文フォント</label>
-                            <select id="edit-font" onchange="applyEditorPreviewStyle()" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
-                                <optgroup label="明朝体">
-                                    <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
-                                    <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
-                                    <option value="'Noto Serif JP', serif">Noto Serif JP</option>
-                                    <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
-                                    <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
-                                    <option value="'Kaisei Decol', serif">Kaisei Decol</option>
-                                    <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
-                                </optgroup>
-                                <optgroup label="ゴシック体">
-                                    <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
-                                    <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
-                                    <option value="'Zen Kaku Gothic Antique', sans-serif">Zen Kaku Gothic Antique</option>
-                                    <option value="'Murecho', sans-serif">Murecho</option>
-                                    <option value="'RocknRoll One', sans-serif">RocknRoll One</option>
-                                    <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
-                                    <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
-                                    <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
-                                    <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
-                                </optgroup>
-                                <optgroup label="丸ゴシック体">
-                                    <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
-                                    <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
-                                </optgroup>
-                                <optgroup label="手書き風">
-                                    <option value="'Klee One', cursive">Klee One</option>
-                                </optgroup>
-                                <optgroup label="カリグラフィー風">
-                                    <option value="'New Tegomin', serif">New Tegomin</option>
-                                    <option value="'Yuji Syuku', serif">Yuji Syuku</option>
-                                </optgroup>
-                            </select>
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1">
-                                <span>文字サイズ</span><span id="edit-font-size-value"></span>
-                            </div>
-                            <input type="range" id="edit-font-size" min="10" max="40" step="1" class="w-full" oninput="document.getElementById('edit-font-size-value').textContent = this.value + 'px'; applyEditorPreviewStyle()">
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1">
-                                <span>行間</span><span id="edit-line-height-value"></span>
-                            </div>
-                            <input type="range" id="edit-line-height" min="1.0" max="10" step="0.1" class="w-full" oninput="document.getElementById('edit-line-height-value').textContent = this.value; applyEditorPreviewStyle()">
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs text-white/50 mb-1">
-                                <span>文字間隔</span><span id="edit-letter-spacing-value"></span>
-                            </div>
-                            <input type="range" id="edit-letter-spacing" min="-0.05" max="0.6" step="0.01" class="w-full" oninput="document.getElementById('edit-letter-spacing-value').textContent = this.value + 'em'; applyEditorPreviewStyle()">
-                        </div>
-                        <div>
-                            <label class="text-xs text-white/50 block mb-1">文字揃え</label>
-                            <select id="edit-text-align" onchange="applyEditorPreviewStyle()" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
-                                <option value="left">左揃え</option>
-                                <option value="center">中央揃え</option>
-                                <option value="right">右揃え</option>
-                                <option value="justify">両端揃え</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- SNS投稿(保存済みの記事のみ。下書き文の自動生成とInstagram用画像の切り出し) -->
-                <div id="social-share-panel" class="tw-hide hidden mt-6 pt-6 border-t border-white/10">
-                    <label class="text-xs text-white/50 block mb-3">SNS投稿</label>
-                    <div id="social-drafts" class="flex flex-col gap-3 mb-5"></div>
+                <details id="social-share-panel" class="tw-hide hidden mb-8">
+                    <summary class="editor-section-summary text-xs font-semibold uppercase tracking-wider text-white/40 mb-3 pb-2 border-b border-white/10">SNS投稿</summary>
+                    <div class="pt-1">
+                        <div id="social-drafts" class="flex flex-col gap-3 mb-5"></div>
 
-                    <div class="flex flex-wrap items-start gap-4">
-                        <div>
-                            <canvas id="ig-canvas" width="1080" height="1080" class="hidden"></canvas>
-                            <img id="ig-preview" class="hidden w-32 h-32 object-cover rounded border border-white/10" alt="Instagram用プレビュー">
-                            <p id="ig-preview-empty" class="text-xs text-white/30 w-32">本文に画像がありません</p>
-                        </div>
-                        <div class="flex flex-col gap-2">
-                            <span class="text-xs text-white/40">Instagram用(1:1に切り出し)</span>
-                            <div class="flex gap-2">
-                                <button onclick="shareIgImage()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">共有する</button>
-                                <button onclick="downloadIgImage()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">画像をダウンロード</button>
-                                <button onclick="copyIgCaption()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">キャプションをコピー</button>
+                        <div class="flex flex-wrap items-start gap-4">
+                            <div class="flex flex-col gap-2">
+                                <span class="text-xs text-white/40">Instagramストーリー用(サイトの見た目そのままのプレビューを新しいタブで開き、スマホでスクショしてください)</span>
+                                <div class="flex gap-2">
+                                    <button onclick="openStoryPreview()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">プレビューを開く</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </details>
 
-                <div class="tw-hide flex flex-wrap items-center gap-3 mt-6">
+                <!-- 保存・公開 -->
+                <div class="tw-hide flex flex-wrap items-center gap-3 mt-6 pt-6 border-t border-white/10">
                     <span id="edit-status-label" class="text-xs text-white/40"></span>
                     <button onclick="saveArticle('draft')" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">下書き保存</button>
                     <input type="datetime-local" id="edit-scheduled-at" class="bg-white/5 text-xs rounded px-2 py-2.5 border border-white/10 focus:outline-none focus:border-white/30">
@@ -284,6 +291,20 @@
                     <button id="delete-btn" onclick="deleteCurrentArticle()" class="hidden sm:ml-auto px-5 py-2.5 text-xs text-red-400/70 hover:text-red-400 transition-colors">この記事を削除</button>
                 </div>
             </div>
+            </div>
+
+            <!-- Notionパネル(参照専用。ここからの操作で編集画面の内容が変わることはない。開くと編集エリアとは独立してスクロールする) -->
+            <aside id="notion-panel" class="tw-hide hidden w-[380px] lg:w-[440px] shrink-0 border-l border-white/10 flex-col overflow-hidden">
+                <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/10">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-white/40">Notion</span>
+                    <div class="flex items-center gap-3">
+                        <button onclick="reloadOpenNotionDatabases()" class="text-white/40 hover:text-white transition-colors" title="開いているDBを再読み込み">🔄</button>
+                        <button onclick="toggleNotionPanel()" class="text-white/40 hover:text-white transition-colors" title="閉じる">✕</button>
+                    </div>
+                </div>
+                <div id="notion-db-toggle-bar" class="shrink-0 flex flex-col border-b border-white/10"></div>
+                <div id="notion-panel-list" class="flex-1 min-h-0 overflow-y-auto flex flex-col text-xs"></div>
+            </aside>
         </div>
 
         <!-- タグ一覧ビュー -->
@@ -339,7 +360,7 @@
                     </div>
                     <p class="text-xs text-white/30 mb-6">見出し・本文の色はここから、細かい部分(メタ情報・枠線など)の色は自動で調整されます。</p>
 
-                    <label class="text-xs text-white/50 block mb-2">各記事のSubscribeボタンの配色</label>
+                    <label class="text-xs text-white/50 block mb-2">Subscribeボタンの配色(サイドバー・記事下部共通のデフォルト。記事本文タブで記事下部だけ個別に上書き可)</label>
                     <div class="flex items-center gap-6 mb-4">
                         <div class="flex items-center gap-2">
                             <input id="set-subscribe-bg-color" type="color" class="w-10 h-10 rounded cursor-pointer">
@@ -483,7 +504,52 @@
                             </div>
                             <input id="set-site-title-color" type="color" class="w-8 h-8 rounded cursor-pointer" title="サイトタイトルの色">
                         </div>
-                        <label class="text-xs text-white/50 block mb-2">サブタイトル</label>
+                        <label class="text-xs text-white/50 block mb-2">サブタイトル(英語・上の行。空欄なら非表示)</label>
+                        <input id="set-site-subtitle-en" type="text" placeholder="Prototyping discussions on space." class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
+                        <label class="text-xs text-white/50 block mb-2">サブタイトルのフォント(日英共通)</label>
+                        <select id="set-site-subtitle-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
+                            <option value="">本文と同じフォント</option>
+                            <optgroup label="明朝体">
+                                <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                                <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                                <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                                <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                                <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                            </optgroup>
+                            <optgroup label="ゴシック体">
+                                <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                                <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                <option value="'Zen Kaku Gothic Antique', sans-serif">Zen Kaku Gothic Antique</option>
+                                <option value="'Murecho', sans-serif">Murecho</option>
+                                <option value="'RocknRoll One', sans-serif">RocknRoll One</option>
+                                <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                                <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                                <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                                <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                            </optgroup>
+                            <optgroup label="丸ゴシック体">
+                                <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                                <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                            </optgroup>
+                            <optgroup label="手書き風">
+                                <option value="'Klee One', cursive">Klee One</option>
+                            </optgroup>
+                            <optgroup label="カリグラフィー風">
+                                <option value="'New Tegomin', serif">New Tegomin</option>
+                                <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                            </optgroup>
+                            <optgroup label="装飾体(英字のみ・日本語は表示されません)">
+                                <option value="'Fraunces', serif">Fraunces</option>
+                                <option value="'Bodoni Moda', serif">Bodoni Moda</option>
+                                <option value="'Abril Fatface', serif">Abril Fatface</option>
+                                <option value="'Grenze Gotisch', serif">Grenze Gotisch</option>
+                                <option value="'Italiana', serif">Italiana</option>
+                                <option value="'Cormorant', serif">Cormorant</option>
+                            </optgroup>
+                        </select>
+                        <label class="text-xs text-white/50 block mb-2">サブタイトル(日本語・下の行。空欄なら非表示)</label>
                         <input id="set-site-subtitle" type="text" placeholder="記憶の集積。言葉は静かに積もっていく。" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 mb-3 focus:outline-none focus:border-white/30">
                         <div class="flex items-center gap-3">
                             <div class="flex items-center gap-2">
@@ -491,7 +557,12 @@
                                 <input id="set-site-subtitle-size" type="range" min="10" max="40" step="1" class="w-24" oninput="document.getElementById('set-site-subtitle-size-value').textContent = this.value + 'px'">
                                 <span id="set-site-subtitle-size-value" class="text-xs text-white/40 w-10"></span>
                             </div>
-                            <input id="set-site-subtitle-color" type="color" class="w-8 h-8 rounded cursor-pointer" title="サブタイトルの色">
+                            <input id="set-site-subtitle-color" type="color" class="w-8 h-8 rounded cursor-pointer" title="サブタイトルの文字色">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-white/40">帯の色</span>
+                                <input id="set-site-subtitle-bg-color" type="color" class="w-8 h-8 rounded cursor-pointer" title="サブタイトルの背景(帯)の色" oninput="delete this.dataset.cleared;">
+                                <button type="button" onclick="document.getElementById('set-site-subtitle-bg-color').dataset.cleared='1'; this.textContent='帯なし(解除する場合は色を選択)';" class="text-xs text-white/40 hover:text-white/70 transition-colors">帯を消す</button>
+                            </div>
                         </div>
                     </div>
 
@@ -604,6 +675,14 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- タイトル・台形アイコンのセクションと、各ページのコンテンツとの間隔 -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <div class="flex justify-between text-xs text-white/50 mb-1">
+                            <span>タイトルセクションと本文の間隔</span><span id="header-spacing-value"></span>
+                        </div>
+                        <input type="range" id="set-header-spacing" min="80" max="480" step="8" class="w-full" oninput="document.getElementById('header-spacing-value').textContent = this.value + 'px'">
+                    </div>
                 </div>
 
                 <!-- 記事本文: 本文フォント、文字組み、文字色、注釈、SNSシェア既定画像など、記事の表示に関わる設定 -->
@@ -701,6 +780,148 @@
                         </select>
                     </div>
 
+                    <!-- カテゴリ別フォント -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <label class="text-xs text-white/50 block mb-3">カテゴリ別の本文フォント(空欄なら本文フォントと同じ)</label>
+                        <div class="flex flex-col gap-3">
+                            <div>
+                                <div class="text-xs text-white/40 mb-1">log</div>
+                                <select id="set-log-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                                    <option value="">本文と同じフォント</option>
+                                    <optgroup label="明朝体">
+                                        <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                        <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                                        <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                                        <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                                        <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                        <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                                        <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                                    </optgroup>
+                                    <optgroup label="ゴシック体">
+                                        <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                                        <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                        <option value="'Zen Kaku Gothic Antique', sans-serif">Zen Kaku Gothic Antique</option>
+                                        <option value="'Murecho', sans-serif">Murecho</option>
+                                        <option value="'RocknRoll One', sans-serif">RocknRoll One</option>
+                                        <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                                        <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                                        <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                                        <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                                    </optgroup>
+                                    <optgroup label="丸ゴシック体">
+                                        <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                                        <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                                    </optgroup>
+                                    <optgroup label="手書き風">
+                                        <option value="'Klee One', cursive">Klee One</option>
+                                    </optgroup>
+                                    <optgroup label="カリグラフィー風">
+                                        <option value="'New Tegomin', serif">New Tegomin</option>
+                                        <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                                    </optgroup>
+                                    <optgroup label="装飾体(英字のみ)">
+                                        <option value="'Fraunces', serif">Fraunces</option>
+                                        <option value="'Bodoni Moda', serif">Bodoni Moda</option>
+                                        <option value="'Abril Fatface', serif">Abril Fatface</option>
+                                        <option value="'Grenze Gotisch', serif">Grenze Gotisch</option>
+                                        <option value="'Italiana', serif">Italiana</option>
+                                        <option value="'Cormorant', serif">Cormorant</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div>
+                                <div class="text-xs text-white/40 mb-1">sketch</div>
+                                <select id="set-sketch-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                                    <option value="">本文と同じフォント</option>
+                                    <optgroup label="明朝体">
+                                        <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                        <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                                        <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                                        <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                                        <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                        <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                                        <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                                    </optgroup>
+                                    <optgroup label="ゴシック体">
+                                        <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                                        <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                        <option value="'Zen Kaku Gothic Antique', sans-serif">Zen Kaku Gothic Antique</option>
+                                        <option value="'Murecho', sans-serif">Murecho</option>
+                                        <option value="'RocknRoll One', sans-serif">RocknRoll One</option>
+                                        <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                                        <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                                        <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                                        <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                                    </optgroup>
+                                    <optgroup label="丸ゴシック体">
+                                        <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                                        <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                                    </optgroup>
+                                    <optgroup label="手書き風">
+                                        <option value="'Klee One', cursive">Klee One</option>
+                                    </optgroup>
+                                    <optgroup label="カリグラフィー風">
+                                        <option value="'New Tegomin', serif">New Tegomin</option>
+                                        <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                                    </optgroup>
+                                    <optgroup label="装飾体(英字のみ)">
+                                        <option value="'Fraunces', serif">Fraunces</option>
+                                        <option value="'Bodoni Moda', serif">Bodoni Moda</option>
+                                        <option value="'Abril Fatface', serif">Abril Fatface</option>
+                                        <option value="'Grenze Gotisch', serif">Grenze Gotisch</option>
+                                        <option value="'Italiana', serif">Italiana</option>
+                                        <option value="'Cormorant', serif">Cormorant</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div>
+                                <div class="text-xs text-white/40 mb-1">essay</div>
+                                <select id="set-essay-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                                    <option value="">本文と同じフォント</option>
+                                    <optgroup label="明朝体">
+                                        <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                        <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                                        <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                                        <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                                        <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                        <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                                        <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                                    </optgroup>
+                                    <optgroup label="ゴシック体">
+                                        <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                                        <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                        <option value="'Zen Kaku Gothic Antique', sans-serif">Zen Kaku Gothic Antique</option>
+                                        <option value="'Murecho', sans-serif">Murecho</option>
+                                        <option value="'RocknRoll One', sans-serif">RocknRoll One</option>
+                                        <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                                        <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                                        <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                                        <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                                    </optgroup>
+                                    <optgroup label="丸ゴシック体">
+                                        <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                                        <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                                    </optgroup>
+                                    <optgroup label="手書き風">
+                                        <option value="'Klee One', cursive">Klee One</option>
+                                    </optgroup>
+                                    <optgroup label="カリグラフィー風">
+                                        <option value="'New Tegomin', serif">New Tegomin</option>
+                                        <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                                    </optgroup>
+                                    <optgroup label="装飾体(英字のみ)">
+                                        <option value="'Fraunces', serif">Fraunces</option>
+                                        <option value="'Bodoni Moda', serif">Bodoni Moda</option>
+                                        <option value="'Abril Fatface', serif">Abril Fatface</option>
+                                        <option value="'Grenze Gotisch', serif">Grenze Gotisch</option>
+                                        <option value="'Italiana', serif">Italiana</option>
+                                        <option value="'Cormorant', serif">Cormorant</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 文字組み -->
                     <div class="mb-6 pb-6 border-b border-white/10">
                         <label class="text-xs text-white/50 block mb-3">文字組み</label>
@@ -762,6 +983,18 @@
                             <button onclick="pickColor('set-text-color', '#3a2f28')" class="h-8 rounded border border-white/10 hover:border-white/40" style="background-color:#3a2f28;" title="焦茶"></button>
                         </div>
                         <div id="set-contrast-warning" class="hidden text-xs mt-3 leading-relaxed" style="color:#f0b429;">⚠ 背景色とのコントラストが低く、文字が読みにくくなっています</div>
+                    </div>
+
+                    <!-- 本文・タイトルの不透明度(記事本文とカード表示の両方に共通で適用される) -->
+                    <div class="mb-6 pb-6 border-b border-white/10">
+                        <div class="flex justify-between text-xs text-white/50 mb-1">
+                            <span>本文文字の不透明度(記事・カード共通)</span><span id="body-text-opacity-value"></span>
+                        </div>
+                        <input type="range" id="set-body-text-opacity" min="0.2" max="1" step="0.05" class="w-full mb-4" oninput="document.getElementById('body-text-opacity-value').textContent = Math.round(this.value * 100) + '%'">
+                        <div class="flex justify-between text-xs text-white/50 mb-1">
+                            <span>タイトル文字の不透明度(記事・カード共通)</span><span id="title-text-opacity-value"></span>
+                        </div>
+                        <input type="range" id="set-title-text-opacity" min="0.2" max="1" step="0.05" class="w-full" oninput="document.getElementById('title-text-opacity-value').textContent = Math.round(this.value * 100) + '%'">
                     </div>
 
                     <!-- 注釈 -->
@@ -993,9 +1226,6 @@
                                 <option value="'Yuji Syuku', serif">Yuji Syuku</option>
                             </optgroup>
                         </select>
-
-                        <label class="text-xs text-white/50 block mb-1">文字色(タイトル・本文共通)</label>
-                        <input type="color" id="set-card-text-color" class="w-full h-9 bg-white/5 rounded border border-white/10">
                     </div>
                 </div>
 
@@ -1099,6 +1329,7 @@
                         <label class="text-xs text-white/50 block mb-2">SNSリンク(空欄なら非表示。アバウトページ本文の下にアイコンで表示されます)</label>
                         <div class="flex flex-col gap-2">
                             <input id="set-sns-x-url" type="text" placeholder="XのプロフィールURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                            <input id="set-sns-facebook-url" type="text" placeholder="FacebookのプロフィールURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
                             <input id="set-sns-instagram-url" type="text" placeholder="InstagramのプロフィールURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
                             <input id="set-sns-website-url" type="text" placeholder="WebサイトのURL" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
                         </div>
@@ -1107,7 +1338,35 @@
 
                 <div class="flex gap-3 pt-4 border-t border-white/10">
                     <button onclick="saveSiteSettings()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">保存する</button>
-                    <a href="index.html" target="_blank" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">閲覧ビューで確認 ↗</a>
+                    <a href="/" target="_blank" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">閲覧ビューで確認 ↗</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- AIビュー(試作: 自分の記事をRAGにした執筆補助) -->
+        <div id="ai-view" class="hidden flex-1 overflow-y-auto">
+            <div class="max-w-2xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
+                <p class="text-xs text-white/40 mb-6">自分の過去記事を検索対象にした、試作段階の執筆補助です。まず下のボタンで記事をインデックス(埋め込みベクトル化)してから、質問・相談を入力してください。記事を追加・編集したときは再インデックスしてください。</p>
+
+                <div class="mb-8 pb-8 border-b border-white/10">
+                    <button id="ai-reindex-btn" onclick="reindexAiArticles()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">🔄 記事をインデックスする</button>
+                    <span id="ai-reindex-status" class="text-xs text-white/40 ml-3"></span>
+                    <div class="mt-3">
+                        <button onclick="checkAiModels()" class="text-xs text-white/30 hover:text-white/60 transition-colors">利用可能なモデルを確認</button>
+                        <span id="ai-models-status" class="text-xs text-white/30 ml-2"></span>
+                    </div>
+                </div>
+
+                <label class="text-xs text-white/50 block mb-2">質問・相談</label>
+                <textarea id="ai-query" rows="4" placeholder="例: このテーマについて前にどんなことを書いていたか教えて" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30 mb-3"></textarea>
+                <button id="ai-ask-btn" onclick="askAi()" class="px-4 py-2 text-xs bg-white/20 hover:bg-white/30 rounded transition-colors">聞く</button>
+
+                <div id="ai-answer-wrap" class="hidden mt-8 pt-8 border-t border-white/10">
+                    <div id="ai-answer" class="text-sm whitespace-pre-wrap mb-4"></div>
+                    <details id="ai-sources-details" class="text-xs text-white/40">
+                        <summary class="editor-section-summary">参考にした記事</summary>
+                        <div id="ai-sources" class="mt-2 flex flex-col gap-2"></div>
+                    </details>
                 </div>
             </div>
         </div>
@@ -1136,6 +1395,8 @@
         const IMAGE_BUCKET = 'article-images';
 
         let articles = [];
+        let bulkMode = false;
+        let bulkSelectedIds = new Set();
         let editingId = null;
         let tags = [];
         let editingTagId = null;
@@ -1253,6 +1514,7 @@
             document.getElementById('nav-subscribers').classList.toggle('bg-white/10', tab === 'subscribers');
             document.getElementById('nav-inquiries').classList.toggle('bg-white/10', tab === 'inquiries');
             document.getElementById('nav-settings').classList.toggle('bg-white/10', tab === 'settings');
+            document.getElementById('nav-ai').classList.toggle('bg-white/10', tab === 'ai');
 
             document.getElementById('list-view').classList.add('hidden');
             document.getElementById('editor-view').classList.add('hidden');
@@ -1261,6 +1523,7 @@
             document.getElementById('subscribers-view').classList.add('hidden');
             document.getElementById('inquiries-view').classList.add('hidden');
             document.getElementById('settings-view').classList.add('hidden');
+            document.getElementById('ai-view').classList.add('hidden');
 
             if (tab === 'articles') {
                 showListView();
@@ -1275,6 +1538,8 @@
             } else if (tab === 'inquiries') {
                 document.getElementById('inquiries-view').classList.remove('hidden');
                 loadInquiriesList();
+            } else if (tab === 'ai') {
+                document.getElementById('ai-view').classList.remove('hidden');
             } else {
                 document.getElementById('settings-view').classList.remove('hidden');
                 loadSiteSettings();
@@ -1304,6 +1569,10 @@
             renderArticleCards();
         }
 
+        function articleHasTranslation(article) {
+            return !!(article.title_en || '').trim() || !!stripHtml(article.content_en || '').trim();
+        }
+
         function renderArticleCards() {
             const container = document.getElementById('article-cards');
             container.innerHTML = '';
@@ -1320,7 +1589,7 @@
                 const preview = plainText.slice(0, 70);
                 const card = document.createElement('div');
                 card.className = 'flex items-center gap-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded px-4 py-3 cursor-pointer transition-colors';
-                card.onclick = () => openEditEditor(article.id);
+                card.onclick = bulkMode ? () => toggleBulkSelect(article.id) : () => openEditEditor(article.id);
                 const effectiveStatus = computeEffectiveStatus(article);
                 let badgeHtml = '';
                 if (article.status === 'draft') {
@@ -1330,7 +1599,21 @@
                     const label = d.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
                     badgeHtml = `<span class="text-xs px-1.5 py-0.5 rounded bg-sky-400/20 text-sky-200/80">予約 ${label}</span>`;
                 }
+                if (article.pinned) {
+                    badgeHtml += '<span class="text-xs px-1.5 py-0.5 rounded bg-white/15 text-white/80">📌 ピン留め</span>';
+                }
+                const hasTranslation = articleHasTranslation(article);
+                if (hasTranslation) {
+                    badgeHtml += '<span class="text-xs px-1.5 py-0.5 rounded bg-emerald-400/20 text-emerald-200/80">英訳☑</span>';
+                }
+                if (article.category) {
+                    badgeHtml += `<span class="text-xs px-1.5 py-0.5 rounded bg-white/10 text-white/60">${article.category}</span>`;
+                }
+                const checkboxHtml = bulkMode
+                    ? `<div class="w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${bulkSelectedIds.has(article.id) ? 'bg-white border-white' : 'border-white/30'}">${bulkSelectedIds.has(article.id) ? '<span class="text-black text-xs leading-none">✓</span>' : ''}</div>`
+                    : '';
                 card.innerHTML = `
+                    ${checkboxHtml}
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
                             <span class="text-xs text-white/40">${article.date}</span>
@@ -1340,10 +1623,143 @@
                         <div class="text-sm mb-1 truncate">${article.title || '(無題)'}</div>
                         <div class="text-xs text-white/40 truncate">${preview}</div>
                     </div>
-                    <span class="text-xs text-white/30">編集 →</span>
+                    ${bulkMode ? '' : '<span class="text-xs text-white/30">編集 →</span>'}
                 `;
                 container.appendChild(card);
             });
+        }
+
+        // --- 一括操作: 記事一覧にチェックボックスを出し、選択した記事をまとめて英訳/削除する ---
+        function updateBulkActionBar() {
+            document.getElementById('bulk-selected-count').textContent = `${bulkSelectedIds.size}件選択中`;
+        }
+
+        function toggleBulkMode() {
+            bulkMode = !bulkMode;
+            bulkSelectedIds = new Set();
+            document.getElementById('bulk-action-bar').classList.toggle('hidden', !bulkMode);
+            document.getElementById('bulk-mode-toggle-btn').textContent = bulkMode ? '一括操作を終了' : '一括操作';
+            updateBulkActionBar();
+            renderArticleCards();
+        }
+
+        function toggleBulkSelect(id) {
+            if (bulkSelectedIds.has(id)) bulkSelectedIds.delete(id); else bulkSelectedIds.add(id);
+            updateBulkActionBar();
+            renderArticleCards();
+        }
+
+        function bulkSelectUntranslated() {
+            bulkSelectedIds = new Set(articles.filter(a => !articleHasTranslation(a)).map(a => a.id));
+            updateBulkActionBar();
+            renderArticleCards();
+        }
+
+        function bulkSelectAll() {
+            bulkSelectedIds = new Set(articles.map(a => a.id));
+            updateBulkActionBar();
+            renderArticleCards();
+        }
+
+        function bulkSelectNone() {
+            bulkSelectedIds = new Set();
+            updateBulkActionBar();
+            renderArticleCards();
+        }
+
+        async function runBulkTranslate() {
+            if (bulkSelectedIds.size === 0) {
+                showToast('記事を選択してください');
+                return;
+            }
+            const targets = articles.filter(a => bulkSelectedIds.has(a.id));
+            const alreadyTranslatedCount = targets.filter(articleHasTranslation).length;
+            const confirmMsg = alreadyTranslatedCount > 0
+                ? `${targets.length}件を英訳します(うち${alreadyTranslatedCount}件は既に英訳があり、上書きされます)。よろしいですか？`
+                : `${targets.length}件を英訳します。よろしいですか？`;
+            if (!confirm(confirmMsg)) return;
+
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) {
+                showToast('ログイン状態を確認できませんでした');
+                return;
+            }
+
+            const btn = document.querySelector('#bulk-action-bar button[onclick="runBulkTranslate()"]');
+            let successCount = 0;
+            const failedTitles = [];
+            for (let i = 0; i < targets.length; i++) {
+                const article = targets[i];
+                if (btn) btn.textContent = `翻訳中... (${i + 1}/${targets.length})`;
+                try {
+                    const res = await fetch('/api/translate', {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title: article.title, content: article.content }),
+                    });
+                    const result = await res.json();
+                    if (!res.ok) throw new Error(result.error || 'translate failed');
+                    const { error } = await sb.from('articles')
+                        .update({ title_en: result.title_en || '', content_en: result.content_en || '' })
+                        .eq('id', article.id);
+                    if (error) throw error;
+                    successCount++;
+                } catch (e) {
+                    console.error(e);
+                    failedTitles.push(article.title || '(無題)');
+                }
+            }
+            if (btn) btn.textContent = '選択した記事を英訳する';
+
+            showToast(
+                failedTitles.length === 0
+                    ? `${successCount}件を英訳しました`
+                    : `${successCount}件を英訳しました(失敗: ${failedTitles.join('、')})`,
+                failedTitles.length === 0 ? 2000 : 8000
+            );
+            toggleBulkMode();
+            await loadArticleList();
+        }
+
+        async function runBulkSetCategory() {
+            if (bulkSelectedIds.size === 0) {
+                showToast('記事を選択してください');
+                return;
+            }
+            const category = document.getElementById('bulk-category-select').value;
+            const label = category || '(カテゴリ未設定)';
+            if (!confirm(`選択した${bulkSelectedIds.size}件のカテゴリを「${label}」に設定しますか？`)) return;
+
+            const { error } = await sb.from('articles')
+                .update({ category: category || null })
+                .in('id', [...bulkSelectedIds]);
+            if (error) {
+                console.error(error);
+                showToast('カテゴリ設定に失敗しました');
+                return;
+            }
+            showToast(`${bulkSelectedIds.size}件のカテゴリを設定しました`);
+            toggleBulkMode();
+            await loadArticleList();
+        }
+
+        async function runBulkDelete() {
+            if (bulkSelectedIds.size === 0) {
+                showToast('記事を選択してください');
+                return;
+            }
+            const targets = articles.filter(a => bulkSelectedIds.has(a.id));
+            if (!confirm(`選択した${targets.length}件を削除しますか？元に戻せません。`)) return;
+
+            const { error } = await sb.from('articles').delete().in('id', targets.map(a => a.id));
+            if (error) {
+                console.error(error);
+                showToast('削除に失敗しました');
+                return;
+            }
+            showToast(`${targets.length}件を削除しました`);
+            toggleBulkMode();
+            await loadArticleList();
         }
 
         function showListView() {
@@ -1383,6 +1799,75 @@
             }
         }
 
+        // タイプライターモードボタンのドラッグ移動(押した位置からほぼ動いていなければクリックとして扱う)。
+        // 位置はビューポート比率でlocalStorageに保存し、画面サイズが変わっても近い位置に復元する。
+        function setupTypewriterToggleDrag() {
+            const btn = document.getElementById('typewriter-toggle');
+            const STORAGE_KEY = 'studieslog_admin_tw_btn_pos';
+            const DRAG_THRESHOLD = 4;
+            let dragging = false;
+            let moved = false;
+            let startX = 0, startY = 0, originLeft = 0, originTop = 0;
+
+            function applyPosition(left, top) {
+                const maxLeft = Math.max(window.innerWidth - btn.offsetWidth - 4, 4);
+                const maxTop = Math.max(window.innerHeight - btn.offsetHeight - 4, 4);
+                btn.style.left = `${Math.min(Math.max(left, 4), maxLeft)}px`;
+                btn.style.top = `${Math.min(Math.max(top, 4), maxTop)}px`;
+                btn.style.right = 'auto';
+                btn.style.bottom = 'auto';
+            }
+
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const { xr, yr } = JSON.parse(saved);
+                    applyPosition(xr * window.innerWidth, yr * window.innerHeight);
+                } catch (e) { /* 保存値が壊れていれば既定位置のまま */ }
+            }
+
+            btn.addEventListener('pointerdown', (e) => {
+                dragging = true;
+                moved = false;
+                startX = e.clientX;
+                startY = e.clientY;
+                const rect = btn.getBoundingClientRect();
+                originLeft = rect.left;
+                originTop = rect.top;
+                btn.setPointerCapture(e.pointerId);
+            });
+
+            btn.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) moved = true;
+                if (moved) applyPosition(originLeft + dx, originTop + dy);
+            });
+
+            function endDrag() {
+                if (!dragging) return;
+                dragging = false;
+                if (moved) {
+                    const rect = btn.getBoundingClientRect();
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                        xr: rect.left / window.innerWidth,
+                        yr: rect.top / window.innerHeight,
+                    }));
+                }
+            }
+            btn.addEventListener('pointerup', endDrag);
+            btn.addEventListener('pointercancel', endDrag);
+
+            btn.addEventListener('click', () => {
+                if (moved) {
+                    moved = false;
+                    return;
+                }
+                toggleTypewriterMode();
+            });
+        }
+
         // 現在のキャレット位置のビューポート上のY座標を取得する(contenteditable用。
         // Range#getClientRectsで行の矩形が直接取れるので、textareaと違いミラー要素は不要)
         function getCaretViewportTop() {
@@ -1414,43 +1899,85 @@
             }
         }
 
-        const TYPOGRAPHY_DEFAULTS = { font: "'Shippori Mincho', serif", font_size: 16, line_height: 2.2, letter_spacing: 0.08, text_align: 'left' };
+        // 管理画面全体の背景を、実際の閲覧ページの背景色と統一する。site_settingsは公開読み取り可能なので、
+        // ログイン前(ログイン画面)から適用できる。CSS変数にもしておき、Notionパネルの固定見出しなど
+        // 背景色に追従させたい箇所から参照できるようにする。
+        function setAdminBackgroundColor(color) {
+            document.body.style.backgroundColor = color;
+            document.documentElement.style.setProperty('--admin-bg-color', color);
+        }
 
-        function toggleTypographyOverride() {
-            document.getElementById('typography-override-fields').classList.toggle('hidden', !document.getElementById('edit-override-typography').checked);
-            applyEditorPreviewStyle();
+        // 閲覧ページと同じグラデーション/テクスチャ背景(gradient_bg_style)を管理画面にも適用する。
+        // CSS自体はgradient-backgrounds.css(閲覧ページと共有、埋め込み画像を含むため分離)を使う。
+        function applyAdminGradientBackground(data) {
+            document.body.classList.remove('gradient-gray', 'gradient-dark', 'gradient-svg', 'gradient-silver',
+                'gradient-smooth-1', 'gradient-smooth-2', 'gradient-smooth-3', 'gradient-smooth-4', 'gradient-smooth-5');
+            document.body.style.backgroundImage = '';
+            document.body.style.backgroundRepeat = '';
+            document.body.style.backgroundSize = '';
+            document.body.style.backgroundPosition = '';
+            if (data.gradient_bg_style === 'silver') {
+                document.body.classList.add('gradient-silver');
+                const tileImage = getComputedStyle(document.body).backgroundImage;
+                const angle1 = Math.round(Math.random() * 360);
+                const pos1 = Math.round(25 + Math.random() * 30);
+                const angle2 = Math.round(Math.random() * 360);
+                const pos2 = Math.round(45 + Math.random() * 30);
+                const macroSheen = `linear-gradient(${angle1}deg, rgba(255,255,255,0) 20%, rgba(255,255,255,0.14) ${pos1}%, rgba(255,255,255,0) 65%), linear-gradient(${angle2}deg, rgba(255,255,255,0) 35%, rgba(255,255,255,0.1) ${pos2}%, rgba(255,255,255,0) 80%)`;
+                const darkness = data.silver_darkness != null ? data.silver_darkness : 0.25;
+                const darkOverlay = `linear-gradient(rgba(0,0,0,${darkness}), rgba(0,0,0,${darkness}))`;
+                document.body.style.backgroundImage = `${darkOverlay}, ${macroSheen}, ${tileImage}`;
+                document.body.style.backgroundRepeat = 'no-repeat, no-repeat, no-repeat, repeat';
+                document.body.style.backgroundSize = '100% 100%, 220% 220%, 220% 220%, 500px 500px';
+                document.body.style.backgroundPosition = '0 0, 10% 20%, 90% 80%, 0 0';
+            } else if (data.gradient_bg_style === 'smooth') {
+                const variant = 1 + Math.floor(Math.random() * 5);
+                document.body.classList.add('gradient-smooth-' + variant);
+            } else if (['gray', 'dark', 'svg'].includes(data.gradient_bg_style)) {
+                document.body.classList.add('gradient-' + data.gradient_bg_style);
+            } else if (data.gradient_bg_style === 'custom' && data.bg_image_url) {
+                document.body.style.backgroundImage = `url("${data.bg_image_url}")`;
+                document.body.style.backgroundRepeat = 'repeat';
+            }
+        }
+
+        async function applyAdminBackgroundColor() {
+            const { data, error } = await sb.from('site_settings')
+                .select('bg_color, gradient_bg_style, bg_image_url, silver_darkness')
+                .eq('id', 1).single();
+            if (!error && data) {
+                setAdminBackgroundColor(data.bg_color);
+                applyAdminGradientBackground(data);
+            }
         }
 
         // --- 本文欄を閲覧ページと同じ文字組み・配色にして、公開時の見え方をある程度推測できるようにする ---
         async function loadSiteTypographyForPreview() {
             const { data, error } = await sb.from('site_settings')
-                .select('font, font_size, line_height, letter_spacing, text_align, bg_color, text_color')
+                .select('font, title_font, font_size, line_height, letter_spacing, text_align, bg_color, text_color, content_width, body_text_opacity, title_text_opacity')
                 .eq('id', 1).single();
-            if (!error && data) {
-                siteTypography = data;
-                document.body.style.backgroundColor = data.bg_color;
-                applyEditorPreviewStyle();
+            if (error || !data) {
+                console.error('サイト設定の取得に失敗しました', error);
+                showToast('サイト設定の取得に失敗しました(編集画面のフォントが本番と異なる場合があります)');
+                return;
             }
+            siteTypography = data;
+            setAdminBackgroundColor(data.bg_color);
+            applyEditorPreviewStyle();
         }
 
         function currentPreviewTypography() {
-            const useOverride = document.getElementById('edit-override-typography').checked;
-            if (useOverride) {
-                return {
-                    font: document.getElementById('edit-font').value,
-                    font_size: Number(document.getElementById('edit-font-size').value),
-                    line_height: Number(document.getElementById('edit-line-height').value),
-                    letter_spacing: Number(document.getElementById('edit-letter-spacing').value),
-                    text_align: document.getElementById('edit-text-align').value,
-                };
-            }
             if (!siteTypography) return null;
             return {
                 font: siteTypography.font,
+                // 閲覧ページの記事タイトル(article-title)は本文とは別にtitle_fontを使っており、
+                // 空欄なら本文フォントにフォールバックする(index.html側と同じ挙動)
+                titleFont: siteTypography.title_font || siteTypography.font,
                 font_size: siteTypography.font_size,
                 line_height: siteTypography.line_height,
                 letter_spacing: siteTypography.letter_spacing,
                 text_align: siteTypography.text_align || 'left',
+                content_width: siteTypography.content_width,
             };
         }
 
@@ -1460,43 +1987,51 @@
             const dateEl = document.getElementById('edit-date');
             const t = currentPreviewTypography();
             if (t) {
+                // 閲覧ページの本文はcontent-body(text-sm=0.875rem)、タイトルはarticle-title(text-lg=1.125rem)、
+                // 日付はtext-xs(0.75rem)で、remはt.font_size(=ルートのフォントサイズ)基準なので、
+                // ここも同じ比率で計算してpx指定すれば閲覧ページと同じ実寸になる
                 editor.style.fontFamily = t.font;
-                editor.style.fontSize = t.font_size + 'px';
+                editor.style.fontSize = (t.font_size * 0.875) + 'px';
                 editor.style.lineHeight = t.line_height;
                 editor.style.letterSpacing = t.letter_spacing + 'em';
                 editor.style.textAlign = t.text_align;
 
-                // 閲覧ページのタイトル・日付は本文とフォント/文字間隔だけ共有し、サイズは独自(text-lg/text-xs)なので、
-                // ここも本文のフォント設定を使いつつサイズだけ見出し・キャプション相当に近づける
-                titleEl.style.fontFamily = t.font;
+                titleEl.style.fontFamily = t.titleFont;
                 titleEl.style.letterSpacing = t.letter_spacing + 'em';
-                titleEl.style.fontSize = '1.25rem';
+                titleEl.style.fontSize = (t.font_size * 1.125) + 'px';
+                titleEl.style.textAlign = t.text_align;
 
                 dateEl.style.fontFamily = t.font;
                 dateEl.style.letterSpacing = t.letter_spacing + 'em';
-                dateEl.style.fontSize = '0.75rem';
+                dateEl.style.fontSize = (t.font_size * 0.75) + 'px';
+                dateEl.style.textAlign = t.text_align;
+
+                // 閲覧ページの本文は、content-widthの箱の中に記事の枠(border+padding:1.5rem)があり、
+                // その内側の幅で折り返している。同じ折り返し幅になるようeditor/titleの最大幅を絞る
+                if (t.content_width) {
+                    const articleBoxPad = 1.5 * t.font_size * 2;
+                    const wrapWidth = Math.max(200, t.content_width - articleBoxPad);
+                    editor.style.maxWidth = wrapWidth + 'px';
+                    titleEl.style.maxWidth = wrapWidth + 'px';
+                    // 本文欄以外(日付・タグ・保存ボタンなど)の並びも同じ幅に揃え、編集画面全体のガタつきをなくす
+                    const formCol = document.getElementById('editor-form-col');
+                    if (formCol) formCol.style.maxWidth = wrapWidth + 'px';
+                }
             }
             if (siteTypography) {
                 editor.style.color = siteTypography.text_color;
-                editor.style.backgroundColor = siteTypography.bg_color;
+                // 閲覧ページの記事本文には単色の背景を敷いていない(ページ自体の背景がそのまま透けて見える)。
+                // ここで塗りつぶすとグラデーション背景の上に不自然な単色パッチが乗るため、常に透明にする
+                editor.style.backgroundColor = 'transparent';
+                // 閲覧ページのcontent-body/article-titleと同じ不透明度を反映する
+                editor.style.opacity = siteTypography.body_text_opacity ?? 0.75;
 
                 titleEl.style.color = siteTypography.text_color;
-                titleEl.style.opacity = '0.85';
+                titleEl.style.opacity = siteTypography.title_text_opacity ?? 1;
 
                 dateEl.style.color = siteTypography.text_color;
                 dateEl.style.opacity = '0.4';
             }
-        }
-
-        function setTypographyFields(values) {
-            document.getElementById('edit-font').value = values.font;
-            document.getElementById('edit-font-size').value = values.font_size;
-            document.getElementById('edit-font-size-value').textContent = values.font_size + 'px';
-            document.getElementById('edit-line-height').value = values.line_height;
-            document.getElementById('edit-line-height-value').textContent = values.line_height;
-            document.getElementById('edit-letter-spacing').value = values.letter_spacing;
-            document.getElementById('edit-letter-spacing-value').textContent = values.letter_spacing + 'em';
-            document.getElementById('edit-text-align').value = values.text_align || 'left';
         }
 
         // --- 紹介リンク(書籍など) : カーソル位置に直接挿入し、本文と一緒に自由に移動・削除できるようにする ---
@@ -1536,6 +2071,76 @@
             showToast('挿入しました');
         }
 
+        // --- 自動保存(ブラウザが落ちたりタブを閉じてしまっても本文が消えないようにするための保険) ---
+        // サーバーには保存せず、あくまでlocalStorageに定期的に控えを取っておくだけ。
+        // 本保存(下書き保存/予約投稿/公開する)が成功したら控えは消す
+        const AUTOSAVE_DEBOUNCE_MS = 1500;
+        let autosaveTimer = null;
+
+        function autosaveDraftKey() {
+            return 'admin_draft_article_' + (editingId != null ? editingId : 'new');
+        }
+
+        function scheduleAutosaveDraft() {
+            clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(saveDraftToLocalStorage, AUTOSAVE_DEBOUNCE_MS);
+        }
+
+        function saveDraftToLocalStorage() {
+            const draft = {
+                title: document.getElementById('edit-title').value,
+                titleEn: document.getElementById('edit-title-en').value,
+                content: document.getElementById('edit-content').innerHTML,
+                contentEn: document.getElementById('edit-content-en').innerHTML,
+                savedAt: Date.now(),
+            };
+            try {
+                localStorage.setItem(autosaveDraftKey(), JSON.stringify(draft));
+            } catch (e) {
+                // 容量超過などは静かに諦める(自動保存はあくまで保険なので、失敗しても本編集は続けられる)
+            }
+        }
+
+        function clearAutosaveDraft() {
+            localStorage.removeItem(autosaveDraftKey());
+        }
+
+        // 記事を開いた(新規/編集どちらも)直後に、保存し損ねた自動保存の控えが無いか確認する。
+        // 今読み込んだ内容と全く同じなら聞かずに黙って消す
+        function checkForAutosaveDraft() {
+            let draft;
+            try {
+                draft = JSON.parse(localStorage.getItem(autosaveDraftKey()) || 'null');
+            } catch (e) {
+                draft = null;
+            }
+            if (!draft) return;
+            const sameAsLoaded = draft.title === document.getElementById('edit-title').value
+                && draft.content === document.getElementById('edit-content').innerHTML
+                && (draft.titleEn || '') === document.getElementById('edit-title-en').value
+                && (draft.contentEn || '') === document.getElementById('edit-content-en').innerHTML;
+            if (sameAsLoaded) {
+                clearAutosaveDraft();
+                return;
+            }
+            const when = new Date(draft.savedAt).toLocaleString('ja-JP');
+            if (confirm(`保存されていない自動保存の控え(${when}時点)があります。復元しますか？`)) {
+                document.getElementById('edit-title').value = draft.title;
+                document.getElementById('edit-title-en').value = draft.titleEn || '';
+                document.getElementById('edit-content').innerHTML = draft.content;
+                document.getElementById('edit-content-en').innerHTML = draft.contentEn || '<p></p>';
+                if ((draft.titleEn || '').trim() || stripHtml(draft.contentEn || '').trim()) {
+                    document.getElementById('english-section').open = true;
+                }
+                updateCharCount();
+                migrateInlineFootnoteNotes(document.getElementById('edit-content'));
+                renderFootnoteListPanel();
+                applyEditorPreviewStyle();
+            } else {
+                clearAutosaveDraft();
+            }
+        }
+
         async function openNewEditor() {
             editingId = null;
             document.getElementById('edit-date').value = todayString();
@@ -1545,19 +2150,20 @@
             document.getElementById('edit-pinned').checked = false;
             document.getElementById('edit-content').innerHTML = '<p></p>';
             document.getElementById('edit-content-en').innerHTML = '<p></p>';
+            document.getElementById('english-section').open = false;
             updateCharCount();
+            renderFootnoteListPanel();
             document.getElementById('delete-btn').classList.add('hidden');
             document.getElementById('edit-status-label').textContent = '下書き';
             document.getElementById('edit-scheduled-at').value = '';
-            document.getElementById('edit-override-typography').checked = false;
-            setTypographyFields(TYPOGRAPHY_DEFAULTS);
-            toggleTypographyOverride();
+            applyEditorPreviewStyle();
             document.getElementById('social-share-panel').classList.add('hidden');
             await ensureTagsLoaded();
             selectedTagIds = new Set();
             renderTagCheckboxes();
             showEditorView();
             document.getElementById('edit-title').focus();
+            checkForAutosaveDraft();
         }
 
         // --- SNS投稿の下書き自動生成 ---
@@ -1573,13 +2179,11 @@
             const excerpt = plain.length > 80 ? plain.slice(0, 80) + '…' : plain;
 
             const xText = truncateForPost(`${article.title}\n${url}`, 280);
-            const blueskyText = truncateForPost(`${article.title}\n${url}`, 300);
             const threadsText = truncateForPost(`${article.title}\n${excerpt}\n${url}`, 500);
 
             return [
                 { label: 'X', text: xText, composeUrl: `https://twitter.com/intent/tweet?text=${encodeURIComponent(xText)}` },
-                { label: 'Bluesky', text: blueskyText, composeUrl: null },
-                { label: 'Threads', text: threadsText, composeUrl: null },
+                { label: 'Threads', text: threadsText, composeUrl: `https://www.threads.net/intent/post?text=${encodeURIComponent(threadsText)}` },
             ];
         }
 
@@ -1606,124 +2210,89 @@
                 .catch(() => showToast('コピーに失敗しました'));
         }
 
-        // --- Instagram用: 本文中の1枚目の画像を1:1に切り出す ---
-        let igImageReady = false;
-        let igCaption = '';
-
-        function extractFirstImageUrl(html) {
-            const div = document.createElement('div');
-            div.innerHTML = html;
-            const img = div.querySelector('img');
-            return img ? img.src : null;
-        }
-
-        function prepareIgImage(article) {
-            const preview = document.getElementById('ig-preview');
-            const empty = document.getElementById('ig-preview-empty');
-            const canvas = document.getElementById('ig-canvas');
-            igImageReady = false;
-            igCaption = `${article.title}\n${location.origin}/article/${article.id}`;
-
-            const url = extractFirstImageUrl(article.content);
-            if (!url) {
-                preview.classList.add('hidden');
-                empty.textContent = '本文に画像がありません';
-                empty.classList.remove('hidden');
-                return;
+        // Instagramストーリー用: サイトの見た目そのままのプレビューページを新しいタブで開く。
+        // そこでスマホでスクショしてもらう想定(story-view-activeがヘッダー以外のUIを隠す)
+        // index.html側と同じ関数(URLの末尾に付ける英数字トークンの生成)を複製している。
+        // 本物の認証ではなく、連番URLを適当に踏んで見られないようにする程度の目的
+        function storyPreviewToken(id) {
+            const raw = `story-${id}-fragments-preview`;
+            let hash = 0;
+            for (let i = 0; i < raw.length; i++) {
+                hash = (hash * 31 + raw.charCodeAt(i)) >>> 0;
             }
-
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => {
-                try {
-                    const size = Math.min(img.naturalWidth, img.naturalHeight);
-                    const sx = (img.naturalWidth - size) / 2;
-                    const sy = (img.naturalHeight - size) / 2;
-                    canvas.width = 1080;
-                    canvas.height = 1080;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, sx, sy, size, size, 0, 0, 1080, 1080);
-                    preview.src = canvas.toDataURL('image/jpeg', 0.92);
-                    preview.classList.remove('hidden');
-                    empty.classList.add('hidden');
-                    igImageReady = true;
-                } catch (e) {
-                    console.error(e);
-                    preview.classList.add('hidden');
-                    empty.textContent = '画像の切り出しに失敗しました';
-                    empty.classList.remove('hidden');
-                }
-            };
-            img.onerror = () => {
-                preview.classList.add('hidden');
-                empty.textContent = '画像の読み込みに失敗しました';
-                empty.classList.remove('hidden');
-            };
-            img.src = url;
+            return hash.toString(36);
         }
 
-        function downloadIgImage() {
-            if (!igImageReady) { showToast('画像がありません'); return; }
-            const canvas = document.getElementById('ig-canvas');
-            const a = document.createElement('a');
-            a.href = canvas.toDataURL('image/jpeg', 0.92);
-            a.download = 'instagram.jpg';
-            a.click();
+        function openStoryPreview() {
+            if (!editingId) { showToast('先に記事を保存してください'); return; }
+            window.open(`${location.origin}/article/${editingId}/story/${storyPreviewToken(editingId)}`, '_blank');
         }
 
-        function shareIgImage() {
-            if (!igImageReady) { showToast('画像がありません'); return; }
-            const canvas = document.getElementById('ig-canvas');
-            canvas.toBlob(async (blob) => {
-                if (!blob) { showToast('画像の準備に失敗しました'); return; }
-                const file = new File([blob], 'instagram.jpg', { type: 'image/jpeg' });
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    try {
-                        await navigator.share({ files: [file], text: igCaption });
-                    } catch (e) {
-                        // ユーザーが共有をキャンセルした場合など
-                    }
-                } else {
-                    showToast('この端末は画像の共有に対応していません。ダウンロードしてください');
-                }
-            }, 'image/jpeg', 0.92);
-        }
+        // openEditEditor()と、他の場所で更新された可能性のある記事を読み込み直すreloadCurrentArticle()の
+        // 両方から使う共通処理。記事オブジェクトの内容をエディタ画面の各要素に反映するだけで、
+        // editingIdの設定やタグ選択の読み込みは呼び出し側が行う
+        function populateEditorFromArticle(article) {
+            document.getElementById('edit-date').value = article.date;
+            document.getElementById('edit-title').value = article.title;
+            document.getElementById('edit-title-en').value = article.title_en || '';
+            document.getElementById('edit-category').value = article.category || '';
+            document.getElementById('edit-pinned').checked = !!article.pinned;
+            const editor = document.getElementById('edit-content');
+            editor.innerHTML = article.content;
+            migrateInlineFootnoteNotes(editor);
+            renderFootnoteListPanel();
+            document.getElementById('edit-content-en').innerHTML = article.content_en || '<p></p>';
+            // 既に英語版が入っている記事は、折りたたみを開いた状態で表示する
+            document.getElementById('english-section').open =
+                !!(article.title_en || '').trim() || !!stripHtml(article.content_en || '').trim();
+            updateCharCount();
+            document.getElementById('delete-btn').classList.remove('hidden');
+            document.getElementById('edit-status-label').textContent = formatStatusLabel(article);
+            document.getElementById('edit-scheduled-at').value = article.scheduled_at ? toDatetimeLocalValue(article.scheduled_at) : '';
 
-        function copyIgCaption() {
-            navigator.clipboard.writeText(igCaption)
-                .then(() => showToast('コピーしました'))
-                .catch(() => showToast('コピーに失敗しました'));
+            applyEditorPreviewStyle();
+
+            document.getElementById('social-share-panel').classList.remove('hidden');
+            renderSocialDrafts(article);
         }
 
         async function openEditEditor(id) {
             const article = articles.find(a => a.id === id);
             if (!article) return;
             editingId = article.id;
-            document.getElementById('edit-date').value = article.date;
-            document.getElementById('edit-title').value = article.title;
-            document.getElementById('edit-title-en').value = article.title_en || '';
-            document.getElementById('edit-category').value = article.category || '';
-            document.getElementById('edit-pinned').checked = !!article.pinned;
-            document.getElementById('edit-content').innerHTML = article.content;
-            document.getElementById('edit-content-en').innerHTML = article.content_en || '<p></p>';
-            updateCharCount();
-            document.getElementById('delete-btn').classList.remove('hidden');
-            document.getElementById('edit-status-label').textContent = formatStatusLabel(article);
-            document.getElementById('edit-scheduled-at').value = article.scheduled_at ? toDatetimeLocalValue(article.scheduled_at) : '';
-
-            const hasOverride = article.font != null;
-            document.getElementById('edit-override-typography').checked = hasOverride;
-            setTypographyFields(hasOverride ? article : TYPOGRAPHY_DEFAULTS);
-            toggleTypographyOverride();
+            populateEditorFromArticle(article);
 
             await ensureTagsLoaded();
             await loadArticleTagSelection(article.id);
 
-            document.getElementById('social-share-panel').classList.remove('hidden');
-            renderSocialDrafts(article);
-            prepareIgImage(article);
-
             showEditorView();
+            checkForAutosaveDraft();
+        }
+
+        // 同じ記事を別の場所(別のタブ・別の端末など)でも編集していることがあるため、リアルタイムでの
+        // 共同編集はせず、代わりにこのボタンでサーバー上の最新の内容を手動で読み込み直せるようにする。
+        // 今の編集内容(未保存分)は失われるため、必ず確認を挟む
+        async function reloadCurrentArticle() {
+            if (!editingId) {
+                showToast('この記事はまだ保存されていません');
+                return;
+            }
+            if (!confirm('サーバー上の最新の内容を読み込み直します。今の編集内容は失われます。よろしいですか？')) return;
+
+            const { data, error } = await sb.from('articles').select('*').eq('id', editingId).single();
+            if (error || !data) {
+                console.error(error);
+                showToast('最新の内容の取得に失敗しました');
+                return;
+            }
+            const idx = articles.findIndex(a => a.id === editingId);
+            if (idx >= 0) articles[idx] = data; else articles.unshift(data);
+
+            populateEditorFromArticle(data);
+            await ensureTagsLoaded();
+            await loadArticleTagSelection(editingId);
+            clearAutosaveDraft();
+            showToast('最新の内容を読み込みました');
         }
 
         // 予約投稿は「cronで自動的にstatusを書き換える」方式ではなく、
@@ -1749,6 +2318,15 @@
                 return `予約済み(${d.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}に公開)`;
             }
             return '公開中';
+        }
+
+        // 下書き保存・公開する・予約投稿のように状態を変えるのではなく、今のステータスのまま
+        // 保存だけしたいとき用。新規記事(まだ一度も保存していない)は下書きとして保存する
+        async function quickSaveArticle() {
+            const current = editingId ? articles.find(a => a.id === editingId) : null;
+            const status = current ? current.status : 'draft';
+            const scheduledAt = current && current.status === 'scheduled' ? current.scheduled_at : null;
+            await saveArticle(status, scheduledAt);
         }
 
         async function saveScheduledArticle() {
@@ -1778,18 +2356,13 @@
                 return;
             }
 
-            const useOverride = document.getElementById('edit-override-typography').checked;
             const category = document.getElementById('edit-category').value;
             const pinned = document.getElementById('edit-pinned').checked;
             const payload = {
                 date, title, content, status, category, pinned,
                 title_en: titleEn, content_en: contentEn,
                 scheduled_at: status === 'scheduled' ? scheduledAt : null,
-                font: useOverride ? document.getElementById('edit-font').value : null,
-                font_size: useOverride ? Number(document.getElementById('edit-font-size').value) : null,
-                line_height: useOverride ? Number(document.getElementById('edit-line-height').value) : null,
-                letter_spacing: useOverride ? Number(document.getElementById('edit-letter-spacing').value) : null,
-                text_align: useOverride ? document.getElementById('edit-text-align').value : null
+                font: null, font_size: null, line_height: null, letter_spacing: null, text_align: null
             };
             const { data, error } = editingId
                 ? await sb.from('articles').update(payload).eq('id', editingId).select().single()
@@ -1797,12 +2370,23 @@
 
             if (error) {
                 console.error(error);
-                showToast('保存に失敗しました');
+                showToast(`保存に失敗しました: ${error.code || ''} ${error.message || error}`, 8000);
                 return;
             }
             await syncArticleTags(data.id);
+            clearAutosaveDraft();
             showToast(status === 'draft' ? '下書き保存しました' : status === 'scheduled' ? '予約投稿を設定しました' : '公開しました');
-            backToList();
+
+            // 一覧には戻らず、その場で保存後の状態(ステータス表示・削除ボタン・SNS共有欄など)に切り替える
+            editingId = data.id;
+            const idx = articles.findIndex(a => a.id === data.id);
+            if (idx >= 0) articles[idx] = data; else articles.unshift(data);
+
+            document.getElementById('delete-btn').classList.remove('hidden');
+            document.getElementById('edit-status-label').textContent = formatStatusLabel(data);
+            document.getElementById('edit-scheduled-at').value = data.scheduled_at ? toDatetimeLocalValue(data.scheduled_at) : '';
+            document.getElementById('social-share-panel').classList.remove('hidden');
+            renderSocialDrafts(data);
         }
 
         async function deleteCurrentArticle() {
@@ -2358,6 +2942,393 @@
             }
         }
 
+        // 日本語のタイトル・本文をGemini API(サーバー側の/api/translate経由)で英訳し、英語欄に入れる。
+        // APIキーはサーバー側だけが持ち、ブラウザには一切渡らない
+        async function translateArticleToEnglish() {
+            const title = document.getElementById('edit-title').value.trim();
+            const content = document.getElementById('edit-content').innerHTML;
+            if (!title && !document.getElementById('edit-content').textContent.trim()) {
+                showToast('先に日本語のタイトルか本文を入力してください');
+                return;
+            }
+            const titleEnEl = document.getElementById('edit-title-en');
+            const contentEnEl = document.getElementById('edit-content-en');
+            if ((titleEnEl.value.trim() || contentEnEl.textContent.trim())
+                && !confirm('既に入力されている英語欄の内容は上書きされます。よろしいですか？')) return;
+
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) {
+                showToast('ログイン状態を確認できませんでした');
+                return;
+            }
+
+            const btn = document.getElementById('ai-translate-btn');
+            btn.disabled = true;
+            btn.textContent = '翻訳中...';
+            try {
+                const res = await fetch('/api/translate', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content }),
+                });
+                const result = await res.json();
+                if (!res.ok) {
+                    console.error(result);
+                    showToast('英訳に失敗しました');
+                    return;
+                }
+                titleEnEl.value = result.title_en || '';
+                contentEnEl.innerHTML = result.content_en || '<p></p>';
+                showToast('英訳しました(内容を確認してください)');
+            } catch (e) {
+                console.error(e);
+                showToast('英訳に失敗しました');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '✨ AIで英訳';
+            }
+        }
+
+        // --- Notionパネル(記事編集画面の隣に出す参照専用のDB一覧。挿入機能はなし) ---
+        // DBごとに<details>で開閉でき、複数同時に開いたままにもできる。開いたDBだけ一覧を読み込む。
+        let notionDatabases = [];
+        let notionDatabasesLoaded = false;
+        const notionDbState = new Map(); // dbId -> { items, cursor, hasMore, loading, loaded }
+
+        function toggleNotionPanel() {
+            const panel = document.getElementById('notion-panel');
+            const opener = document.getElementById('notion-panel-opener');
+            const opening = panel.classList.contains('hidden');
+            if (opening) {
+                panel.classList.remove('hidden');
+                panel.classList.add('flex');
+                opener.classList.add('hidden');
+                if (!notionDatabasesLoaded) loadNotionDatabaseList();
+            } else {
+                panel.classList.add('hidden');
+                panel.classList.remove('flex');
+                opener.classList.remove('hidden');
+            }
+        }
+
+        async function loadNotionDatabaseList() {
+            const listEl = document.getElementById('notion-panel-list');
+            listEl.innerHTML = '<div class="text-white/30 text-center py-8">読み込み中...</div>';
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) {
+                    showToast('ログイン状態を確認できませんでした');
+                    return;
+                }
+                const res = await fetch('/api/notion?action=databases', {
+                    headers: { Authorization: `Bearer ${session.access_token}` },
+                });
+                const result = await res.json();
+                if (!res.ok) {
+                    console.error(result);
+                    listEl.innerHTML = '<div class="text-red-300/70 text-center py-8">読み込みに失敗しました</div>';
+                    return;
+                }
+                notionDatabases = result.databases || [];
+                notionDatabasesLoaded = true;
+                notionDatabases.forEach(db => {
+                    if (!notionDbState.has(db.id)) {
+                        notionDbState.set(db.id, { items: [], cursor: null, hasMore: false, loading: false, loaded: false });
+                    }
+                });
+                renderNotionDbAccordions();
+            } catch (e) {
+                console.error(e);
+                listEl.innerHTML = '<div class="text-red-300/70 text-center py-8">読み込みに失敗しました</div>';
+            }
+        }
+
+        // DB名(トグル見出し)はスクロールしない固定バーに、中身だけをその下のスクロール領域に描画する。
+        // これでDB1を開いて中身が長くなっても、DB2・DB3の見出しが下に押し出されて見えなくなることはない。
+        function renderNotionDbAccordions() {
+            const toggleBar = document.getElementById('notion-db-toggle-bar');
+            const listEl = document.getElementById('notion-panel-list');
+            toggleBar.innerHTML = '';
+            listEl.innerHTML = '';
+            if (!notionDatabases.length) {
+                listEl.innerHTML = '<div class="text-white/30 text-center py-8">DBが設定されていません</div>';
+                return;
+            }
+            notionDatabases.forEach(db => {
+                const toggleBtn = document.createElement('button');
+                toggleBtn.type = 'button';
+                toggleBtn.dataset.dbId = db.id;
+                toggleBtn.className = 'notion-db-toggle-btn w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-white/70 hover:text-white transition-colors border-b border-white/10 last:border-b-0';
+                toggleBtn.innerHTML = `<span>${escapeNotionHtml(db.name)}</span><span class="notion-db-toggle-arrow text-white/30 transition-transform">▾</span>`;
+                toggleBtn.onclick = () => toggleNotionDb(db.id);
+                toggleBar.appendChild(toggleBtn);
+
+                const section = document.createElement('div');
+                section.className = 'notion-db-section hidden border-b border-white/10 last:border-b-0';
+                section.dataset.dbId = db.id;
+                section.innerHTML = `
+                    <div class="px-4 py-3">
+                        <input type="text" placeholder="タイトルで絞り込み" class="notion-db-search w-full bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 mb-3 focus:outline-none focus:border-white/30" oninput="renderNotionDbItems('${db.id}')">
+                        <div class="notion-db-items flex flex-col gap-4"></div>
+                        <div class="notion-db-more hidden mt-3">
+                            <button type="button" class="w-full text-xs text-white/40 hover:text-white transition-colors" onclick="loadNotionDbItems('${db.id}', true)">もっと見る</button>
+                        </div>
+                    </div>
+                `;
+                listEl.appendChild(section);
+            });
+        }
+
+        function toggleNotionDb(dbId) {
+            const section = document.querySelector(`#notion-panel-list .notion-db-section[data-db-id="${dbId}"]`);
+            const btn = document.querySelector(`#notion-db-toggle-bar .notion-db-toggle-btn[data-db-id="${dbId}"]`);
+            if (!section || !btn) return;
+            const opening = section.classList.contains('hidden');
+            section.classList.toggle('hidden', !opening);
+            btn.classList.toggle('text-white', opening);
+            const arrow = btn.querySelector('.notion-db-toggle-arrow');
+            if (arrow) arrow.style.transform = opening ? 'rotate(180deg)' : '';
+            if (opening) {
+                const state = notionDbState.get(dbId);
+                if (state && !state.loaded && !state.loading) loadNotionDbItems(dbId);
+            }
+        }
+
+        function reloadOpenNotionDatabases() {
+            document.querySelectorAll('#notion-panel-list .notion-db-section:not(.hidden)').forEach(section => {
+                const dbId = section.dataset.dbId;
+                const state = notionDbState.get(dbId);
+                if (state) {
+                    state.loaded = false;
+                    loadNotionDbItems(dbId);
+                }
+            });
+        }
+
+        async function loadNotionDbItems(dbId, append = false) {
+            const state = notionDbState.get(dbId);
+            const section = document.querySelector(`#notion-panel-list .notion-db-section[data-db-id="${dbId}"]`);
+            if (!state || !section || state.loading) return;
+            const itemsEl = section.querySelector('.notion-db-items');
+            const moreEl = section.querySelector('.notion-db-more');
+            state.loading = true;
+            if (!append) {
+                state.items = [];
+                state.cursor = null;
+                itemsEl.innerHTML = '<div class="text-white/30 text-center py-6">読み込み中...</div>';
+            } else {
+                const moreBtn = moreEl.querySelector('button');
+                if (moreBtn) moreBtn.textContent = '読み込み中...';
+            }
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) {
+                    showToast('ログイン状態を確認できませんでした');
+                    return;
+                }
+                const params = new URLSearchParams({ action: 'list', db: dbId });
+                if (append && state.cursor) params.set('cursor', state.cursor);
+                const res = await fetch(`/api/notion?${params.toString()}`, {
+                    headers: { Authorization: `Bearer ${session.access_token}` },
+                });
+                const result = await res.json();
+                if (!res.ok) {
+                    console.error(result);
+                    itemsEl.innerHTML = '<div class="text-red-300/70 text-center py-6">読み込みに失敗しました</div>';
+                    return;
+                }
+                state.items = append ? state.items.concat(result.items) : result.items;
+                state.cursor = result.nextCursor;
+                state.hasMore = result.hasMore;
+                state.loaded = true;
+                moreEl.classList.toggle('hidden', !state.hasMore);
+                const moreBtn = moreEl.querySelector('button');
+                if (moreBtn) moreBtn.textContent = 'もっと見る';
+                renderNotionDbItems(dbId);
+            } catch (e) {
+                console.error(e);
+                itemsEl.innerHTML = '<div class="text-red-300/70 text-center py-6">読み込みに失敗しました</div>';
+            } finally {
+                state.loading = false;
+            }
+        }
+
+        function renderNotionDbItems(dbId) {
+            const state = notionDbState.get(dbId);
+            const section = document.querySelector(`#notion-panel-list .notion-db-section[data-db-id="${dbId}"]`);
+            if (!state || !section) return;
+            const itemsEl = section.querySelector('.notion-db-items');
+            const searchEl = section.querySelector('.notion-db-search');
+            const query = ((searchEl && searchEl.value) || '').trim().toLowerCase();
+            const filtered = query ? state.items.filter(item => item.title.toLowerCase().includes(query)) : state.items;
+            itemsEl.innerHTML = '';
+            if (!filtered.length) {
+                const emptyMsg = state.items.length ? '一致する項目がありません' : '項目がありません';
+                itemsEl.innerHTML = `<div class="text-white/30 text-center py-6">${emptyMsg}</div>`;
+                return;
+            }
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'pb-4 border-b border-white/10 last:border-b-0 last:pb-0';
+                const imageHtml = item.coverUrl
+                    ? `<img src="${escapeNotionHtml(item.coverUrl)}" alt="" loading="lazy" class="w-full aspect-video object-cover rounded mb-2" onerror="this.remove()">`
+                    : '';
+                const propsHtml = item.properties && item.properties.length
+                    ? `<details class="mt-1">
+                        <summary class="editor-section-summary text-white hover:text-white transition-colors" style="font-size: 11px;">詳細</summary>
+                        <div class="flex flex-wrap mt-1">
+                            ${item.properties.map(p => `<span class="inline-block bg-white/10 rounded px-1.5 py-0.5 mr-1 mb-1 text-white">${escapeNotionHtml(p.name)}: ${escapeNotionHtml(p.value)}</span>`).join('')}
+                        </div>
+                    </details>`
+                    : '';
+                card.innerHTML = `
+                    ${imageHtml}
+                    <div class="flex items-start justify-between gap-2">
+                        <a href="${escapeNotionHtml(item.url || '#')}" target="_blank" rel="noopener" class="text-white/80 hover:text-white transition-colors font-medium">${escapeNotionHtml(item.title)}</a>
+                        <button type="button" class="shrink-0 px-2 py-0.5 text-white/40 hover:text-white bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap" title="このメモを完了にして一覧から外します" onclick="markNotionPageComplete('${dbId}', '${item.id}')">✅ 完了</button>
+                    </div>
+                    ${propsHtml}
+                `;
+                itemsEl.appendChild(card);
+            });
+        }
+
+        async function markNotionPageComplete(dbId, pageId) {
+            const state = notionDbState.get(dbId);
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) {
+                    showToast('ログイン状態を確認できませんでした');
+                    return;
+                }
+                const res = await fetch('/api/notion', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'complete', pageId }),
+                });
+                const result = await res.json();
+                if (!res.ok) {
+                    console.error(result);
+                    showToast('完了にできませんでした(このDBに完了用のプロパティがないかもしれません)');
+                    return;
+                }
+                if (state) {
+                    state.items = state.items.filter(item => item.id !== pageId);
+                    renderNotionDbItems(dbId);
+                }
+                showToast('完了にしました');
+            } catch (e) {
+                console.error(e);
+                showToast('完了にできませんでした');
+            }
+        }
+
+        function escapeNotionHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // --- AI(試作: 自分の記事をRAGにした執筆補助) ---
+        async function checkAiModels() {
+            const status = document.getElementById('ai-models-status');
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) { showToast('ログイン状態を確認できませんでした'); return; }
+            status.textContent = '確認中...';
+            try {
+                const res = await fetch('/api/rag', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'listmodels' }),
+                });
+                const result = await res.json();
+                if (!res.ok) { status.textContent = `失敗: ${result.detail || result.error}`; return; }
+                const embedModels = (result.models || []).filter(n => n.includes('embed'));
+                status.textContent = embedModels.length
+                    ? `埋め込みモデル: ${embedModels.join(', ')}`
+                    : `埋め込みモデルなし。全モデル: ${(result.models || []).join(', ')}`;
+            } catch (e) {
+                status.textContent = `エラー: ${e.message}`;
+            }
+        }
+
+        async function reindexAiArticles() {
+            const btn = document.getElementById('ai-reindex-btn');
+            const status = document.getElementById('ai-reindex-status');
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) {
+                showToast('ログイン状態を確認できませんでした');
+                return;
+            }
+            btn.disabled = true;
+            status.textContent = 'インデックス中...(記事数によっては時間がかかります)';
+            try {
+                const res = await fetch('/api/rag', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'reindex' }),
+                });
+                const result = await res.json();
+                if (!res.ok) {
+                    console.error(result);
+                    status.textContent = `失敗しました: ${result.detail || result.error || ''}`;
+                    return;
+                }
+                status.textContent = `完了: ${result.articleCount}記事 / ${result.chunkCount}チャンク`;
+            } catch (e) {
+                console.error(e);
+                status.textContent = 'インデックスに失敗しました';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function askAi() {
+            const query = document.getElementById('ai-query').value.trim();
+            if (!query) {
+                showToast('質問・相談を入力してください');
+                return;
+            }
+            const btn = document.getElementById('ai-ask-btn');
+            const answerWrap = document.getElementById('ai-answer-wrap');
+            const answerEl = document.getElementById('ai-answer');
+            const sourcesEl = document.getElementById('ai-sources');
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) {
+                showToast('ログイン状態を確認できませんでした');
+                return;
+            }
+            btn.disabled = true;
+            btn.textContent = '考え中...';
+            try {
+                const res = await fetch('/api/rag', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'ask', query }),
+                });
+                const result = await res.json();
+                if (!res.ok) {
+                    console.error(result);
+                    showToast(`失敗しました: ${result.error || ''}`);
+                    return;
+                }
+                answerWrap.classList.remove('hidden');
+                answerEl.textContent = result.answer || '(応答がありませんでした)';
+                sourcesEl.innerHTML = (result.sources || []).map(s => `
+                    <div class="bg-white/5 border border-white/10 rounded px-3 py-2">
+                        <div class="text-white/70">${escapeNotionHtml(s.title)}</div>
+                        <div class="text-white/40 mt-1">${escapeNotionHtml(s.excerpt)}…</div>
+                    </div>
+                `).join('') || '<div class="text-white/30">(参考記事はありませんでした)</div>';
+            } catch (e) {
+                console.error(e);
+                showToast('AIへの問い合わせに失敗しました');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '聞く';
+            }
+        }
+
         // --- 本文フォーマット・画像挿入 ---
         function formatText(cmd, val = null) {
             document.getElementById('edit-content').focus();
@@ -2415,11 +3386,78 @@
             if (!note) return;
             const editor = document.getElementById('edit-content');
             editor.focus();
+            // execCommand('insertHTML', ...)だと、Chromeが挿入時にHTMLを独自に正規化してしまい、
+            // <sup class="footnote-ref" data-note="...">が<span style="vertical-align:super">に
+            // 化けてclass・data-noteが失われる(=注釈の中身が消え、一覧にも出てこなくなる)ことがある。
+            // Rangeへ直接ノードを挿入するとこの正規化を経由しないため、確実にclass・data-noteが残る。
+            // カーソル位置が取れていない場合(本文を一度もクリックせずに注釈ボタンを押した場合など)は
+            // 本文の末尾に挿入する
+            const insertRange = range || (() => {
+                const r = document.createRange();
+                r.selectNodeContents(editor);
+                r.collapse(false);
+                return r;
+            })();
+            const num = editor.querySelectorAll('.footnote-ref').length + 1;
+            const sup = document.createElement('sup');
+            sup.className = 'footnote-ref';
+            sup.dataset.note = note;
+            sup.textContent = `[${num}]`;
+            insertRange.deleteContents();
+            insertRange.insertNode(sup);
+            insertRange.setStartAfter(sup);
+            insertRange.collapse(true);
             const sel = window.getSelection();
             sel.removeAllRanges();
-            if (range) sel.addRange(range);
-            const num = editor.querySelectorAll('.footnote-ref').length + 1;
-            document.execCommand('insertHTML', false, `<sup class="footnote-ref" data-note="${escapeAttr(note)}">[${num}]</sup><span class="footnote-note">${escapeAttr(note)}</span>`);
+            sel.addRange(insertRange);
+            renderFootnoteListPanel();
+        }
+
+        // 旧形式(注釈記号のすぐ後ろに注釈文がそのまま本文中に入っている)の記事を開いたときは、
+        // data-noteへ文字を移してから本文中の表示テキストを取り除き、新形式(印だけ)に揃える
+        function migrateInlineFootnoteNotes(editor) {
+            editor.querySelectorAll('.footnote-ref').forEach(ref => {
+                const next = ref.nextElementSibling;
+                if (next && next.classList.contains('footnote-note')) {
+                    if (!ref.dataset.note) ref.dataset.note = next.textContent;
+                    next.remove();
+                }
+            });
+        }
+
+        // 本文中の注釈記号(data-note属性)を、閲覧ページと同じく記事の最後にまとめて一覧表示する。
+        // ここで編集した内容はそのままdata-note属性(=実際に保存される値)に書き戻す
+        function renderFootnoteListPanel() {
+            const editor = document.getElementById('edit-content');
+            const panel = document.getElementById('footnote-list-panel');
+            const list = document.getElementById('footnote-list-items');
+            const refs = Array.from(editor.querySelectorAll('.footnote-ref'));
+            if (refs.length === 0) {
+                panel.classList.add('hidden');
+                list.innerHTML = '';
+                return;
+            }
+            panel.classList.remove('hidden');
+            // rows=3を最低の高さにしつつ、それより長い内容ならさらに伸ばす(overflow:hiddenにはせず、
+            // 万一伸ばしきれなくてもスクロールで読めるようにして、内容が隠れて見えなくなるのを防ぐ)
+            list.innerHTML = refs.map((ref, i) => `
+                <div class="flex items-start gap-2">
+                    <span class="text-xs text-white/40 pt-2 shrink-0">[${i + 1}]</span>
+                    <textarea rows="3" style="min-height: 4.5em;" class="flex-1 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30" oninput="updateFootnoteNoteFromPanel(${i}, this.value); autoGrowTextarea(this);">${escapeAttr(ref.dataset.note || '')}</textarea>
+                </div>
+            `).join('');
+            list.querySelectorAll('textarea').forEach(autoGrowTextarea);
+        }
+
+        // CSS側のmin-heightが最低3行分を保証するので、ここでは内容がそれより長い場合にだけ伸ばす
+        function autoGrowTextarea(t) {
+            t.style.height = 'auto';
+            t.style.height = t.scrollHeight + 'px';
+        }
+
+        function updateFootnoteNoteFromPanel(index, value) {
+            const ref = document.getElementById('edit-content').querySelectorAll('.footnote-ref')[index];
+            if (ref) ref.dataset.note = value;
         }
 
         // 本文全体を書式なしのプレーンテキストに変換する(画像・太字・見出しなどは全て失われます)
@@ -2440,15 +3478,10 @@
         function setupPastePlainText() {
             document.getElementById('edit-content').addEventListener('paste', async (e) => {
                 const clipboard = e.clipboardData || window.clipboardData;
-                const imageFile = Array.from(clipboard.files || []).find(f => f.type.startsWith('image/'));
+                const imageFiles = Array.from(clipboard.files || []).filter(f => f.type.startsWith('image/'));
                 e.preventDefault();
-                if (imageFile) {
-                    showToast('アップロード中...');
-                    const url = await uploadImageFile(imageFile);
-                    if (url) {
-                        document.execCommand('insertImage', false, url);
-                        showToast('画像を挿入しました');
-                    }
+                if (imageFiles.length) {
+                    await insertImageFiles(imageFiles);
                     return;
                 }
                 const text = clipboard.getData('text/plain');
@@ -2457,7 +3490,9 @@
         }
 
         async function uploadImageFile(file) {
-            const path = `${Date.now()}-${file.name}`;
+            // 複数枚を続けてアップロードすると、同じ名前のファイルが同じミリ秒に重なって
+            // 保存先が衝突することがあるため、短いランダム文字列も混ぜて必ず別名にする
+            const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.name}`;
             const { error: uploadError } = await sb.storage.from(IMAGE_BUCKET).upload(path, file);
             if (uploadError) {
                 console.error(uploadError);
@@ -2503,19 +3538,38 @@
             input.click();
         }
 
+        // 選んだ・落とした・貼り付けた画像をまとめてアップロードし、今のカーソル位置に順番に挿入する。
+        // ツールバーの写真ボタン・ドラッグ&ドロップ・貼り付けの3か所から共通で使う
+        async function insertImageFiles(files) {
+            const images = Array.from(files || []).filter(f => f.type.startsWith('image/'));
+            if (!images.length) return 0;
+            let inserted = 0;
+            for (let i = 0; i < images.length; i++) {
+                // 複数枚のときは何枚目を処理中か出す。アップロード中に消えないよう長めに表示し、
+                // 最後の完了トーストで上書きする
+                showToast(images.length > 1 ? `アップロード中... (${i + 1}/${images.length})` : 'アップロード中...', 60000);
+                const url = await uploadImageFile(images[i]);
+                if (url) {
+                    document.execCommand('insertImage', false, url);
+                    inserted++;
+                }
+            }
+            showToast(inserted > 1 ? `画像を${inserted}枚挿入しました`
+                : inserted === 1 ? '画像を挿入しました'
+                : '画像を挿入できませんでした');
+            return inserted;
+        }
+
         function insertImage() {
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = 'image/*';
+            // PCのファイル選択でもスマホの写真選択でも、複数枚まとめて選べるようにする
+            input.multiple = true;
             input.onchange = async () => {
-                const file = input.files[0];
-                if (!file) return;
-                showToast('アップロード中...');
-                const url = await uploadImageFile(file);
-                if (url) {
-                    formatText('insertImage', url);
-                    showToast('画像を挿入しました');
-                }
+                if (!input.files || !input.files.length) return;
+                document.getElementById('edit-content').focus();
+                await insertImageFiles(input.files);
             };
             input.click();
         }
@@ -2556,12 +3610,7 @@
                 if (!files.length) return;
                 editor.focus();
                 placeCaretAtPoint(e.clientX, e.clientY);
-                showToast('アップロード中...');
-                for (const file of files) {
-                    const url = await uploadImageFile(file);
-                    if (url) document.execCommand('insertImage', false, url);
-                }
-                showToast('画像を挿入しました');
+                await insertImageFiles(files);
             });
         }
 
@@ -2671,21 +3720,39 @@
             document.getElementById('card-font-scale-value').textContent = cardFontScale;
             document.getElementById('set-card-title-font').value = data.card_title_font || '';
             document.getElementById('set-card-excerpt-font').value = data.card_excerpt_font || '';
-            document.getElementById('set-card-text-color').value = data.card_text_color || '#ffffff';
+            const bodyTextOpacity = data.body_text_opacity != null ? data.body_text_opacity : 0.75;
+            document.getElementById('set-body-text-opacity').value = bodyTextOpacity;
+            document.getElementById('body-text-opacity-value').textContent = Math.round(bodyTextOpacity * 100) + '%';
+            const titleTextOpacity = data.title_text_opacity != null ? data.title_text_opacity : 1;
+            document.getElementById('set-title-text-opacity').value = titleTextOpacity;
+            document.getElementById('title-text-opacity-value').textContent = Math.round(titleTextOpacity * 100) + '%';
+            const headerSpacing = data.header_spacing != null ? data.header_spacing : 288;
+            document.getElementById('set-header-spacing').value = headerSpacing;
+            document.getElementById('header-spacing-value').textContent = headerSpacing + 'px';
             document.getElementById('set-page-title').value = data.page_title || '';
             document.getElementById('set-site-title').value = data.site_title || '';
             document.getElementById('set-site-title-font').value = data.site_title_font || '';
             document.getElementById('set-site-title-size').value = data.site_title_size;
             document.getElementById('set-site-title-size-value').textContent = data.site_title_size + 'px';
             document.getElementById('set-site-title-color').value = data.site_title_color;
+            document.getElementById('set-site-subtitle-font').value = data.site_subtitle_font || '';
+            document.getElementById('set-site-subtitle-en').value = data.site_subtitle_en || '';
             document.getElementById('set-site-subtitle').value = data.site_subtitle || '';
             document.getElementById('set-site-subtitle-size').value = data.site_subtitle_size;
             document.getElementById('set-site-subtitle-size-value').textContent = data.site_subtitle_size + 'px';
             document.getElementById('set-site-subtitle-color').value = data.site_subtitle_color;
+            const subtitleBgInput = document.getElementById('set-site-subtitle-bg-color');
+            subtitleBgInput.value = data.site_subtitle_bg_color || '#ffffff';
+            // 空文字(帯なし)はカラー入力では表現できないため、data属性で保持する
+            delete subtitleBgInput.dataset.cleared;
+            if (!data.site_subtitle_bg_color) subtitleBgInput.dataset.cleared = '1';
             document.getElementById('set-menu-font-size').value = data.menu_font_size || 12;
             document.getElementById('set-menu-font-size-value').textContent = (data.menu_font_size || 12) + 'px';
             document.getElementById('set-font').value = data.font;
             document.getElementById('set-title-font').value = data.title_font || '';
+            document.getElementById('set-log-font').value = data.log_font || '';
+            document.getElementById('set-sketch-font').value = data.sketch_font || '';
+            document.getElementById('set-essay-font').value = data.essay_font || '';
             document.getElementById('set-article-tag-bg-color').value = data.article_tag_bg_color || data.tag_bg_color || '#ffffff';
             document.getElementById('set-article-tag-text-color').value = data.article_tag_text_color || data.tag_text_color || '#6b7278';
             document.getElementById('set-article-tag-font-size').value = data.article_tag_font_size || 0;
@@ -2749,6 +3816,7 @@
             document.getElementById('set-about-content').value = data.about_content || '';
             document.getElementById('set-about-content-en').value = data.about_content_en || '';
             document.getElementById('set-sns-x-url').value = data.sns_x_url || '';
+            document.getElementById('set-sns-facebook-url').value = data.sns_facebook_url || '';
             document.getElementById('set-sns-instagram-url').value = data.sns_instagram_url || '';
             document.getElementById('set-sns-website-url').value = data.sns_website_url || '';
             document.getElementById('set-og-image').value = data.og_image || '';
@@ -2761,12 +3829,17 @@
                 card_font_scale: parseFloat(document.getElementById('set-card-font-scale').value) || 1,
                 card_title_font: document.getElementById('set-card-title-font').value,
                 card_excerpt_font: document.getElementById('set-card-excerpt-font').value,
-                card_text_color: document.getElementById('set-card-text-color').value,
+                body_text_opacity: Number(document.getElementById('set-body-text-opacity').value),
+                title_text_opacity: Number(document.getElementById('set-title-text-opacity').value),
+                header_spacing: Number(document.getElementById('set-header-spacing').value),
                 page_title: document.getElementById('set-page-title').value.trim(),
                 site_title: document.getElementById('set-site-title').value.trim(),
                 site_title_font: document.getElementById('set-site-title-font').value,
                 site_title_size: Number(document.getElementById('set-site-title-size').value),
                 site_title_color: document.getElementById('set-site-title-color').value,
+                site_subtitle_font: document.getElementById('set-site-subtitle-font').value,
+                site_subtitle_bg_color: document.getElementById('set-site-subtitle-bg-color').dataset.cleared ? '' : document.getElementById('set-site-subtitle-bg-color').value,
+                site_subtitle_en: document.getElementById('set-site-subtitle-en').value.trim(),
                 site_subtitle: document.getElementById('set-site-subtitle').value.trim(),
                 site_subtitle_size: Number(document.getElementById('set-site-subtitle-size').value),
                 site_subtitle_color: document.getElementById('set-site-subtitle-color').value,
@@ -2787,6 +3860,9 @@
                 text_color: document.getElementById('set-text-color').value,
                 font: document.getElementById('set-font').value,
                 title_font: document.getElementById('set-title-font').value,
+                log_font: document.getElementById('set-log-font').value,
+                sketch_font: document.getElementById('set-sketch-font').value,
+                essay_font: document.getElementById('set-essay-font').value,
                 article_tag_bg_color: document.getElementById('set-article-tag-bg-color').value,
                 article_tag_text_color: document.getElementById('set-article-tag-text-color').value,
                 article_tag_font_size: Number(document.getElementById('set-article-tag-font-size').value),
@@ -2816,6 +3892,7 @@
                 about_content: document.getElementById('set-about-content').value.trim(),
                 about_content_en: document.getElementById('set-about-content-en').value.trim(),
                 sns_x_url: document.getElementById('set-sns-x-url').value.trim(),
+                sns_facebook_url: document.getElementById('set-sns-facebook-url').value.trim(),
                 sns_instagram_url: document.getElementById('set-sns-instagram-url').value.trim(),
                 sns_website_url: document.getElementById('set-sns-website-url').value.trim(),
                 og_image: document.getElementById('set-og-image').value.trim()
@@ -2827,14 +3904,17 @@
                 return;
             }
             siteTypography = payload;
-            document.body.style.backgroundColor = payload.bg_color;
+            setAdminBackgroundColor(payload.bg_color);
+            applyAdminGradientBackground(payload);
             applyEditorPreviewStyle();
             showToast('表示設定を保存しました');
         }
 
+        applyAdminBackgroundColor();
         setupImageDropZone();
         setupImageResize();
         setupPastePlainText();
+        setupTypewriterToggleDrag();
         checkAuth();
 
         // タイプライターモード中、キャレット位置が変わるたびに固定位置へスクロールし直す
@@ -2843,6 +3923,13 @@
             twEditor.addEventListener(evt, () => requestAnimationFrame(repositionCaretTypewriter));
         });
         twEditor.addEventListener('input', updateCharCount);
+        twEditor.addEventListener('input', renderFootnoteListPanel);
+
+        // 自動保存: タイトル・本文(日英)を編集するたびに、少し待ってからlocalStorageへ控えを取る
+        [twEditor, 'edit-title-en', 'edit-content-en', 'edit-title'].forEach(target => {
+            const el = typeof target === 'string' ? document.getElementById(target) : target;
+            el.addEventListener('input', scheduleAutosaveDraft);
+        });
     </script>
 </body>
 </html>
