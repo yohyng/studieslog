@@ -78,39 +78,16 @@ async function supabaseRest(path, serviceKey, options = {}) {
 }
 
 async function embedTexts(texts, geminiKey) {
-    // Geminiのバッチ埋め込みは1回あたりの件数に上限があるため、安全のため小分けにする
-    const BATCH_SIZE = 20;
     const vectors = [];
-    for (let i = 0; i < texts.length; i += BATCH_SIZE) {
-        const batch = texts.slice(i, i + BATCH_SIZE);
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1/models/${EMBEDDING_MODEL}:batchEmbedContents?key=${encodeURIComponent(geminiKey)}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    requests: batch.map((text) => ({
-                        model: `models/${EMBEDDING_MODEL}`,
-                        content: { parts: [{ text }] },
-                    })),
-                }),
-            }
-        );
-        if (!response.ok) {
-            const detail = await response.text();
-            throw new Error(`gemini embed error (${response.status}): ${detail}`);
-        }
-        const data = await response.json();
-        for (const item of data.embeddings || []) {
-            vectors.push(item.values);
-        }
+    for (const text of texts) {
+        vectors.push(await embedText(text, geminiKey));
     }
     return vectors;
 }
 
 async function embedText(text, geminiKey) {
     const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/${EMBEDDING_MODEL}:embedContent?key=${encodeURIComponent(geminiKey)}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent?key=${encodeURIComponent(geminiKey)}`,
         {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
