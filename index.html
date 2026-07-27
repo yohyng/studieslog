@@ -576,6 +576,9 @@
         /* コピペした本文の段落タグなどに行間のインラインスタイルが残っていても、必ずサイト設定の行間が効くようにする */
         .content-body, .content-body * { line-height: inherit !important; }
         .content-body { opacity: var(--body-text-opacity); }
+        article[data-category="log"] .content-body { font-family: var(--log-font, inherit); }
+        article[data-category="sketch"] .content-body { font-family: var(--sketch-font, inherit); }
+        article[data-category="essay"] .content-body { font-family: var(--essay-font, inherit); }
         .group:hover .article-title { opacity: 1; }
 
         .article-snippet {
@@ -1026,6 +1029,13 @@
             } else {
                 document.documentElement.style.removeProperty('--article-title-font');
             }
+            // カテゴリ別フォント(空欄なら本文フォントに従う)
+            if (data.log_font) document.documentElement.style.setProperty('--log-font', data.log_font);
+            else document.documentElement.style.removeProperty('--log-font');
+            if (data.sketch_font) document.documentElement.style.setProperty('--sketch-font', data.sketch_font);
+            else document.documentElement.style.removeProperty('--sketch-font');
+            if (data.essay_font) document.documentElement.style.setProperty('--essay-font', data.essay_font);
+            else document.documentElement.style.removeProperty('--essay-font');
             siteLineHeight = data.line_height;
             document.documentElement.style.setProperty('--base-line-height', data.line_height);
             document.documentElement.style.setProperty('--base-letter-spacing', data.letter_spacing + 'em');
@@ -1181,7 +1191,7 @@
             const title = localizedTitle(article);
             const content = localizedContent(article);
             return `
-                <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" style="border: 0.5px solid var(--divider-color); padding: 1.5rem;">
+                <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" data-category="${article.category || ''}" style="border: 0.5px solid var(--divider-color); padding: 1.5rem;">
                     <div class="cursor-pointer group" onclick="toggleArticle(this, event)">
                         <div class="text-xs opacity-40 mb-2">${article.date}</div>
                         <h2 class="text-lg font-normal mb-4 article-title">${title}</h2>
@@ -2757,8 +2767,9 @@
         function toggleArticle(wrapperNode, evt) {
             const snippet = wrapperNode.querySelector('.article-snippet');
             const isOpen = snippet.classList.contains('open-full');
-            // 開いている間は、本文エリアのクリックでは閉じない(読んだり選択したりの邪魔をしない)。閉じるのはタイトル部分のみ
+            // 開いている間は、本文エリアとタイトルのクリックでは閉じない(読んだり選択したりの邪魔をしない)
             if (isOpen && evt && evt.target.closest('.content-body')) return;
+            if (isOpen && evt && evt.target.closest('.article-title')) return;
             const articleEl = wrapperNode.closest('article');
             const id = articleEl.dataset.id;
             if (isOpen) {
