@@ -4015,7 +4015,6 @@
             const sel = window.getSelection();
             if (!sel || !sel.rangeCount || !sel.getRangeAt(0).collapsed) return;
             const range = sel.getRangeAt(0);
-            if (range.startOffset !== 0) return;
 
             let anchor = range.startContainer;
             let bq = null;
@@ -4024,20 +4023,28 @@
             }
             if (!bq) return;
 
-            // blockquote直下の子を特定
+            // blockquote直下の直接の子を特定
             let child = anchor;
-            while (child.parentNode !== bq) {
+            while (child && child.parentNode !== bq) {
                 child = child.parentNode;
                 if (!child || child === twEditor) return;
             }
+            if (!child) return;
 
-            // 最初の子でなければブラウザ任せ（引用内の行マージはブラウザに任せる）
-            if (child.previousSibling !== null) return;
-
-            // anchor から child までの経路で左兄弟があればブラウザ任せ（段落途中の場合など）
-            for (let n = anchor; n !== child; n = n.parentNode) {
-                if (n.previousSibling !== null) return;
+            // 空白テキストノードを除いた前の兄弟があればブラウザ任せ（引用内の行マージ）
+            let prev = child.previousSibling;
+            while (prev && prev.nodeType === Node.TEXT_NODE && !prev.textContent.trim()) {
+                prev = prev.previousSibling;
             }
+            if (prev !== null) return;
+
+            // child の先頭からカーソルまでの間にテキストがあればブラウザ任せ
+            try {
+                const beforeCursor = document.createRange();
+                beforeCursor.setStart(child, 0);
+                beforeCursor.setEnd(range.startContainer, range.startOffset);
+                if (beforeCursor.toString() !== '') return;
+            } catch { return; }
 
             e.preventDefault();
             bq.removeChild(child);
@@ -4051,10 +4058,11 @@
                 } else {
                     while (child.firstChild) p.appendChild(child.firstChild);
                 }
-                if (!p.textContent && !p.querySelector('br')) p.innerHTML = '<br>';
             }
+            // 空行は <br> で高さを確保
+            if (!p.textContent && !p.querySelector('br')) p.innerHTML = '<br>';
             bq.parentNode.insertBefore(p, bq);
-            if (!bq.textContent.trim()) bq.parentNode.removeChild(bq);
+            if (!bq.hasChildNodes() || !bq.textContent.trim()) bq.parentNode.removeChild(bq);
 
             const r = document.createRange();
             r.setStart(p, 0);
