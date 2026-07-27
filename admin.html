@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="/gradient-backgrounds.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Tiptapエディタ(移行中)。window.StudiesEditor として公開される。
+         エディタを開くのは操作後なので defer で問題ない -->
+    <script src="/editor-bundle.js" defer></script>
 
     <style>
         body {
@@ -25,6 +28,13 @@
         .content-editor blockquote { border-left: 2px solid rgba(255,255,255,0.3); padding-left: 1em; margin: 1em 0; opacity: 0.8; font-style: italic; }
         .content-editor h2 { font-size: 1.2em; margin: 1em 0 0.5em; }
         .content-editor .footnote-ref { color: #7dd3fc; cursor: default; }
+        /* Tiptapは .content-editor の中に自前のcontenteditableを作る。
+           既存の .content-editor 配下のスタイルはそのまま効く */
+        .content-editor .tiptap { outline: none; min-height: 1.5em; }
+        .content-editor .tiptap p.is-editor-empty:first-child::before {
+            content: attr(data-placeholder); color: rgba(255,255,255,0.25); float: left;
+            height: 0; pointer-events: none;
+        }
         .article-preview { max-height: 3.2em; overflow: hidden; }
         /* ブラウザ既定のドロップダウン展開部は背景が白になることが多く、継承した白文字のままだと見えなくなるため明示的に指定する */
         select option, select optgroup { color: #1a1a1a; background-color: #ffffff; }
@@ -1410,6 +1420,68 @@
         });
         const IMAGE_BUCKET = 'article-images';
 
+        // --- Tiptapエディタへの移行(段階導入) ---------------------------------
+        // URLに ?tiptap=1 を付けたときだけ新エディタを使う。既定は従来の
+        // contenteditable + execCommand のままなので、通常の編集は影響を受けない。
+        // 本文の読み書きは以下の edGet/edSet/edText/edFocus 経由に統一してあり、
+        // どちらのエディタでも同じように動く。
+        const USE_TIPTAP = new URLSearchParams(location.search).has('tiptap');
+        const tiptapEditors = {};   // 要素id -> Tiptapのインスタンス
+
+        function tiptapReady() {
+            return USE_TIPTAP && typeof window.StudiesEditor !== 'undefined';
+        }
+
+        // 編集画面を初めて開くときに1度だけ生成する
+        function mountTiptapEditors() {
+            if (!USE_TIPTAP || tiptapEditors['edit-content']) return;
+            if (typeof window.StudiesEditor === 'undefined') {
+                showToast('エディタの読み込みに失敗しました(従来のエディタで続行します)');
+                return;
+            }
+            for (const id of ['edit-content', 'edit-content-en']) {
+                const host = document.getElementById(id);
+                const initial = host.innerHTML;
+                host.innerHTML = '';
+                host.removeAttribute('contenteditable');
+                tiptapEditors[id] = window.StudiesEditor.createEditor({
+                    element: host,
+                    content: initial,
+                    onUpdate: () => {
+                        scheduleAutosaveDraft();
+                        if (id === 'edit-content') {
+                            updateCharCount();
+                            renderFootnoteListPanel();
+                        }
+                    },
+                });
+            }
+        }
+
+        function edGet(id) {
+            const inst = tiptapEditors[id];
+            if (inst) return window.StudiesEditor.getHtml(inst);
+            return document.getElementById(id).innerHTML;
+        }
+
+        function edSet(id, html) {
+            const inst = tiptapEditors[id];
+            if (inst) { window.StudiesEditor.setHtml(inst, html); return; }
+            document.getElementById(id).innerHTML = html;
+        }
+
+        function edText(id) {
+            const inst = tiptapEditors[id];
+            if (inst) return inst.getText();
+            return document.getElementById(id).textContent;
+        }
+
+        function edFocus(id) {
+            const inst = tiptapEditors[id];
+            if (inst) { inst.commands.focus(); return; }
+            document.getElementById(id).focus();
+        }
+
         let articles = [];
         let bulkMode = false;
         let bulkSelectedIds = new Set();
@@ -1570,7 +1642,7 @@
         }
 
         function updateCharCount() {
-            const count = stripHtml(document.getElementById('edit-content').innerHTML).length;
+            const count = stripHtml(edGet('edit-content')).length;
             document.getElementById('edit-char-count').textContent = `${count.toLocaleString()}文字`;
         }
 
@@ -1786,6 +1858,8 @@
         function showEditorView() {
             document.getElementById('list-view').classList.add('hidden');
             document.getElementById('editor-view').classList.remove('hidden');
+            // 編集画面が表示されてから生成する(非表示のままだと高さが取れない)
+            mountTiptapEditors();
         }
 
         function backToList() {
@@ -2106,8 +2180,8 @@
             const draft = {
                 title: document.getElementById('edit-title').value,
                 titleEn: document.getElementById('edit-title-en').value,
-                content: document.getElementById('edit-content').innerHTML,
-                contentEn: document.getElementById('edit-content-en').innerHTML,
+                content: edGet('edit-content'),
+                contentEn: edGet('edit-content-en'),
                 savedAt: Date.now(),
             };
             try {
@@ -2132,9 +2206,9 @@
             }
             if (!draft) return;
             const sameAsLoaded = draft.title === document.getElementById('edit-title').value
-                && draft.content === document.getElementById('edit-content').innerHTML
+                && draft.content === edGet('edit-content')
                 && (draft.titleEn || '') === document.getElementById('edit-title-en').value
-                && (draft.contentEn || '') === document.getElementById('edit-content-en').innerHTML;
+                && (draft.contentEn || '') === edGet('edit-content-en');
             if (sameAsLoaded) {
                 clearAutosaveDraft();
                 return;
@@ -2143,8 +2217,8 @@
             if (confirm(`保存されていない自動保存の控え(${when}時点)があります。復元しますか？`)) {
                 document.getElementById('edit-title').value = draft.title;
                 document.getElementById('edit-title-en').value = draft.titleEn || '';
-                document.getElementById('edit-content').innerHTML = draft.content;
-                document.getElementById('edit-content-en').innerHTML = draft.contentEn || '<p></p>';
+                edSet('edit-content', draft.content);
+                edSet('edit-content-en', draft.contentEn || '<p></p>');
                 if ((draft.titleEn || '').trim() || stripHtml(draft.contentEn || '').trim()) {
                     document.getElementById('english-section').open = true;
                 }
@@ -2164,8 +2238,8 @@
             document.getElementById('edit-title-en').value = '';
             document.getElementById('edit-category').value = '';
             document.getElementById('edit-pinned').checked = false;
-            document.getElementById('edit-content').innerHTML = '<p></p>';
-            document.getElementById('edit-content-en').innerHTML = '<p></p>';
+            edSet('edit-content', '<p></p>');
+            edSet('edit-content-en', '<p></p>');
             document.getElementById('english-section').open = false;
             updateCharCount();
             renderFootnoteListPanel();
@@ -2253,11 +2327,10 @@
             document.getElementById('edit-title-en').value = article.title_en || '';
             document.getElementById('edit-category').value = article.category || '';
             document.getElementById('edit-pinned').checked = !!article.pinned;
-            const editor = document.getElementById('edit-content');
-            editor.innerHTML = article.content;
-            migrateInlineFootnoteNotes(editor);
+            edSet('edit-content', article.content);
+            if (!tiptapEditors['edit-content']) migrateInlineFootnoteNotes(document.getElementById('edit-content'));
             renderFootnoteListPanel();
-            document.getElementById('edit-content-en').innerHTML = article.content_en || '<p></p>';
+            edSet('edit-content-en', article.content_en || '<p></p>');
             // 既に英語版が入っている記事は、折りたたみを開いた状態で表示する
             document.getElementById('english-section').open =
                 !!(article.title_en || '').trim() || !!stripHtml(article.content_en || '').trim();
@@ -2362,9 +2435,9 @@
         async function saveArticle(status, scheduledAt = null) {
             const date = document.getElementById('edit-date').value.trim();
             const title = document.getElementById('edit-title').value.trim();
-            const content = document.getElementById('edit-content').innerHTML;
+            const content = edGet('edit-content');
             const titleEn = document.getElementById('edit-title-en').value.trim();
-            const contentEnRaw = document.getElementById('edit-content-en').innerHTML;
+            const contentEnRaw = edGet('edit-content-en');
             const contentEn = stripHtml(contentEnRaw).trim() ? contentEnRaw : '';
 
             if (!date || !title) {
@@ -2962,8 +3035,8 @@
         // APIキーはサーバー側だけが持ち、ブラウザには一切渡らない
         async function translateArticleToEnglish() {
             const title = document.getElementById('edit-title').value.trim();
-            const content = document.getElementById('edit-content').innerHTML;
-            if (!title && !document.getElementById('edit-content').textContent.trim()) {
+            const content = edGet('edit-content');
+            if (!title && !edText('edit-content').trim()) {
                 showToast('先に日本語のタイトルか本文を入力してください');
                 return;
             }
@@ -3382,9 +3455,38 @@
         }
 
         // --- 本文フォーマット・画像挿入 ---
+        // execCommand時代のコマンド名をそのまま受けて、Tiptap有効時はスキーマに沿った
+        // コマンドへ振り替える。ツールバーのonclickは変更しなくて済む。
+        const TIPTAP_COMMANDS = {
+            bold:               (c) => c.toggleBold(),
+            italic:             (c) => c.toggleItalic(),
+            underline:          (c) => c.toggleUnderline(),
+            strikeThrough:      (c) => c.toggleStrike(),
+            insertUnorderedList:(c) => c.toggleBulletList(),
+            insertOrderedList:  (c) => c.toggleOrderedList(),
+            removeFormat:       (c) => c.unsetAllMarks(),
+            undo:               (c) => c.undo(),
+            redo:               (c) => c.redo(),
+        };
+
         function formatText(cmd, val = null) {
-            document.getElementById('edit-content').focus();
-            document.execCommand(cmd, false, val);
+            const inst = tiptapEditors['edit-content'];
+            if (!inst) {
+                document.getElementById('edit-content').focus();
+                document.execCommand(cmd, false, val);
+                return;
+            }
+            const chain = inst.chain().focus();
+            if (cmd === 'formatBlock') {
+                const block = String(val || '').toUpperCase();
+                if (block === 'H2') chain.toggleHeading({ level: 2 }).run();
+                else if (block === 'BLOCKQUOTE') chain.toggleBlockquote().run();
+                else chain.setParagraph().run();
+                return;
+            }
+            const fn = TIPTAP_COMMANDS[cmd];
+            if (fn) fn(chain).run();
+            else chain.run();   // 未対応のコマンドは何もしない(フォーカスだけ戻す)
         }
 
         function insertLink() {
@@ -3529,6 +3631,9 @@
         // ただしクリップボードに画像が含まれている場合(スクリーンショットのコピペなど)は、そのままアップロードして挿入する
         function setupPastePlainText() {
             document.getElementById('edit-content').addEventListener('paste', async (e) => {
+                // Tiptap有効時の貼り付けはStage 4で対応する。ここでexecCommandを走らせると
+                // ProseMirrorの状態と食い違うので何もしない
+                if (tiptapEditors['edit-content']) return;
                 const clipboard = e.clipboardData || window.clipboardData;
                 const imageFiles = Array.from(clipboard.files || []).filter(f => f.type.startsWith('image/'));
                 e.preventDefault();
@@ -3977,8 +4082,11 @@
         twEditor.addEventListener('input', updateCharCount);
         twEditor.addEventListener('input', renderFootnoteListPanel);
 
-        // 引用(blockquote)内で空行のままEnterを押すと引用を抜けてpを挿入する
+        // 引用(blockquote)内で空行のままEnterを押すと引用を抜けてpを挿入する。
+        // Tiptapではスキーマ側が同じ挙動を持っているので、有効時はこの手当ては行わない
+        // (DOMを直接いじるとProseMirrorの状態と食い違うため)
         twEditor.addEventListener('keydown', function(e) {
+            if (tiptapEditors['edit-content']) return;
             if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey) return;
             const sel = window.getSelection();
             if (!sel || !sel.rangeCount || !sel.getRangeAt(0).collapsed) return;
@@ -4012,6 +4120,7 @@
         // 引用(blockquote)の先頭でBackspaceを押すと引用フォーマットを外す
         // 手動DOMいじりはブラウザ間で構造が異なり壊れやすいので execCommand('outdent') に委ねる
         twEditor.addEventListener('keydown', function(e) {
+            if (tiptapEditors['edit-content']) return;   // Tiptapはスキーマ側で対応
             if (e.key !== 'Backspace') return;
             const sel = window.getSelection();
             if (!sel || !sel.rangeCount || !sel.getRangeAt(0).collapsed) return;
