@@ -576,9 +576,9 @@
         /* コピペした本文の段落タグなどに行間のインラインスタイルが残っていても、必ずサイト設定の行間が効くようにする */
         .content-body, .content-body * { line-height: inherit !important; }
         .content-body { opacity: var(--body-text-opacity); }
-        article[data-category="log"] .content-body { font-family: var(--log-font, inherit); }
-        article[data-category="sketch"] .content-body { font-family: var(--sketch-font, inherit); }
-        article[data-category="essay"] .content-body { font-family: var(--essay-font, inherit); }
+        .category-label[data-category="log"], .category-filter-item[data-category="log"] { font-family: var(--log-font, inherit); }
+        .category-label[data-category="sketch"], .category-filter-item[data-category="sketch"] { font-family: var(--sketch-font, inherit); }
+        .category-label[data-category="essay"], .category-filter-item[data-category="essay"] { font-family: var(--essay-font, inherit); }
         .group:hover .article-title { opacity: 1; }
 
         .article-snippet {
@@ -1193,7 +1193,7 @@
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" data-category="${article.category || ''}" style="border: 0.5px solid var(--divider-color); padding: 1.5rem;">
                     <div class="cursor-pointer group" onclick="toggleArticle(this, event)">
-                        <div class="text-xs opacity-40 mb-2">${article.date}</div>
+                        <div class="text-xs opacity-40 mb-2">${article.date}${article.category ? `<span class="category-label ml-2" data-category="${escapeHtml(article.category)}">${escapeHtml(article.category)}</span>` : ''}</div>
                         <h2 class="text-lg font-normal mb-4 article-title">${title}</h2>
                         ${tagsHtml}
                         <div class="article-snippet text-sm"><div class="content-body">${applyFootnoteStyling(content, article.id)}</div></div>
@@ -1635,7 +1635,7 @@
             return `
                 <div class="outline-item outline-article-row transition-opacity" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}">
                     <div class="outline-toggle flex items-baseline gap-3 cursor-pointer py-2 opacity-80 hover:opacity-100 transition-opacity" onclick="toggleOutlineItem(this)">
-                        <span class="opacity-40 whitespace-nowrap flex-shrink-0" style="font-size: 0.65rem; min-width: 3.5em;">${escapeHtml(article.category || '')}</span>
+                        <span class="opacity-40 whitespace-nowrap flex-shrink-0 category-label" data-category="${escapeHtml(article.category || '')}" style="font-size: 0.65rem; min-width: 3.5em;">${escapeHtml(article.category || '')}</span>
                         <span class="text-sm truncate" style="min-width: 0;">${escapeHtml(article.title)}</span>
                         ${tagsHtml}
                     </div>
