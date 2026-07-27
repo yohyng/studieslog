@@ -1,0 +1,31 @@
+name: Notion RAG Indexer
+
+on:
+  workflow_dispatch:   # GitHubのUIから手動実行
+  # 定期実行したい場合はコメントアウトを外す(毎週月曜9時JST)
+  # schedule:
+  #   - cron: '0 0 * * 1'
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180   # 2000ページ分の余裕を持たせる
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: ライブラリインストール
+        run: pip install -r scripts/requirements.txt
+
+      - name: Notion → Supabase RAG インデックス作成
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/notion_rag.py
