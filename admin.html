@@ -4009,21 +4009,22 @@
             sel.addRange(r);
         });
 
-        // 引用(blockquote)の先頭でBackspaceを押すと引用フォーマットを外して段落に変換
+        // 引用(blockquote)の先頭でBackspaceを押すと引用フォーマットを外す
+        // 手動DOMいじりはブラウザ間で構造が異なり壊れやすいので execCommand('outdent') に委ねる
         twEditor.addEventListener('keydown', function(e) {
             if (e.key !== 'Backspace') return;
             const sel = window.getSelection();
             if (!sel || !sel.rangeCount || !sel.getRangeAt(0).collapsed) return;
             const range = sel.getRangeAt(0);
 
-            let anchor = range.startContainer;
+            const anchor = range.startContainer;
             let bq = null;
             for (let n = anchor; n && n !== twEditor; n = n.parentNode) {
                 if (n.nodeName === 'BLOCKQUOTE') { bq = n; break; }
             }
             if (!bq) return;
 
-            // blockquote直下の直接の子を特定
+            // bq直下の直接の子（カーソルを含む行）を特定
             let child = anchor;
             while (child && child.parentNode !== bq) {
                 child = child.parentNode;
@@ -4031,44 +4032,24 @@
             }
             if (!child) return;
 
-            // 空白テキストノードを除いた前の兄弟があればブラウザ任せ（引用内の行マージ）
+            // 空白テキストノードを無視して前の兄弟があれば通常の行マージ（ブラウザ任せ）
             let prev = child.previousSibling;
             while (prev && prev.nodeType === Node.TEXT_NODE && !prev.textContent.trim()) {
                 prev = prev.previousSibling;
             }
             if (prev !== null) return;
 
-            // child の先頭からカーソルまでの間にテキストがあればブラウザ任せ
+            // blockquote先頭からカーソルまでの間にテキストがあればブラウザ任せ
             try {
-                const beforeCursor = document.createRange();
-                beforeCursor.setStart(child, 0);
-                beforeCursor.setEnd(range.startContainer, range.startOffset);
-                if (beforeCursor.toString() !== '') return;
+                const testRange = document.createRange();
+                testRange.setStart(bq, 0);
+                testRange.setEnd(anchor, range.startOffset);
+                if (testRange.toString() !== '') return;
             } catch { return; }
 
+            // 先頭にいる → outdent でブラウザにblockquoteを外させる
             e.preventDefault();
-            bq.removeChild(child);
-            let p;
-            if (child.nodeName === 'P') {
-                p = child;
-            } else {
-                p = document.createElement('p');
-                if (child.nodeType === Node.TEXT_NODE) {
-                    p.textContent = child.textContent || '';
-                } else {
-                    while (child.firstChild) p.appendChild(child.firstChild);
-                }
-            }
-            // 空行は <br> で高さを確保
-            if (!p.textContent && !p.querySelector('br')) p.innerHTML = '<br>';
-            bq.parentNode.insertBefore(p, bq);
-            if (!bq.hasChildNodes() || !bq.textContent.trim()) bq.parentNode.removeChild(bq);
-
-            const r = document.createRange();
-            r.setStart(p, 0);
-            r.collapse(true);
-            sel.removeAllRanges();
-            sel.addRange(r);
+            document.execCommand('outdent');
         });
 
         // 自動保存: タイトル・本文(日英)を編集するたびに、少し待ってからlocalStorageへ控えを取る
