@@ -1458,6 +1458,9 @@
                 if (hasTranslation) {
                     badgeHtml += '<span class="text-xs px-1.5 py-0.5 rounded bg-emerald-400/20 text-emerald-200/80">英訳☑</span>';
                 }
+                if (article.category) {
+                    badgeHtml += `<span class="text-xs px-1.5 py-0.5 rounded bg-white/10 text-white/60">${article.category}</span>`;
+                }
                 const checkboxHtml = bulkMode
                     ? `<div class="w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${bulkSelectedIds.has(article.id) ? 'bg-white border-white' : 'border-white/30'}">${bulkSelectedIds.has(article.id) ? '<span class="text-black text-xs leading-none">✓</span>' : ''}</div>`
                     : '';
