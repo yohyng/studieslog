@@ -374,7 +374,7 @@ create table if not exists public.article_chunks (
   article_id bigint not null references public.articles(id) on delete cascade,
   chunk_index int not null,
   content text not null,
-  embedding vector(768),
+  embedding vector(3072),
   created_at timestamptz not null default now(),
   unique (article_id, chunk_index)
 );
@@ -386,7 +386,7 @@ create policy "article_chunks_auth_all" on public.article_chunks
   for all to authenticated using (true) with check (true);
 
 -- コサイン距離が近い順にチャンクを返す類似検索(RPCとして呼び出す)
-create or replace function match_article_chunks(query_embedding vector(768), match_count int default 6)
+create or replace function match_article_chunks(query_embedding vector(3072), match_count int default 6)
 returns table (article_id bigint, chunk_index int, content text, similarity float)
 language sql stable
 as $$
