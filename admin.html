@@ -16,7 +16,7 @@
             background-color: #22262a;
             color: rgba(255, 255, 255, 0.9);
         }
-        .content-editor { min-height: 300px; line-height: 1.9; transition: outline-color 0.15s ease; }
+        .content-editor { min-height: 300px; line-height: 1.9; transition: outline-color 0.15s ease; caret-color: white; }
         .content-editor:focus { outline: none; }
         .content-editor.drag-over { outline: 2px dashed rgba(255,255,255,0.5); outline-offset: -2px; }
         .content-editor img { display: block; max-width: 100%; max-height: 70vh; width: auto; height: auto; object-fit: contain; border-radius: 0; margin: 1em auto; cursor: pointer; }
@@ -1190,28 +1190,28 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- AIビュー(試作: 自分の記事をRAGにした執筆補助) -->
-    <div id="ai-view" class="hidden flex-1 overflow-y-auto">
-        <div class="max-w-2xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
-            <p class="text-xs text-white/40 mb-6">自分の過去記事を検索対象にした、試作段階の執筆補助です。まず下のボタンで記事をインデックス(埋め込みベクトル化)してから、質問・相談を入力してください。記事を追加・編集したときは再インデックスしてください。</p>
+        <!-- AIビュー(試作: 自分の記事をRAGにした執筆補助) -->
+        <div id="ai-view" class="hidden flex-1 overflow-y-auto">
+            <div class="max-w-2xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
+                <p class="text-xs text-white/40 mb-6">自分の過去記事を検索対象にした、試作段階の執筆補助です。まず下のボタンで記事をインデックス(埋め込みベクトル化)してから、質問・相談を入力してください。記事を追加・編集したときは再インデックスしてください。</p>
 
-            <div class="mb-8 pb-8 border-b border-white/10">
-                <button id="ai-reindex-btn" onclick="reindexAiArticles()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">🔄 記事をインデックスする</button>
-                <span id="ai-reindex-status" class="text-xs text-white/40 ml-3"></span>
-            </div>
+                <div class="mb-8 pb-8 border-b border-white/10">
+                    <button id="ai-reindex-btn" onclick="reindexAiArticles()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">🔄 記事をインデックスする</button>
+                    <span id="ai-reindex-status" class="text-xs text-white/40 ml-3"></span>
+                </div>
 
-            <label class="text-xs text-white/50 block mb-2">質問・相談</label>
-            <textarea id="ai-query" rows="4" placeholder="例: このテーマについて前にどんなことを書いていたか教えて" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30 mb-3"></textarea>
-            <button id="ai-ask-btn" onclick="askAi()" class="px-4 py-2 text-xs bg-white/20 hover:bg-white/30 rounded transition-colors">聞く</button>
+                <label class="text-xs text-white/50 block mb-2">質問・相談</label>
+                <textarea id="ai-query" rows="4" placeholder="例: このテーマについて前にどんなことを書いていたか教えて" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30 mb-3"></textarea>
+                <button id="ai-ask-btn" onclick="askAi()" class="px-4 py-2 text-xs bg-white/20 hover:bg-white/30 rounded transition-colors">聞く</button>
 
-            <div id="ai-answer-wrap" class="hidden mt-8 pt-8 border-t border-white/10">
-                <div id="ai-answer" class="text-sm whitespace-pre-wrap mb-4"></div>
-                <details id="ai-sources-details" class="text-xs text-white/40">
-                    <summary class="editor-section-summary">参考にした記事</summary>
-                    <div id="ai-sources" class="mt-2 flex flex-col gap-2"></div>
-                </details>
+                <div id="ai-answer-wrap" class="hidden mt-8 pt-8 border-t border-white/10">
+                    <div id="ai-answer" class="text-sm whitespace-pre-wrap mb-4"></div>
+                    <details id="ai-sources-details" class="text-xs text-white/40">
+                        <summary class="editor-section-summary">参考にした記事</summary>
+                        <div id="ai-sources" class="mt-2 flex flex-col gap-2"></div>
+                    </details>
+                </div>
             </div>
         </div>
     </div>
