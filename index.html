@@ -1193,7 +1193,7 @@
             return `
                 <article class="fade-in relative" id="article-${article.id}" data-id="${article.id}" data-category="${article.category || ''}" style="border: 0.5px solid var(--divider-color); padding: 1.5rem;">
                     <div class="cursor-pointer group" onclick="toggleArticle(this, event)">
-                        <div class="text-xs opacity-40 mb-2">${article.date}${article.category ? `<span class="category-label ml-2" data-category="${escapeHtml(article.category)}">${escapeHtml(article.category)}</span>` : ''}</div>
+                        <div class="text-xs opacity-40 mb-2">${article.date}</div>
                         <h2 class="text-lg font-normal mb-4 article-title">${title}</h2>
                         ${tagsHtml}
                         <div class="article-snippet text-sm"><div class="content-body">${applyFootnoteStyling(content, article.id)}</div></div>
@@ -1982,7 +1982,10 @@
 
         function articleCardHtml(article) {
             const tagsAttr = (article.tags || []).map(t => t.slug).join(',');
-            const title = localizedTitle(article);
+            const rawTitle = (currentLocale === 'en' && article.title_en) ? article.title_en : article.title;
+            const cardTitleHtml = article.category
+                ? `<span class="category-label" data-category="${escapeHtml(article.category)}">${escapeHtml(article.category)}</span> | ${escapeHtml(rawTitle)}`
+                : escapeHtml(rawTitle);
             const content = localizedContent(article);
             const imageUrl = getFirstImageUrl(content);
             const plainText = stripHtml(stripPromoLinksForCard(content));
@@ -1993,14 +1996,14 @@
                 return `
                     <a href="/article/${article.id}" class="article-card article-card-image" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleCardTap(event, this)">
                         <img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" class="card-thumb-full">
-                        <div class="card-title">${escapeHtml(title)}</div>
+                        <div class="card-title">${cardTitleHtml}</div>
                         ${excerptText ? `<div class="card-excerpt">${excerptText}</div>` : ''}
                     </a>
                 `;
             }
             return `
                 <a href="/article/${article.id}" class="article-card" data-category="${escapeHtml(article.category || '')}" data-tags="${escapeHtml(tagsAttr)}" onclick="return handleCardTap(event, this)">
-                    <div class="card-title">${escapeHtml(title)}</div>
+                    <div class="card-title">${cardTitleHtml}</div>
                     ${excerptText ? `<div class="card-excerpt">${excerptText}</div>` : ''}
                 </a>
             `;
