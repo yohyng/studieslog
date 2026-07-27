@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tiptap移行 往復監査</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+    :root { color-scheme: dark; }
+    body { margin:0; padding:2rem 1.5rem 6rem; background:#0b0b0d; color:#e7e7ea;
+           font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+           font-size:14px; line-height:1.7; }
+    .wrap { max-width:1000px; margin:0 auto; }
+    h1 { font-size:1.1rem; font-weight:600; margin:0 0 .3rem; }
+    .sub { font-size:.75rem; color:#8a8a94; margin-bottom:2rem; }
+    .box { border:1px solid #26262c; border-radius:6px; padding:1rem 1.2rem; margin-bottom:1.2rem; background:#101014; }
+    input { background:#18181d; border:1px solid #2e2e36; color:#e7e7ea; border-radius:4px;
+            padding:.5rem .7rem; font-size:.85rem; width:240px; margin-right:.5rem; }
+    button { background:#2a2a33; border:1px solid #3a3a45; color:#e7e7ea; border-radius:4px;
+             padding:.5rem 1rem; font-size:.85rem; cursor:pointer; }
+    button:hover:not(:disabled) { background:#35353f; }
+    button:disabled { opacity:.4; cursor:default; }
+    .stat-row { display:flex; gap:2.5rem; flex-wrap:wrap; margin:.4rem 0 0; }
+    .stat b { display:block; font-size:1.7rem; font-weight:600; line-height:1.2; }
+    .stat span { font-size:.7rem; color:#8a8a94; }
+    .ok b { color:#5dd39e; } .warn b { color:#e0b756; } .bad b { color:#e5695f; }
+    table { width:100%; border-collapse:collapse; font-size:.78rem; }
+    th, td { text-align:left; padding:.4rem .6rem; border-bottom:1px solid #202027; vertical-align:top; }
+    th { color:#8a8a94; font-weight:500; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; }
+    td.num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    code { background:#18181d; padding:.1rem .35rem; border-radius:3px; font-size:.75rem;
+           font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .tag-bad { color:#e5695f; } .tag-warn { color:#e0b756; } .tag-ok { color:#5dd39e; }
+    details { margin:.5rem 0; } summary { cursor:pointer; color:#8a8a94; font-size:.78rem; }
+    pre { background:#18181d; padding:.7rem; border-radius:4px; overflow-x:auto; font-size:.72rem;
+          white-space:pre-wrap; word-break:break-word; margin:.4rem 0; }
+    .hidden { display:none; }
+    .note { font-size:.72rem; color:#8a8a94; margin-top:.5rem; }
+    #log { font-size:.75rem; color:#8a8a94; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <h1>Tiptap移行 往復監査</h1>
+    <div class="sub">
+        既存記事のHTMLを候補スキーマ(lib/editor-schema.mjs)に通し、<code>setContent → getHTML</code> で
+        何が失われるかを調べます。<strong>読み取り専用で、Supabaseには一切書き込みません。</strong>
+    </div>
+
+    <div class="box" id="login-box">
+        <div style="margin-bottom:.6rem; font-size:.85rem;">下書きを含む全記事を対象にするため、管理者でログインします。</div>
+        <input id="email" type="email" placeholder="メールアドレス" autocomplete="username">
+        <input id="password" type="password" placeholder="パスワード" autocomplete="current-password">
+        <button id="login-btn">ログイン</button>
+        <div class="note" id="login-msg"></div>
+    </div>
+
+    <div class="box hidden" id="run-box">
+        <button id="run-btn">監査を実行</button>
+        <span class="note" id="log" style="margin-left:1rem;"></span>
+    </div>
+
+    <div id="result"></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "@tiptap/core": "https://esm.sh/@tiptap/core@3.29.1",
+    "@tiptap/pm": "https://esm.sh/@tiptap/pm@3.29.1",
+    "@tiptap/pm/": "https://esm.sh/@tiptap/pm@3.29.1/",
+    "@tiptap/html": "https://esm.sh/@tiptap/html@3.29.1?deps=@tiptap/core@3.29.1,@tiptap/pm@3.29.1",
+    "@tiptap/starter-kit": "https://esm.sh/@tiptap/starter-kit@3.29.1?deps=@tiptap/core@3.29.1,@tiptap/pm@3.29.1",
+    "@tiptap/extension-image": "https://esm.sh/@tiptap/extension-image@3.29.1?deps=@tiptap/core@3.29.1,@tiptap/pm@3.29.1"
+  }
+}
+</script>
+
+<script type="module">
+// CDN(esm.sh)からの読み込みに失敗しても白画面にならないよう、動的importで捕まえて表示する
+let generateJSON, generateHTML, extensions, loadError = null;
+try {
+    const tiptapHtml = await import('@tiptap/html');
+    const schema = await import('./lib/editor-schema.mjs');
+    generateJSON = tiptapHtml.generateJSON;
+    generateHTML = tiptapHtml.generateHTML;
+    extensions = schema.buildExtensions();
+} catch (e) {
+    loadError = e;
+    document.getElementById('result').innerHTML =
+        `<div class="box"><div class="tag-bad" style="margin-bottom:.5rem">Tiptapの読み込みに失敗しました</div>
+         <pre>${String(e && e.message || e)}</pre>
+         <div class="note">esm.sh に到達できないか、importmapのURLが不正な可能性があります。
+         ネットワーク環境を確認してください。</div></div>`;
+}
+
+const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpeXpsYXdtY3l5YmNoeHp5b3pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDI2MjQsImV4cCI6MjA5NTU3ODYyNH0.SZVwqWKkk31npqdiiG5m3HdkF4JnQ7SgEzThaFfZ4q4';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const $ = (id) => document.getElementById(id);
+
+// ── 計測 ────────────────────────────────────────────────────────────────────
+const parse = (html) =>
+    new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html').body;
+
+function census(html) {
+    const body = parse(html), tags = {}, attrs = {};
+    body.querySelectorAll('*').forEach((el) => {
+        const t = el.tagName.toLowerCase();
+        tags[t] = (tags[t] || 0) + 1;
+        for (const a of el.attributes) {
+            const k = `${t}[${a.name}]`;
+            attrs[k] = (attrs[k] || 0) + 1;
+        }
+    });
+    return { tags, attrs };
+}
+const textOf = (html) => parse(html).textContent.replace(/\s+/g, ' ').trim();
+const notesOf = (html) => [...parse(html).querySelectorAll('sup.footnote-ref')]
+    .map((e) => e.getAttribute('data-note') || '');
+const cardsOf = (html) => [...parse(html).querySelectorAll('a.book-link-card')].map((e) => {
+    const s = e.querySelectorAll('span span'), i = e.querySelector('img');
+    return [e.getAttribute('href') || '', s[0] ? s[0].textContent : '',
+            s[1] ? s[1].textContent : '', i ? i.getAttribute('src') : ''].join(' | ');
+});
+const imgsOf = (html) => [...parse(html).querySelectorAll('img')].map((e) => e.getAttribute('src') || '');
+const linksOf = (html) => [...parse(html).querySelectorAll('a:not(.book-link-card)')]
+    .map((e) => e.getAttribute('href') || '');
+
+function lost(before, after) {
+    const out = {};
+    for (const k of Object.keys(before)) {
+        const d = before[k] - (after[k] || 0);
+        if (d > 0) out[k] = d;
+    }
+    return out;
+}
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+/** 1本のHTMLを往復させて結果を返す */
+function auditHtml(html) {
+    if (!html || !html.trim()) return null;
+    let out;
+    try {
+        out = generateHTML(generateJSON(html, extensions), extensions);
+    } catch (e) {
+        return { fatal: e.message, input: html };
+    }
+    const before = census(html), after = census(out);
+    const problems = [];
+    const tIn = textOf(html), tOut = textOf(out);
+    if (tIn !== tOut) problems.push({ kind: '本文テキスト', in: tIn, out: tOut });
+
+    const cmp = (label, a, b) => {
+        if (JSON.stringify(a) !== JSON.stringify(b)) {
+            problems.push({ kind: label, in: JSON.stringify(a), out: JSON.stringify(b) });
+        }
+    };
+    cmp('脚注data-note', notesOf(html), notesOf(out));
+    cmp('リンクカード', cardsOf(html), cardsOf(out));
+    cmp('画像src', imgsOf(html), imgsOf(out));
+    cmp('リンクhref', linksOf(html), linksOf(out));
+
+    return {
+        problems,
+        lostTags: lost(before.tags, after.tags),
+        lostAttrs: lost(before.attrs, after.attrs),
+        input: html, output: out,
+    };
+}
+
+// ── ログイン ────────────────────────────────────────────────────────────────
+async function refreshAuth() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+        $('login-box').classList.add('hidden');
+        $('run-box').classList.remove('hidden');
+    }
+}
+$('login-btn').onclick = async () => {
+    $('login-msg').textContent = 'ログイン中...';
+    const { error } = await sb.auth.signInWithPassword({
+        email: $('email').value.trim(), password: $('password').value,
+    });
+    $('login-msg').textContent = error ? 'ログインできませんでした: ' + error.message : '';
+    if (!error) refreshAuth();
+};
+refreshAuth();
+
+// ── 実行 ────────────────────────────────────────────────────────────────────
+$('run-btn').onclick = async () => {
+    if (loadError) { $('log').textContent = 'Tiptapが読み込めていないため実行できません'; return; }
+    $('run-btn').disabled = true;
+    $('log').textContent = '記事を取得中...';
+
+    const { data: articles, error } = await sb
+        .from('articles').select('id,title,content,content_en').order('id');
+    if (error) {
+        $('log').textContent = '取得失敗: ' + error.message;
+        $('run-btn').disabled = false;
+        return;
+    }
+
+    const results = [];
+    const tagTotals = {}, attrTotals = {};
+    let exact = 0, normalized = 0, damaged = 0, fields = 0;
+
+    for (let n = 0; n < articles.length; n++) {
+        const a = articles[n];
+        if (n % 10 === 0) {
+            $('log').textContent = `検査中... ${n}/${articles.length}`;
+            await new Promise((r) => setTimeout(r));
+        }
+        for (const field of ['content', 'content_en']) {
+            const r = auditHtml(a[field]);
+            if (!r) continue;
+            fields++;
+            if (r.fatal) { damaged++; results.push({ a, field, r }); continue; }
+
+            for (const [k, v] of Object.entries(r.lostTags)) tagTotals[k] = (tagTotals[k] || 0) + v;
+            for (const [k, v] of Object.entries(r.lostAttrs)) attrTotals[k] = (attrTotals[k] || 0) + v;
+
+            const hasLoss = r.problems.length > 0;
+            const hasNorm = Object.keys(r.lostTags).length || Object.keys(r.lostAttrs).length;
+            if (hasLoss) { damaged++; results.push({ a, field, r }); }
+            else if (hasNorm) { normalized++; results.push({ a, field, r }); }
+            else exact++;
+        }
+    }
+
+    $('log').textContent = `完了 (${articles.length}記事 / ${fields}本文)`;
+    render({ articles, fields, exact, normalized, damaged, tagTotals, attrTotals, results });
+    $('run-btn').disabled = false;
+};
+
+// ── 表示 ────────────────────────────────────────────────────────────────────
+// 無害な正規化(<b>→<strong>等)と、書式が失われるもの(<font>,<span style>)を区別する
+const BENIGN = new Set(['b', 'i', 'strike', 'div', 'em', 'strong', 's', 'u', 'tt', 'small']);
+const classify = (tag) => BENIGN.has(tag) ? 'tag-ok' : 'tag-warn';
+
+function render(d) {
+    const rows = (obj, cls) => Object.entries(obj).sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => {
+            const tag = k.split('[')[0];
+            return `<tr><td><code class="${cls ? classify(tag) : ''}">${esc(k)}</code></td>
+                    <td class="num">${v}</td></tr>`;
+        }).join('') || '<tr><td colspan="2" style="color:#5dd39e">なし</td></tr>';
+
+    const detail = d.results.slice(0, 80).map(({ a, field, r }) => {
+        if (r.fatal) {
+            return `<details><summary class="tag-bad">✗ #${a.id} ${esc(a.title || '(無題)')} [${field}] — 変換例外</summary>
+                    <pre>${esc(r.fatal)}</pre></details>`;
+        }
+        const sev = r.problems.length ? 'tag-bad' : 'tag-warn';
+        const mark = r.problems.length ? '✗ 損失' : '△ 正規化';
+        const probs = r.problems.map((p) =>
+            `<div class="tag-bad" style="margin:.4rem 0">${esc(p.kind)}が変化</div>
+             <pre>in : ${esc(String(p.in).slice(0, 400))}\nout: ${esc(String(p.out).slice(0, 400))}</pre>`).join('');
+        const tags = Object.keys(r.lostTags).length
+            ? `<div class="note">タグ減: ${Object.entries(r.lostTags).map(([k, v]) => `${k}×${v}`).join(', ')}</div>` : '';
+        const attrs = Object.keys(r.lostAttrs).length
+            ? `<div class="note">属性減: ${Object.entries(r.lostAttrs).map(([k, v]) => `${k}×${v}`).join(', ')}</div>` : '';
+        return `<details><summary class="${sev}">${mark} #${a.id} ${esc(a.title || '(無題)')} [${field}]</summary>
+                ${probs}${tags}${attrs}</details>`;
+    }).join('');
+
+    $('result').innerHTML = `
+    <div class="box">
+        <div class="stat-row">
+            <div class="stat"><b>${d.articles.length}</b><span>記事</span></div>
+            <div class="stat"><b>${d.fields}</b><span>本文(日+英)</span></div>
+            <div class="stat ok"><b>${d.exact}</b><span>完全一致</span></div>
+            <div class="stat warn"><b>${d.normalized}</b><span>正規化のみ</span></div>
+            <div class="stat bad"><b>${d.damaged}</b><span>要確認(損失)</span></div>
+        </div>
+        <div class="note">
+            「完全一致」は往復してもテキスト・脚注・カード・画像・リンクが1つも変わらなかったもの。
+            「正規化のみ」はタグが統一されただけで内容は保持。「損失」は中身が変わったもので、
+            移行前に対処が必要です。
+        </div>
+    </div>
+
+    <div class="box">
+        <div style="font-size:.85rem; margin-bottom:.6rem;">落ちたタグ(全記事の合計)</div>
+        <table><tr><th>タグ</th><th class="num">件数</th></tr>${rows(d.tagTotals, true)}</table>
+        <div class="note">
+            <span class="tag-ok">緑</span>=無害(&lt;b&gt;→&lt;strong&gt;等の統一)、
+            <span class="tag-warn">黄</span>=要検討。スキーマ拡張か事前変換で対応します。
+        </div>
+    </div>
+
+    <div class="box">
+        <div style="font-size:.85rem; margin-bottom:.6rem;">落ちた属性(全記事の合計)</div>
+        <table><tr><th>属性</th><th class="num">件数</th></tr>${rows(d.attrTotals, false)}</table>
+    </div>
+
+    <div class="box">
+        <div style="font-size:.85rem; margin-bottom:.6rem;">
+            記事ごとの詳細 ${d.results.length > 80 ? `(先頭80件 / 全${d.results.length}件)` : ''}
+        </div>
+        ${detail || '<div class="tag-ok">すべて完全一致でした。</div>'}
+    </div>`;
+}
+</script>
+</body>
+</html>
