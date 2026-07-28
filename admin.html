@@ -2197,25 +2197,43 @@
                 const cs = getComputedStyle(document.body);
                 const layers = splitCssList(cs.backgroundImage);
                 const sizes = splitCssList(cs.backgroundSize);
+                const repeats = splitCssList(cs.backgroundRepeat);
                 if (!layers.length || layers[0] === 'none') {
                     status.textContent = '背景が設定されていません（表示設定で選んでください）';
                     return;
                 }
 
                 // CSSの重ね順は「先頭が一番上」。canvasには下から順に描くので反転する
-                const ordered = layers.map((layer, i) => ({ layer, size: sizes[i] || 'auto' })).reverse();
+                const ordered = layers.map((layer, i) =>
+                    ({ layer, size: sizes[i] || 'auto', repeat: repeats[i] || 'repeat' })).reverse();
+
+                // 軸ごとに「その方向へ繰り返すか」を返す。background-size:100vwのような
+                // 引き伸ばし指定は、computed styleの時点で管理画面を開いていたウィンドウ幅の
+                // px値に解決されてしまう。これをそのままタイル幅として使うと、本来は
+                // 「コンテナ幅いっぱいに1枚だけ敷く(repeat-y)」レイヤーまで横に複製してしまい、
+                // タイルの右端と次のタイルの左端がぶつかって継ぎ目が見えてしまう。
+                // 繰り返さない軸は常にキャンバスそのものの幅/高さで1枚だけ敷くようにする
+                function repeatFlags(repeat) {
+                    const r = (repeat || 'repeat').trim();
+                    return {
+                        x: r === 'repeat' || r === 'repeat-x' || r === 'space' || r === 'round',
+                        y: r === 'repeat' || r === 'repeat-y' || r === 'space' || r === 'round',
+                    };
+                }
 
                 // 一番下の画像レイヤーの実寸をタイルの基準にする。
-                // 100vwのように引き伸ばす指定のものは、メール本文の幅(700px)で焼く
+                // 横に繰り返さないレイヤーは、幅は常にメール本文の幅(700px)で焼く
                 let base = null;
-                for (const { layer, size } of ordered) {
+                for (const { layer, size, repeat } of ordered) {
                     const m = /^url\(["']?(.+?)["']?\)$/.exec(layer);
                     if (!m) continue;
                     const img = await loadImage(m[1]);
+                    const { x: repX, y: repY } = repeatFlags(repeat);
                     const px = /^(\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px$/.exec(size);
-                    base = px
-                        ? { w: Math.round(+px[1]), h: Math.round(+px[2]) }
-                        : { w: 700, h: Math.min(2400, img.naturalHeight || 1000) };
+                    base = {
+                        w: repX && px ? Math.round(+px[1]) : 700,
+                        h: Math.min(2400, repY && px ? Math.round(+px[2]) : (img.naturalHeight || 1000)),
+                    };
                     break;
                 }
                 if (!base) {
@@ -2233,13 +2251,16 @@
                 ctx.fillStyle = document.getElementById('set-digest-bg-color').value || '#000000';
                 ctx.fillRect(0, 0, W, H);
 
-                for (const { layer, size } of ordered) {
+                for (const { layer, size, repeat } of ordered) {
                     const urlMatch = /^url\(["']?(.+?)["']?\)$/.exec(layer);
                     if (urlMatch) {
                         const img = await loadImage(urlMatch[1]);
+                        const { x: repX, y: repY } = repeatFlags(repeat);
                         const px = /^(\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px$/.exec(size);
-                        const tw = px ? +px[1] : W;
-                        const th = px ? +px[2] : H;
+                        // 繰り返さない軸はキャンバス全体の寸法で1枚だけ敷く(tw=Wにすると
+                        // x+=twの1回でループが終わるので、繰り返しループはそのまま使い回せる)
+                        const tw = repX && px ? +px[1] : W;
+                        const th = repY && px ? +px[2] : H;
                         for (let y = 0; y < H; y += th) {
                             for (let x = 0; x < W; x += tw) ctx.drawImage(img, x, y, tw, th);
                         }
