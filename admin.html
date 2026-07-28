@@ -1411,6 +1411,15 @@
     <div id="toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50" style="max-width: min(90vw, 32rem); text-align: center; white-space: pre-wrap;">保存されました</div>
 
     <!-- 注釈入力モーダル -->
+    <!-- 画像の拡大表示。Notionのカードは object-cover で切り抜いて出しているので、
+         全体を確認したいときにここで原寸(画面に収まる範囲)で見る -->
+    <div id="image-viewer" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+         onclick="closeImageViewer()">
+        <img id="image-viewer-img" src="" alt="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+        <button type="button" onclick="closeImageViewer()" aria-label="閉じる"
+                class="fixed top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors">✕</button>
+    </div>
+
     <div id="footnote-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onmousedown="if(event.target === this) closeFootnoteModal()">
         <div class="bg-[#2f3438] border border-white/10 rounded-lg p-6 max-w-md w-full">
             <h2 class="text-xs text-white/50 mb-3">注釈の内容</h2>
@@ -3337,8 +3346,10 @@
             filtered.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'pb-4 border-b border-white/10 last:border-b-0 last:pb-0';
+                // aspect-video + object-cover で切り抜いて並べているため、全体は見えない。
+                // タップすると拡大表示で原寸を確認できるようにする
                 const imageHtml = item.coverUrl
-                    ? `<img src="${escapeNotionHtml(item.coverUrl)}" alt="" loading="lazy" class="w-full aspect-video object-cover rounded mb-2" onerror="this.remove()">`
+                    ? `<img src="${escapeNotionHtml(item.coverUrl)}" alt="" loading="lazy" class="w-full aspect-video object-cover rounded mb-2 cursor-zoom-in" onerror="this.remove()" onclick="openImageViewer(this.src)" title="タップで拡大">`
                     : '';
                 const propsHtml = item.properties && item.properties.length
                     ? `<details class="mt-1">
@@ -3388,6 +3399,28 @@
                 console.error(e);
                 showToast('完了にできませんでした');
             }
+        }
+
+        // --- 画像の拡大表示 ---
+        function openImageViewer(src) {
+            if (!src) return;
+            document.getElementById('image-viewer-img').src = src;
+            document.getElementById('image-viewer').classList.remove('hidden');
+            // 背後がスクロールしてしまわないようにする
+            document.body.style.overflow = 'hidden';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !document.getElementById('image-viewer').classList.contains('hidden')) {
+                closeImageViewer();
+            }
+        });
+
+        function closeImageViewer() {
+            document.getElementById('image-viewer').classList.add('hidden');
+            // srcを空にして、次に開くまで前の画像が残らないようにする
+            document.getElementById('image-viewer-img').src = '';
+            document.body.style.overflow = '';
         }
 
         function escapeNotionHtml(str) {
