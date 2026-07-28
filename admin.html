@@ -3581,21 +3581,30 @@
                 });
                 const result = await res.json();
                 if (!res.ok) { status.textContent = `失敗: ${result.detail || result.error}`; return; }
-                const embedModels = (result.models || []).filter(n => n.includes('embed'));
-                status.textContent = embedModels.length
-                    ? `埋め込みモデル: ${embedModels.join(', ')}`
-                    : `埋め込みモデルなし。全モデル: ${(result.models || []).join(', ')}`;
+                // 設定中のモデルが実際に使えるかを確かめられるようにする。
+                // アカウントによっては提供が終わっているモデルがあり、その場合404になる
+                const chat = result.chatModels || [];
+                const embed = result.embeddingModels || [];
+                const conf = result.configured || {};
+                const mark = (name, list) => list.includes(name) ? '✓ 使えます' : '✗ このキーでは使えません';
+                status.innerHTML = `
+                    <div class="mt-2">
+                        <div>生成モデル(GEMINI_MODEL): <code>${escapeAttr(conf.chat || '')}</code> — ${mark(conf.chat, chat)}</div>
+                        <div>埋め込み(GEMINI_EMBEDDING_MODEL): <code>${escapeAttr(conf.embedding || '')}</code> — ${mark(conf.embedding, embed)}</div>
+                        <details class="mt-2"><summary class="cursor-pointer">使える生成モデル ${chat.length}件</summary>
+                            <div class="mt-1">${chat.map(n => `<div>${escapeAttr(n)}</div>`).join('')}</div></details>
+                        <details class="mt-1"><summary class="cursor-pointer">使える埋め込みモデル ${embed.length}件</summary>
+                            <div class="mt-1">${embed.map(n => `<div>${escapeAttr(n)}</div>`).join('')}</div></details>
+                    </div>`;
             } catch (e) {
                 status.textContent = `エラー: ${e.message}`;
             }
         }
 
         // --- 記事の分析(タグのボトムアップ生成の材料) ---
-        // Geminiの無料枠は 2.5 Flash で 5回/分・20回/日。これを超えると429になるので、
-        // 1バッチの件数と間隔をその範囲に収める(2件を30秒おき = 4回/分)。
-        // 20回/日の制限はコードでは回避できないため、全件終わらない場合は日を分けるか課金が要る
-        // 1リクエストに複数記事をまとめて入れるので、回数は「記事数÷ANALYZE_BATCH」で済む。
-        // 26記事なら5回程度となり、1日20回の枠に収まる
+        // Geminiの無料枠は回数制限が厳しい(2.5 Flashで5回/分・20回/日)。
+        // 1リクエストに複数記事をまとめて入れるので、必要な回数は「記事数÷ANALYZE_BATCH」。
+        // 26記事なら6回程度で、1日の枠に収まる
         const ANALYZE_BATCH = 5;
         const ANALYZE_INTERVAL_SEC = 15;
 
@@ -3639,10 +3648,15 @@
                         return;
                     }
                     if (!data.remaining || (!data.processed.length && !data.failed.length)) {
-                        status.textContent = collected.length
-                            ? `完了：${collected.length}件を分析しました`
-                              + (failures.length ? `（${failures.length}件は失敗）` : '')
-                            : 'すべて分析済みです（本文に変更のある記事はありませんでした）';
+                        if (collected.length) {
+                            status.textContent = `完了：${collected.length}件を分析しました`
+                                + (failures.length ? `（${failures.length}件は失敗）` : '');
+                        } else if (failures.length) {
+                            // 全件失敗したときに「すべて分析済み」と出ると誤解を招く
+                            status.textContent = `${failures.length}件すべて失敗しました。下のエラー内容を確認してください。`;
+                        } else {
+                            status.textContent = 'すべて分析済みです（本文に変更のある記事はありませんでした）';
+                        }
                         return;
                     }
 

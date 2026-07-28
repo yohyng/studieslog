@@ -77,8 +77,18 @@ module.exports = async function handler(req, res) {
                 `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(geminiKey)}`
             );
             const data = await r.json();
-            const names = (data.models || []).map(m => m.name);
-            res.status(200).json({ models: names });
+            // 生成に使えるモデルだけを分けて返す。設定中のモデル名も返して、
+            // 「設定しているモデルが実際に使えるか」をそのまま確認できるようにする
+            const models = (data.models || []).map(m => ({
+                name: String(m.name || '').replace(/^models\//, ''),
+                methods: m.supportedGenerationMethods || [],
+            }));
+            res.status(200).json({
+                configured: { chat: CHAT_MODEL, embedding: EMBEDDING_MODEL },
+                chatModels: models.filter(m => m.methods.includes('generateContent')).map(m => m.name),
+                embeddingModels: models.filter(m => m.methods.includes('embedContent')).map(m => m.name),
+                models: models.map(m => m.name),
+            });
             return;
         }
         res.status(400).json({ error: 'unknown action' });
