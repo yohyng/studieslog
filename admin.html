@@ -3591,6 +3591,12 @@
         }
 
         // --- 記事の分析(タグのボトムアップ生成の材料) ---
+        // Geminiの無料枠は 2.5 Flash で 5回/分・20回/日。これを超えると429になるので、
+        // 1バッチの件数と間隔をその範囲に収める(2件を30秒おき = 4回/分)。
+        // 20回/日の制限はコードでは回避できないため、全件終わらない場合は日を分けるか課金が要る
+        const ANALYZE_BATCH = 2;
+        const ANALYZE_INTERVAL_SEC = 30;
+
         // 1回のリクエストで数件ずつしか進まないので、終わるまで繰り返し呼ぶ
         async function runArticleAnalysis(force = false) {
             const btn = document.getElementById('analyze-btn');
@@ -3608,7 +3614,7 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
                         body: JSON.stringify({
-                            action: 'analyze-articles', limit: 4,
+                            action: 'analyze-articles', limit: ANALYZE_BATCH,
                             force: force && guard === 0, skip,
                         }),
                     });
@@ -3636,6 +3642,14 @@
                               + (failures.length ? `（${failures.length}件は失敗）` : '')
                             : 'すべて分析済みです（本文に変更のある記事はありませんでした）';
                         return;
+                    }
+
+                    // Geminiの無料枠は1分あたりの回数が少ない(2.5 Flashで5回)。
+                    // 続けて投げると429になるので、次のバッチまで待つ。止まって見えないよう残り秒数を出す
+                    for (let wait = ANALYZE_INTERVAL_SEC; wait > 0; wait--) {
+                        status.textContent = `分析中… ${data.analyzed}/${data.total}`
+                            + `（残り${data.remaining}件 / レート制限のため${wait}秒待機）`;
+                        await new Promise((r) => setTimeout(r, 1000));
                     }
                     // 全件やり直しは初回だけ。2回目以降はハッシュで飛ばさせる
                     force = false;

@@ -110,6 +110,8 @@ async function embedTexts(texts, geminiKey) {
     const vectors = [];
     for (const text of texts) {
         vectors.push(await embedText(text, geminiKey));
+        // 埋め込みの無料枠は 100回/分・30Kトークン/分。連続で投げると超えるので少し間を置く
+        await sleep(700);
     }
     return vectors;
 }
