@@ -281,17 +281,24 @@ ${query}`;
 // 保存しておく。タグはこれらを統合した結果として、あとからボトムアップに生まれる。
 // そのため、ここでは既存のタグ語彙を一切プロンプトに含めない。
 
-const ANALYZE_PROMPT = `あなたはこのアーカイブの書き手のアシスタントです。以下の記事を読んで、内容を分析してください。
+const ANALYZE_PROMPT = `あなたはこのアーカイブの書き手のアシスタントです。以下の記事それぞれを読んで、内容を分析してください。
 
-重要な前提: 既存の分類やタグは一切考慮しないでください。この記事そのものが何を扱い、何を論じているかだけを見てください。
+重要な前提: 既存の分類やタグは一切考慮しないでください。それぞれの記事そのものが何を扱い、何を論じているかだけを見てください。
 分類のために都合よく丸めず、実際に書かれていることに即して抽出してください。
+記事どうしを揃えようとせず、1件ずつ独立に読んでください。
 
 出力は次の形のJSONのみ。前後に説明やコードブロックの記号を付けないでください。
+入力された記事すべてについて、idをそのまま使って返してください。
 {
-  "summary": "1〜2文で、この記事が何を論じているか",
-  "themes": ["この記事の主題。2〜4個。抽象度は中くらい(「建築」のように広すぎず、固有名詞のように狭すぎない)"],
-  "concepts": ["論の中で鍵になっている概念や語。3〜6個"],
-  "subjects": ["具体的に言及されている書名・人名・作品・場所・製品。0〜8個。無ければ空配列"]
+  "results": [
+    {
+      "id": 記事のid(数値),
+      "summary": "1〜2文で、この記事が何を論じているか",
+      "themes": ["この記事の主題。2〜4個。抽象度は中くらい(「建築」のように広すぎず、固有名詞のように狭すぎない)"],
+      "concepts": ["論の中で鍵になっている概念や語。3〜6個"],
+      "subjects": ["具体的に言及されている書名・人名・作品・場所・製品。0〜8個。無ければ空配列"]
+    }
+  ]
 }`;
 
 /** GeminiがJSONをコードブロックで包んで返すことがあるので、それを剥がして解析する */
@@ -357,39 +364,56 @@ async function analyzeArticles({ serviceKey, geminiKey, limit, force, skip }) {
     const processed = [];
     const failed = [];
     let quotaExceeded = false;
-    for (const article of pending.slice(0, limit)) {
-        const plain = stripHtml(article.content);
-        const prompt = `${ANALYZE_PROMPT}
 
-# 記事のタイトル
-${article.title || '(無題)'}
-
-# 記事の本文
-${plain.slice(0, 12000)}`;
+    // 無料枠は「1日あたりの回数」が少ない(2.5 Flashで20回)。1記事1リクエストだと
+    // 26記事で26回かかって枠に収まらないので、複数記事をまとめて1回で投げる
+    const batch = pending.slice(0, limit);
+    if (batch.length) {
+        const body = batch.map((a) => `## id: ${a.id}
+### タイトル
+${a.title || '(無題)'}
+### 本文
+${stripHtml(a.content).slice(0, 8000)}`).join('\n\n---\n\n');
 
         try {
-            const data = await geminiGenerate(prompt, geminiKey);
+            const data = await geminiGenerate(`${ANALYZE_PROMPT}\n\n# 記事\n\n${body}`, geminiKey);
             const parsed = parseJsonLoose(data?.candidates?.[0]?.content?.parts?.[0]?.text || '');
+            const results = Array.isArray(parsed.results) ? parsed.results : [];
+            const byId = new Map(results.map((r) => [Number(r.id), r]));
 
-            const row = {
-                article_id: article.id,
-                summary: String(parsed.summary || ''),
-                themes: Array.isArray(parsed.themes) ? parsed.themes.map(String) : [],
-                concepts: Array.isArray(parsed.concepts) ? parsed.concepts.map(String) : [],
-                subjects: Array.isArray(parsed.subjects) ? parsed.subjects.map(String) : [],
-                content_hash: contentHash(plain),
-                analyzed_at: new Date().toISOString(),
-            };
-            await supabaseRest('/article_analysis', serviceKey, {
-                method: 'POST',
-                headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-                body: JSON.stringify([row]),
-            });
-            processed.push({ id: article.id, title: article.title, themes: row.themes });
+            const rows = [];
+            for (const article of batch) {
+                const r = byId.get(article.id);
+                if (!r) {
+                    failed.push({ id: article.id, title: article.title, error: '結果が返りませんでした' });
+                    continue;
+                }
+                rows.push({
+                    article_id: article.id,
+                    summary: String(r.summary || ''),
+                    themes: Array.isArray(r.themes) ? r.themes.map(String) : [],
+                    concepts: Array.isArray(r.concepts) ? r.concepts.map(String) : [],
+                    subjects: Array.isArray(r.subjects) ? r.subjects.map(String) : [],
+                    content_hash: contentHash(stripHtml(article.content)),
+                    analyzed_at: new Date().toISOString(),
+                });
+                processed.push({ id: article.id, title: article.title, themes: rows[rows.length - 1].themes });
+            }
+
+            if (rows.length) {
+                await supabaseRest('/article_analysis', serviceKey, {
+                    method: 'POST',
+                    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+                    body: JSON.stringify(rows),
+                });
+            }
         } catch (e) {
-            failed.push({ id: article.id, title: article.title, error: String(e.message || e) });
+            const message = String(e.message || e);
+            for (const article of batch) {
+                failed.push({ id: article.id, title: article.title, error: message });
+            }
             // 利用上限に達したら、この先を試しても同じなので打ち切る
-            if (e.status === 429) { quotaExceeded = true; break; }
+            if (e.status === 429) quotaExceeded = true;
         }
     }
 
@@ -397,7 +421,7 @@ ${plain.slice(0, 12000)}`;
         processed,
         failed,
         quotaExceeded,
-        remaining: Math.max(0, pending.length - Math.min(limit, pending.length)),
+        remaining: Math.max(0, pending.length - batch.length),
         total: (articles || []).length,
         analyzed: (done || []).length + processed.length,
     };

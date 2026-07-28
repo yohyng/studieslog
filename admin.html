@@ -3594,8 +3594,10 @@
         // Geminiの無料枠は 2.5 Flash で 5回/分・20回/日。これを超えると429になるので、
         // 1バッチの件数と間隔をその範囲に収める(2件を30秒おき = 4回/分)。
         // 20回/日の制限はコードでは回避できないため、全件終わらない場合は日を分けるか課金が要る
-        const ANALYZE_BATCH = 2;
-        const ANALYZE_INTERVAL_SEC = 30;
+        // 1リクエストに複数記事をまとめて入れるので、回数は「記事数÷ANALYZE_BATCH」で済む。
+        // 26記事なら5回程度となり、1日20回の枠に収まる
+        const ANALYZE_BATCH = 5;
+        const ANALYZE_INTERVAL_SEC = 15;
 
         // 1回のリクエストで数件ずつしか進まないので、終わるまで繰り返し呼ぶ
         async function runArticleAnalysis(force = false) {
