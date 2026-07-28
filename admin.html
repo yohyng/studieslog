@@ -1461,7 +1461,14 @@
                         scheduleAutosaveDraft();
                         if (id === 'edit-content') {
                             updateCharCount();
-                            renderFootnoteListPanel();
+                            if (!footnotePanelEditing) {
+                                renderFootnoteListPanel();
+                                // 本文から脚注を消した場合に以降の番号を詰める。
+                                // onUpdateの中で更に発行するとネストするので次のタスクへ回す。
+                                // 番号が揃っていれば何も発行しないのでループにはならない
+                                queueMicrotask(() =>
+                                    window.StudiesEditor.renumberFootnotes(tiptapEditors[id]));
+                            }
                         }
                     },
                 });
@@ -1484,6 +1491,17 @@
             const inst = tiptapEditors[id];
             if (inst) return inst.getText();
             return document.getElementById(id).textContent;
+        }
+
+        // 一覧パネルで入力中は、本文側の更新を受けて一覧を作り直さない(下記参照)
+        let footnotePanelEditing = false;
+
+        /** 本文中の脚注の注釈本文を、文書順の配列で返す */
+        function footnoteNotes() {
+            const inst = tiptapEditors['edit-content'];
+            if (inst) return window.StudiesEditor.listFootnotes(inst).map((f) => f.note);
+            return Array.from(document.getElementById('edit-content')
+                .querySelectorAll('.footnote-ref')).map((el) => el.dataset.note || '');
         }
 
         function edFocus(id) {
@@ -3542,10 +3560,11 @@
         let savedFootnoteRange = null;
 
         function insertFootnote() {
-            const editor = document.getElementById('edit-content');
-            editor.focus();
+            edFocus('edit-content');
+            // Tiptapはカーソル位置を自前の状態として持っているのでRangeの保存は不要
             const sel = window.getSelection();
-            savedFootnoteRange = sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
+            savedFootnoteRange = (!tiptapEditors['edit-content'] && sel.rangeCount > 0)
+                ? sel.getRangeAt(0).cloneRange() : null;
             const input = document.getElementById('footnote-input');
             input.value = '';
             document.getElementById('footnote-modal').classList.remove('hidden');
@@ -3571,6 +3590,12 @@
             const range = savedFootnoteRange;
             closeFootnoteModal();
             if (!note) return;
+            const inst = tiptapEditors['edit-content'];
+            if (inst) {
+                window.StudiesEditor.insertFootnote(inst, note);
+                renderFootnoteListPanel();
+                return;
+            }
             const editor = document.getElementById('edit-content');
             editor.focus();
             // execCommand('insertHTML', ...)だと、Chromeが挿入時にHTMLを独自に正規化してしまい、
@@ -3618,7 +3643,7 @@
             const editor = document.getElementById('edit-content');
             const panel = document.getElementById('footnote-list-panel');
             const list = document.getElementById('footnote-list-items');
-            const refs = Array.from(editor.querySelectorAll('.footnote-ref'));
+            const refs = footnoteNotes();
             if (refs.length === 0) {
                 panel.classList.add('hidden');
                 list.innerHTML = '';
@@ -3627,10 +3652,10 @@
             panel.classList.remove('hidden');
             // rows=3を最低の高さにしつつ、それより長い内容ならさらに伸ばす(overflow:hiddenにはせず、
             // 万一伸ばしきれなくてもスクロールで読めるようにして、内容が隠れて見えなくなるのを防ぐ)
-            list.innerHTML = refs.map((ref, i) => `
+            list.innerHTML = refs.map((note, i) => `
                 <div class="flex items-start gap-2">
                     <span class="text-xs text-white/40 pt-2 shrink-0">[${i + 1}]</span>
-                    <textarea rows="3" style="min-height: 4.5em;" class="flex-1 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30" oninput="updateFootnoteNoteFromPanel(${i}, this.value); autoGrowTextarea(this);">${escapeAttr(ref.dataset.note || '')}</textarea>
+                    <textarea rows="3" style="min-height: 4.5em;" class="flex-1 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30" oninput="updateFootnoteNoteFromPanel(${i}, this.value); autoGrowTextarea(this);">${escapeAttr(note)}</textarea>
                 </div>
             `).join('');
             list.querySelectorAll('textarea').forEach(autoGrowTextarea);
@@ -3643,6 +3668,15 @@
         }
 
         function updateFootnoteNoteFromPanel(index, value) {
+            const inst = tiptapEditors['edit-content'];
+            if (inst) {
+                // 書き戻すとonUpdateが走る。そこで一覧を作り直すと、入力中のtextareaごと
+                // 差し替わってフォーカスが飛ぶので、その間だけ再描画を抑える
+                footnotePanelEditing = true;
+                try { window.StudiesEditor.updateFootnote(inst, index, value); }
+                finally { footnotePanelEditing = false; }
+                return;
+            }
             const ref = document.getElementById('edit-content').querySelectorAll('.footnote-ref')[index];
             if (ref) ref.dataset.note = value;
         }
