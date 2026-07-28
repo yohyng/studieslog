@@ -382,6 +382,21 @@
                     </div>
                     <p class="text-xs text-white/30 mb-6">見出し・本文の色はここから、細かい部分(メタ情報・枠線など)の色は自動で調整されます。</p>
 
+                    <label class="text-xs text-white/50 block mb-2">配信メールの背景（グラデーション・ノイズ）</label>
+                    <p class="text-xs text-white/30 mb-3">
+                        メールでは埋め込み画像(data:)が使えないため、いま表示設定で選んでいる背景を1枚の画像に焼き込んで書き出します。
+                        背景を変えたときは押し直してください。<br>
+                        多くのメールクライアントは既定で外部画像を読み込まないので、画像が出るまでは上の背景色が使われます。
+                    </p>
+                    <div class="flex items-center gap-3 mb-2">
+                        <button onclick="exportDigestBackgroundImage()" id="digest-bg-export-btn"
+                                class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">背景を書き出す</button>
+                        <button onclick="clearDigestBackgroundImage()"
+                                class="px-3 py-1.5 text-xs text-white/40 hover:text-white/70 transition-colors">背景なしにする</button>
+                        <span id="digest-bg-status" class="text-xs text-white/40"></span>
+                    </div>
+                    <div id="digest-bg-preview" class="hidden mb-6 rounded overflow-hidden border border-white/10" style="height: 90px; background-repeat: repeat;"></div>
+
                     <label class="text-xs text-white/50 block mb-2">Subscribeボタンの配色(サイドバー・記事下部共通のデフォルト。記事本文タブで記事下部だけ個別に上書き可)</label>
                     <div class="flex items-center gap-6 mb-4">
                         <div class="flex items-center gap-2">
@@ -2124,6 +2139,136 @@
             }
         }
 
+        // --- 配信メール用の背景画像の書き出し ---
+        // メールでは data: URI が除去され、背景の重ね掛けも効かず、WebPを読めないクライアントもある。
+        // そこで、管理画面に実際に適用されている背景(閲覧ページと同じもの)をcanvasで1枚のPNGに
+        // 焼き込み、Storageへ上げてURLで参照する。
+
+        /** カンマ区切りのCSS値を、括弧の中のカンマを無視して分解する */
+        function splitCssList(value) {
+            const out = [];
+            let depth = 0, current = '';
+            for (const ch of String(value || '')) {
+                if (ch === '(') depth++;
+                if (ch === ')') depth--;
+                if (ch === ',' && depth === 0) { out.push(current.trim()); current = ''; continue; }
+                current += ch;
+            }
+            if (current.trim()) out.push(current.trim());
+            return out;
+        }
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('画像を読み込めませんでした'));
+                img.src = src;
+            });
+        }
+
+        async function exportDigestBackgroundImage() {
+            const btn = document.getElementById('digest-bg-export-btn');
+            const status = document.getElementById('digest-bg-status');
+            btn.disabled = true;
+            status.textContent = '書き出し中…';
+            try {
+                const cs = getComputedStyle(document.body);
+                const layers = splitCssList(cs.backgroundImage);
+                const sizes = splitCssList(cs.backgroundSize);
+                if (!layers.length || layers[0] === 'none') {
+                    status.textContent = '背景が設定されていません（表示設定で選んでください）';
+                    return;
+                }
+
+                // CSSの重ね順は「先頭が一番上」。canvasには下から順に描くので反転する
+                const ordered = layers.map((layer, i) => ({ layer, size: sizes[i] || 'auto' })).reverse();
+
+                // 一番下の画像レイヤーの実寸をタイルの基準にする。
+                // 100vwのように引き伸ばす指定のものは、メール本文の幅(700px)で焼く
+                let base = null;
+                for (const { layer, size } of ordered) {
+                    const m = /^url\(["']?(.+?)["']?\)$/.exec(layer);
+                    if (!m) continue;
+                    const img = await loadImage(m[1]);
+                    const px = /^(\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px$/.exec(size);
+                    base = px
+                        ? { w: Math.round(+px[1]), h: Math.round(+px[2]) }
+                        : { w: 700, h: Math.min(2400, img.naturalHeight || 1000) };
+                    break;
+                }
+                if (!base) {
+                    status.textContent = '画像の背景が見つかりませんでした';
+                    return;
+                }
+                // 大きすぎるとメールで重くなるので上限を設ける
+                const W = Math.min(base.w, 1400), H = Math.min(base.h, 2400);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = W;
+                canvas.height = H;
+                const ctx = canvas.getContext('2d');
+                // 画像が透過を含む場合に備えて、下地に背景色を敷いておく
+                ctx.fillStyle = document.getElementById('set-digest-bg-color').value || '#000000';
+                ctx.fillRect(0, 0, W, H);
+
+                for (const { layer, size } of ordered) {
+                    const urlMatch = /^url\(["']?(.+?)["']?\)$/.exec(layer);
+                    if (urlMatch) {
+                        const img = await loadImage(urlMatch[1]);
+                        const px = /^(\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px$/.exec(size);
+                        const tw = px ? +px[1] : W;
+                        const th = px ? +px[2] : H;
+                        for (let y = 0; y < H; y += th) {
+                            for (let x = 0; x < W; x += tw) ctx.drawImage(img, x, y, tw, th);
+                        }
+                        continue;
+                    }
+                    // silverの暗さ調整のような、単色を重ねるだけのlinear-gradientは色として再現する。
+                    // 斜めの光沢(sheen)は効果が薄いので落とす
+                    const solid = /^linear-gradient\(\s*(rgba?\([^)]*\))\s*,\s*\1\s*\)$/.exec(layer);
+                    if (solid) {
+                        ctx.fillStyle = solid[1];
+                        ctx.fillRect(0, 0, W, H);
+                    }
+                }
+
+                const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+                if (!blob) { status.textContent = '画像の生成に失敗しました'; return; }
+                const file = new File([blob], `digest-bg-${Date.now()}.png`, { type: 'image/png' });
+                const url = await uploadImageFile(file);
+                if (!url) { status.textContent = 'アップロードに失敗しました'; return; }
+
+                const { error } = await sb.from('site_settings').update({ digest_bg_image: url }).eq('id', 1);
+                if (error) {
+                    console.error(error);
+                    status.textContent = '保存に失敗しました（digest_bg_image列が必要です）';
+                    return;
+                }
+                showDigestBgPreview(url);
+                status.textContent = `書き出しました（${W}×${H}, ${Math.round(blob.size / 1024)}KB）`;
+            } catch (e) {
+                console.error(e);
+                status.textContent = '書き出しに失敗しました: ' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function clearDigestBackgroundImage() {
+            const { error } = await sb.from('site_settings').update({ digest_bg_image: '' }).eq('id', 1);
+            if (error) { console.error(error); showToast('解除に失敗しました'); return; }
+            showDigestBgPreview('');
+            document.getElementById('digest-bg-status').textContent = '背景なしにしました';
+        }
+
+        function showDigestBgPreview(url) {
+            const el = document.getElementById('digest-bg-preview');
+            el.classList.toggle('hidden', !url);
+            el.style.backgroundImage = url ? `url("${url}")` : '';
+        }
+
         async function applyAdminBackgroundColor() {
             const { data, error } = await sb.from('site_settings')
                 .select('bg_color, gradient_bg_style, bg_image_url, silver_darkness')
@@ -2820,12 +2965,13 @@
         let subscribers = [];
 
         async function loadDigestColorSettings() {
-            const { data, error } = await sb.from('site_settings').select('digest_bg_color, digest_text_color, subscribe_bg_color, subscribe_text_color').eq('id', 1).single();
+            const { data, error } = await sb.from('site_settings').select('digest_bg_color, digest_text_color, digest_bg_image, subscribe_bg_color, subscribe_text_color').eq('id', 1).single();
             if (error) {
                 console.error(error);
                 return;
             }
             document.getElementById('set-digest-bg-color').value = data.digest_bg_color || '#f4f1ea';
+            showDigestBgPreview(data.digest_bg_image || '');
             document.getElementById('set-digest-text-color').value = data.digest_text_color || '#2b2b28';
             document.getElementById('set-subscribe-bg-color').value = data.subscribe_bg_color || '#ffffff';
             document.getElementById('set-subscribe-text-color').value = data.subscribe_text_color || '#6b7278';
@@ -3020,7 +3166,7 @@
                     .order('date', { ascending: false })
                     .limit(5),
                 // 送信時と同じ見た目にするため、表示設定も一式取る
-                sb.from('site_settings').select('site_title, og_image, digest_bg_color, digest_text_color, font, title_font, font_size, line_height, letter_spacing, text_align, content_width, bg_color, text_color, body_text_opacity, title_text_opacity, footnote_color').eq('id', 1).single(),
+                sb.from('site_settings').select('site_title, og_image, digest_bg_color, digest_text_color, digest_bg_image, font, title_font, font_size, line_height, letter_spacing, text_align, content_width, bg_color, text_color, body_text_opacity, title_text_opacity, footnote_color').eq('id', 1).single(),
             ]);
             if (error) {
                 console.error(error);
@@ -3048,6 +3194,7 @@
                 textColor: settings.digest_text_color,
                 fontFamily: settings.font,
                 typography: settings,
+                bgImage: settings.digest_bg_image,
             });
 
             document.getElementById('email-preview-subject').textContent = `件名: 【${settings.site_title || ''}】今週の更新(${articles.length}件) ※実際の送信内容そのままではなく、直近の公開記事を使った見た目確認用です`;
