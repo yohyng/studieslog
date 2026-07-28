@@ -2240,14 +2240,21 @@
                     status.textContent = '画像の背景が見つかりませんでした';
                     return;
                 }
-                // 大きすぎるとメールで重くなるので上限を設ける
-                const W = Math.min(base.w, 1400), H = Math.min(base.h, 2400);
+
+                // スマホなどの高解像度画面では、CSSピクセル数のままだと画像を引き伸ばして
+                // 表示することになり粗く見える。実際に表示するサイズの2倍の解像度で書き出し、
+                // メール側では background-size:100% で表示幅に縮小させることで精細に見せる
+                // (画像は本文にBase64で埋め込まず外部URL参照なので、多少重くてもメール自体が
+                // 開けなくなることはない。とはいえ上限は設けておく)
+                const SCALE = 2;
+                const W = Math.min(base.w * SCALE, 1600);
+                const H = Math.min(base.h * SCALE, 4000);
 
                 const canvas = document.createElement('canvas');
                 canvas.width = W;
                 canvas.height = H;
                 const ctx = canvas.getContext('2d');
-                // 画像が透過を含む場合に備えて、下地に背景色を敷いておく
+                // JPEGは透過を持てないので、下地に背景色を敷いておく
                 ctx.fillStyle = document.getElementById('set-digest-bg-color').value || '#000000';
                 ctx.fillRect(0, 0, W, H);
 
@@ -2258,9 +2265,10 @@
                         const { x: repX, y: repY } = repeatFlags(repeat);
                         const px = /^(\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px$/.exec(size);
                         // 繰り返さない軸はキャンバス全体の寸法で1枚だけ敷く(tw=Wにすると
-                        // x+=twの1回でループが終わるので、繰り返しループはそのまま使い回せる)
-                        const tw = repX && px ? +px[1] : W;
-                        const th = repY && px ? +px[2] : H;
+                        // x+=twの1回でループが終わるので、繰り返しループはそのまま使い回せる)。
+                        // 実際に繰り返すタイルの寸法はSCALEをかけて、キャンバス全体の解像度と揃える
+                        const tw = repX && px ? +px[1] * SCALE : W;
+                        const th = repY && px ? +px[2] * SCALE : H;
                         for (let y = 0; y < H; y += th) {
                             for (let x = 0; x < W; x += tw) ctx.drawImage(img, x, y, tw, th);
                         }
@@ -2275,9 +2283,12 @@
                     }
                 }
 
-                const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+                // ノイズのような細かい階調はPNG(可逆圧縮)だと苦手でファイルサイズが膨らみやすい。
+                // JPEGなら見た目にはほぼ差が出ないまま大幅に軽くなるため、2倍解像度にしても
+                // 総容量は同程度かそれ以下に収まる
+                const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
                 if (!blob) { status.textContent = '画像の生成に失敗しました'; return; }
-                const file = new File([blob], `digest-bg-${Date.now()}.png`, { type: 'image/png' });
+                const file = new File([blob], `digest-bg-${Date.now()}.jpg`, { type: 'image/jpeg' });
                 const url = await uploadImageFile(file);
                 if (!url) { status.textContent = 'アップロードに失敗しました'; return; }
 
