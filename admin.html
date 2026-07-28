@@ -1431,11 +1431,11 @@
         const IMAGE_BUCKET = 'article-images';
 
         // --- Tiptapエディタへの移行(段階導入) ---------------------------------
-        // URLに ?tiptap=1 を付けたときだけ新エディタを使う。既定は従来の
-        // contenteditable + execCommand のままなので、通常の編集は影響を受けない。
+        // 既定でTiptapを使う。?tiptap=0 を付けると従来の contenteditable +
+        // execCommand のエディタに戻せる(デプロイし直さずその場で切り替わる)。
         // 本文の読み書きは以下の edGet/edSet/edText/edFocus 経由に統一してあり、
         // どちらのエディタでも同じように動く。
-        const USE_TIPTAP = new URLSearchParams(location.search).has('tiptap');
+        const USE_TIPTAP = new URLSearchParams(location.search).get('tiptap') !== '0';
         const tiptapEditors = {};   // 要素id -> Tiptapのインスタンス
 
         function tiptapReady() {
