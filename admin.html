@@ -2115,10 +2115,21 @@
                     const articleBoxPad = 1.5 * t.font_size * 2;
                     const wrapWidth = Math.max(200, t.content_width - articleBoxPad);
 
-                    // 編集欄には枠線と左右の余白(px-4)があり、box-sizing:border-boxなので
-                    // max-widthをwrapWidthにすると、その分だけ内側で折り返してしまい
-                    // 閲覧画面より本文が狭くなる。実際の余白を測って足し戻す
-                    // (タイプライターモードでは余白が0になるので、そのときも自動で正しくなる)
+                    // 左右の余白も閲覧側の記事枠(padding:1.5rem)と同じにする。
+                    // Tailwindのpx-4(16px)のままだと本文の折り返しは合っていても
+                    // 枠線の位置が閲覧画面と十数pxずれる。
+                    // タイプライターモードは余白0にするCSSがあり、インラインstyleだと
+                    // それを打ち消してしまうので、そのときは指定を外す
+                    if (typewriterMode) {
+                        editor.style.paddingLeft = '';
+                        editor.style.paddingRight = '';
+                    } else {
+                        editor.style.paddingLeft = (1.5 * t.font_size) + 'px';
+                        editor.style.paddingRight = (1.5 * t.font_size) + 'px';
+                    }
+
+                    // box-sizing:border-boxなので、max-widthをwrapWidthにすると枠と余白の分だけ
+                    // 内側で折り返してしまう。実際の枠を測って足し戻す
                     const cs = getComputedStyle(editor);
                     const frame = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
                         + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
