@@ -2208,7 +2208,14 @@
                 </span>
                 ${image ? `<img src="${escapeAttr(image)}" style="width:3rem; flex-shrink:0; object-fit:cover; aspect-ratio:1;">` : ''}
             </a><p></p>`;
-            document.execCommand('insertHTML', false, cardHtml);
+            const cardInst = tiptapEditors['edit-content'];
+            if (cardInst) {
+                window.StudiesEditor.insertBookLinkCard(cardInst, {
+                    href: url.trim(), label, domain, image,
+                });
+            } else {
+                document.execCommand('insertHTML', false, cardHtml);
+            }
             showToast('挿入しました');
         }
 
@@ -3774,7 +3781,9 @@
                 showToast(images.length > 1 ? `アップロード中... (${i + 1}/${images.length})` : 'アップロード中...', 60000);
                 const url = await uploadImageFile(images[i]);
                 if (url) {
-                    document.execCommand('insertImage', false, url);
+                    const inst = tiptapEditors['edit-content'];
+                    if (inst) window.StudiesEditor.insertImage(inst, url);
+                    else document.execCommand('insertImage', false, url);
                     inserted++;
                 }
             }
@@ -3792,7 +3801,7 @@
             input.multiple = true;
             input.onchange = async () => {
                 if (!input.files || !input.files.length) return;
-                document.getElementById('edit-content').focus();
+                edFocus('edit-content');
                 await insertImageFiles(input.files);
             };
             input.click();
@@ -3832,8 +3841,13 @@
                 editor.classList.remove('drag-over');
                 const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
                 if (!files.length) return;
-                editor.focus();
-                placeCaretAtPoint(e.clientX, e.clientY);
+                const inst = tiptapEditors['edit-content'];
+                if (inst) {
+                    window.StudiesEditor.focusAtCoords(inst, e.clientX, e.clientY);
+                } else {
+                    editor.focus();
+                    placeCaretAtPoint(e.clientX, e.clientY);
+                }
                 await insertImageFiles(files);
             });
         }
@@ -3876,6 +3890,21 @@
 
         function resizeSelectedImage(percent) {
             if (!selectedImage) return;
+            const style = percent === null ? '' : `width: ${percent}%; height: auto;`;
+            const inst = tiptapEditors['edit-content'];
+            if (inst) {
+                // DOMのstyleを直接変えてもgetHTML()は文書の状態から作られるので保存されない。
+                // 対応するノードの属性を書き換える
+                window.StudiesEditor.setImageStyle(inst, selectedImage, style);
+                // 差し替え後のDOMに合わせて選択枠とツールバーを付け直す
+                const src = selectedImage.getAttribute('src');
+                requestAnimationFrame(() => {
+                    const img = document.getElementById('edit-content')
+                        .querySelector(`img[src="${CSS.escape(src)}"]`);
+                    if (img) selectImage(img); else deselectImage();
+                });
+                return;
+            }
             if (percent === null) {
                 selectedImage.style.width = '';
                 selectedImage.style.height = '';
