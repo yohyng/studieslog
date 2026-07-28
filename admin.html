@@ -3598,14 +3598,19 @@
             btn.disabled = true;
             const collected = [];
             const failures = [];
+            // 失敗した記事は保存されないので、除外しないと同じ記事を延々と再試行してしまう
+            const skip = [];
             try {
-                for (let guard = 0; guard < 200; guard++) {
+                for (let guard = 0; guard < 100; guard++) {
                     const { data: { session } } = await sb.auth.getSession();
                     if (!session) { status.textContent = 'ログイン状態を確認できませんでした'; return; }
                     const res = await fetch('/api/rag', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-                        body: JSON.stringify({ action: 'analyze-articles', limit: 4, force: force && guard === 0 }),
+                        body: JSON.stringify({
+                            action: 'analyze-articles', limit: 4,
+                            force: force && guard === 0, skip,
+                        }),
                     });
                     if (!res.ok) {
                         const detail = await res.text();
@@ -3614,12 +3619,21 @@
                     }
                     const data = await res.json();
                     collected.push(...(data.processed || []));
-                    failures.push(...(data.failed || []));
+                    for (const f of data.failed || []) {
+                        if (!skip.includes(f.id)) { skip.push(f.id); failures.push(f); }
+                    }
                     status.textContent = `分析中… ${data.analyzed}/${data.total}（残り${data.remaining}件）`;
                     renderAnalysisResult(collected, failures);
+
+                    if (data.quotaExceeded) {
+                        status.textContent = `Geminiの利用上限に達しました。${collected.length}件まで分析済みです。`
+                            + '枠が回復してから、もう一度押せば続きから再開します。';
+                        return;
+                    }
                     if (!data.remaining || (!data.processed.length && !data.failed.length)) {
                         status.textContent = collected.length
                             ? `完了：${collected.length}件を分析しました`
+                              + (failures.length ? `（${failures.length}件は失敗）` : '')
                             : 'すべて分析済みです（本文に変更のある記事はありませんでした）';
                         return;
                     }

@@ -67,7 +67,8 @@ module.exports = async function handler(req, res) {
             // 全件を1回で処理しようとすると関数の実行時間の上限に当たる
             const limit = Number(req.body?.limit) || 5;
             const force = req.body?.force === true;
-            const result = await analyzeArticles({ serviceKey, geminiKey, limit, force });
+            const skip = Array.isArray(req.body?.skip) ? req.body.skip : [];
+            const result = await analyzeArticles({ serviceKey, geminiKey, limit, force, skip });
             res.status(200).json(result);
             return;
         }
@@ -301,17 +302,50 @@ function parseJsonLoose(text) {
     return JSON.parse(cleaned.slice(start, end + 1));
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Geminiで生成する。503(一時的な混雑)は少し待って1度だけ再試行し、
+ * 429(利用上限)はステータスを付けて投げ直す。上限に達したら処理を続けても無駄なため。
+ */
+async function geminiGenerate(prompt, geminiKey, retries = 1) {
+    for (let attempt = 0; ; attempt++) {
+        const r = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${CHAT_MODEL}:generateContent?key=${encodeURIComponent(geminiKey)}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { responseMimeType: 'application/json' },
+                }),
+            }
+        );
+        if (r.ok) return r.json();
+        const detail = (await r.text()).slice(0, 200);
+        if (r.status === 503 && attempt < retries) { await sleep(2000); continue; }
+        const err = new Error(`gemini ${r.status}: ${detail}`);
+        err.status = r.status;
+        throw err;
+    }
+}
+
 function contentHash(text) {
     return require('node:crypto').createHash('sha1').update(String(text || '')).digest('hex');
 }
 
-async function analyzeArticles({ serviceKey, geminiKey, limit, force }) {
+async function analyzeArticles({ serviceKey, geminiKey, limit, force, skip }) {
     const articles = await supabaseRest('/articles?select=id,title,content&order=id', serviceKey, { method: 'GET' });
     const done = await supabaseRest('/article_analysis?select=article_id,content_hash', serviceKey, { method: 'GET' });
     const hashById = new Map((done || []).map((r) => [r.article_id, r.content_hash]));
 
+    // 一度失敗した記事は呼び出し側から渡してもらって除外する。
+    // 除外しないと保存されないまま pending に残り続け、同じ記事を延々と再試行してしまう
+    const skipSet = new Set((skip || []).map(Number));
+
     // 本文が変わっていない記事は飛ばす。書き足すたびに全件を投げ直さずに済む
     const pending = (articles || []).filter((a) => {
+        if (skipSet.has(a.id)) return false;
         const text = stripHtml(a.content);
         if (!text.trim()) return false;
         if (force) return true;
@@ -320,6 +354,7 @@ async function analyzeArticles({ serviceKey, geminiKey, limit, force }) {
 
     const processed = [];
     const failed = [];
+    let quotaExceeded = false;
     for (const article of pending.slice(0, limit)) {
         const plain = stripHtml(article.content);
         const prompt = `${ANALYZE_PROMPT}
@@ -331,19 +366,7 @@ ${article.title || '(無題)'}
 ${plain.slice(0, 12000)}`;
 
         try {
-            const r = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${CHAT_MODEL}:generateContent?key=${encodeURIComponent(geminiKey)}`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { responseMimeType: 'application/json' },
-                    }),
-                }
-            );
-            if (!r.ok) throw new Error(`gemini ${r.status}: ${(await r.text()).slice(0, 200)}`);
-            const data = await r.json();
+            const data = await geminiGenerate(prompt, geminiKey);
             const parsed = parseJsonLoose(data?.candidates?.[0]?.content?.parts?.[0]?.text || '');
 
             const row = {
@@ -363,13 +386,16 @@ ${plain.slice(0, 12000)}`;
             processed.push({ id: article.id, title: article.title, themes: row.themes });
         } catch (e) {
             failed.push({ id: article.id, title: article.title, error: String(e.message || e) });
+            // 利用上限に達したら、この先を試しても同じなので打ち切る
+            if (e.status === 429) { quotaExceeded = true; break; }
         }
     }
 
     return {
         processed,
         failed,
-        remaining: Math.max(0, pending.length - limit),
+        quotaExceeded,
+        remaining: Math.max(0, pending.length - Math.min(limit, pending.length)),
         total: (articles || []).length,
         analyzed: (done || []).length + processed.length,
     };
