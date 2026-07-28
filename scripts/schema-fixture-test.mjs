@@ -60,6 +60,8 @@ const fixtures = [
     ['リンクカード(divの中)', `<div>本文A</div><div>${CARD}</div><div>本文B</div>`],
     ['リンクカード(挿入時の実形)', `<div>本文A</div><div>${CARD}<p></p></div><div>本文B</div>`],
     ['空行(入れ子div)', '<div>A</div><div><div><br></div></div><div>B</div>'],
+    // <p></p> は閲覧ページ(p{margin:0})で高さを持たず空行が消えるので、<br>入りに揃える
+    ['空段落(br無し)', '<p>A</p><p></p><p>B</p>'],
     ['画像', '<p>前</p><img src="https://example.com/a.png"><p>後</p>'],
     ['画像(幅指定)', '<img src="https://example.com/a.png" style="width:50%; height:auto;">'],
     ['画像(選択中クラス混入)', '<img src="https://example.com/a.png" class="img-selected">'],
