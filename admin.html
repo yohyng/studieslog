@@ -12,6 +12,8 @@
     <!-- Tiptapエディタ(移行中)。window.StudiesEditor として公開される。
          エディタを開くのは操作後なので defer で問題ない -->
     <script src="/editor-bundle.js" defer></script>
+    <!-- メールのテンプレート(送信側と同じ実装をプレビューでも使う) -->
+    <script src="/lib/digest-template.js"></script>
 
     <style>
         body {
@@ -2987,81 +2989,6 @@
         }
 
         // send-digest.js / lib/digest-template.js と同じ見た目のHTMLを組み立てる(admin.html側はクライアントJSなのでrequireできず、手動で複製している)
-        function buildDigestPreviewHtml({ siteTitle, siteUrl, articles, unsubscribeUrl, bgColor, textColor, fontFamily }) {
-            const bg = bgColor || '#f4f1ea';
-            const text = textColor || '#2b2b28';
-            const muted = mixHexPreview(text, bg, 0.55);
-            const border = mixHexPreview(text, bg, 0.88);
-            const excerptColor = mixHexPreview(text, bg, 0.3);
-            const fontStack = fontFamily || "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif";
-            const rows = articles.map(a => {
-                const url = `${siteUrl}/article/${a.id}`;
-                const imageCell = a.image
-                    ? `<td width="64" style="width:64px; padding-right:14px; vertical-align:top;"><img src="${escapeAttr(a.image)}" width="64" height="64" style="width:64px; height:64px; object-fit:cover; border-radius:6px; display:block;" alt=""></td>`
-                    : '';
-                const excerptHtml = a.excerpt
-                    ? `<div style="font-size:13px; color:${excerptColor}; line-height:1.6; margin-top:6px; font-family:${fontStack};">${escapeAttr(a.excerpt)}</div>`
-                    : '';
-                return `
-                    <a href="${url}" style="text-decoration:none; display:block; padding:16px 0; border-bottom:1px solid ${border};">
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-                            <tr>
-                                ${imageCell}
-                                <td style="vertical-align:middle;">
-                                    <div style="font-size:11px; color:${muted}; margin-bottom:4px; font-family:${fontStack};">${escapeAttr(a.date)}</div>
-                                    <div style="font-size:15px; color:${text}; font-weight:600; line-height:1.5; font-family:${fontStack};">${escapeAttr(a.title)}</div>
-                                    ${excerptHtml}
-                                </td>
-                            </tr>
-                        </table>
-                    </a>
-                `;
-            }).join('');
-
-            const googleFontsUrl = "https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500&family=Shippori+Mincho+B1:wght@400;500&family=Noto+Serif+JP:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&family=Kaisei+Tokumin:wght@400;500;700&family=Kaisei+Decol:wght@400;700&family=BIZ+UDPMincho:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Kaku+Gothic+Antique:wght@400;500;700&family=Murecho:wght@400;500;700&family=RocknRoll+One&family=BIZ+UDPGothic:wght@400;700&family=Sawarabi+Gothic&family=M+PLUS+1p:wght@400;500;700&family=Kosugi+Maru&family=Zen+Maru+Gothic:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;500;700&family=Klee+One:wght@400;600&family=New+Tegomin&family=Yuji+Syuku&family=Fraunces:wght@400;600;700&family=Bodoni+Moda:wght@400;500;700&family=Abril+Fatface&family=Grenze+Gotisch:wght@400;600;700&family=Italiana&family=Cormorant:wght@300;400;500;600;700&display=swap";
-            return `
-                <head><link rel="stylesheet" href="${googleFontsUrl}"></head>
-                <body style="margin:0; padding:0; background-color:${bg};">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${bg};">
-                        <tr>
-                            <td align="center" style="padding: 40px 16px;">
-                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; font-family:${fontStack};">
-                                    <tr>
-                                        <td align="center" style="padding-bottom: 32px;">
-                                            <div style="font-size:11px; letter-spacing:0.15em; color:${muted}; text-transform:uppercase; margin-bottom:10px;">Weekly Update</div>
-                                            <div style="font-size:22px; color:${text}; font-weight:600;">${escapeAttr(siteTitle)}</div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 0 4px;">
-                                            <p style="font-size:14px; color:${muted}; line-height:1.8; margin:0 0 8px;">今週、${articles.length}件の記事を公開しました。</p>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 0 4px;">
-                                            ${rows}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td align="center" style="padding: 36px 0 8px;">
-                                            <a href="${siteUrl}" style="display:inline-block; padding:12px 28px; background-color:${text}; color:${bg}; text-decoration:none; border-radius:4px; font-size:13px;">サイトで読む</a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td align="center" style="padding-top: 40px; border-top: 1px solid ${border};">
-                                            <p style="font-size:11px; color:${muted}; line-height:1.8; margin: 24px 0 0;">
-                                                このメールは ${escapeAttr(siteTitle)} の更新通知として送信されています。<br>
-                                                <a href="${unsubscribeUrl}" style="color:${muted};">配信停止はこちら</a> ／ <a href="${siteUrl}/contact" style="color:${muted};">お問い合わせ</a>
-                                            </p>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                    </table>
-                </body>
-            `;
-        }
 
         function extractFirstImageFromHtml(html) {
             const m = String(html || '').match(/<img[^>]+src="([^"]+)"/);
@@ -3088,11 +3015,12 @@
         async function previewDigestEmail() {
             const [{ data: items, error }, { data: settingsData }] = await Promise.all([
                 sb.from('articles')
-                    .select('id, title, date, content')
+                    .select('id, title, date, category, content')
                     .or(`status.eq.published,and(status.eq.scheduled,scheduled_at.lte.${new Date().toISOString()})`)
                     .order('date', { ascending: false })
                     .limit(5),
-                sb.from('site_settings').select('site_title, og_image, digest_bg_color, digest_text_color, font').eq('id', 1).single(),
+                // 送信時と同じ見た目にするため、表示設定も一式取る
+                sb.from('site_settings').select('site_title, og_image, digest_bg_color, digest_text_color, font, title_font, font_size, line_height, letter_spacing, text_align, content_width, bg_color, text_color, body_text_opacity, title_text_opacity, footnote_color').eq('id', 1).single(),
             ]);
             if (error) {
                 console.error(error);
@@ -3105,11 +3033,13 @@
                 id: a.id,
                 title: a.title,
                 date: a.date,
-                image: extractFirstImageFromHtml(a.content) || settings.og_image || null,
-                excerpt: extractExcerptFromHtml(a.content),
+                category: a.category || '',
+                content: a.content || '',
             }));
 
-            const html = buildDigestPreviewHtml({
+            // 送信側(api/send-digest.js)と同じ lib/digest-template.js を使う。
+            // 以前はここに別実装があり、見た目を手で揃える必要があった
+            const html = window.DigestTemplate.buildDigestHtml({
                 siteTitle: settings.site_title || '',
                 siteUrl,
                 articles,
@@ -3117,6 +3047,7 @@
                 bgColor: settings.digest_bg_color,
                 textColor: settings.digest_text_color,
                 fontFamily: settings.font,
+                typography: settings,
             });
 
             document.getElementById('email-preview-subject').textContent = `件名: 【${settings.site_title || ''}】今週の更新(${articles.length}件) ※実際の送信内容そのままではなく、直近の公開記事を使った見た目確認用です`;

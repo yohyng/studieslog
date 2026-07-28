@@ -1,7 +1,7 @@
 // 管理画面から呼ばれる。購読者リストの中で「管理者用テストアドレス」に指定された1件だけに、
 // 実際にResendでダイジェストメールを送る(見え方の実機確認用。他の購読者には送らない)。
 
-const { buildDigestHtml, extractFirstImage, extractExcerpt } = require('../lib/digest-template');
+const { buildDigestHtml } = require('../lib/digest-template');
 
 const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
 
@@ -40,7 +40,8 @@ module.exports = async function handler(req, res) {
 
     const [subRes, settingsRes] = await Promise.all([
         fetch(`${SUPABASE_URL}/rest/v1/subscribers?is_admin_test=eq.true&select=email,unsubscribe_token&limit=1`, { headers: sbHeaders }),
-        fetch(`${SUPABASE_URL}/rest/v1/site_settings?id=eq.1&select=site_title,og_image,digest_bg_color,digest_text_color,font`, { headers: sbHeaders }),
+        // メールを閲覧ページと同じ見た目にするため、表示設定も一式取る
+        fetch(`${SUPABASE_URL}/rest/v1/site_settings?id=eq.1&select=site_title,og_image,digest_bg_color,digest_text_color,font,title_font,font_size,line_height,letter_spacing,text_align,content_width,bg_color,text_color,body_text_opacity,title_text_opacity,footnote_color`, { headers: sbHeaders }),
     ]);
     const subRows = await subRes.json();
     const adminSub = Array.isArray(subRows) ? subRows[0] : null;
@@ -56,7 +57,7 @@ module.exports = async function handler(req, res) {
     const nowIso = new Date().toISOString();
     const orFilter = `or=(status.eq.published,and(status.eq.scheduled,scheduled_at.lte.${encodeURIComponent(nowIso)}))`;
     const articlesRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/articles?${orFilter}&select=id,title,date,content,created_at&order=created_at.desc&limit=5`,
+        `${SUPABASE_URL}/rest/v1/articles?${orFilter}&select=id,title,date,category,content,created_at&order=created_at.desc&limit=5`,
         { headers: sbHeaders }
     );
     const rawArticles = await articlesRes.json();
@@ -64,8 +65,8 @@ module.exports = async function handler(req, res) {
         id: a.id,
         title: a.title,
         date: a.date,
-        image: extractFirstImage(a.content) || settings.og_image || null,
-        excerpt: extractExcerpt(a.content),
+        category: a.category || '',
+        content: a.content || '',
     }));
 
     if (articles.length === 0) {
@@ -91,6 +92,7 @@ module.exports = async function handler(req, res) {
                 bgColor: settings.digest_bg_color,
                 textColor: settings.digest_text_color,
                 fontFamily: settings.font,
+                typography: settings,
             }),
         }),
     });

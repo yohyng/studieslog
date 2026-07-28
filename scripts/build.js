@@ -15,6 +15,8 @@ copyFileSync(join(process.cwd(), 'gradient-backgrounds.css'), join(outputDirecto
 copyFileSync(join(process.cwd(), 'audit.html'), join(outputDirectory, 'audit.html'));
 mkdirSync(join(outputDirectory, 'lib'), { recursive: true });
 copyFileSync(join(process.cwd(), 'lib', 'editor-schema.mjs'), join(outputDirectory, 'lib', 'editor-schema.mjs'));
+// メールのテンプレート。管理画面のプレビューが送信側と同じ実装を使うために配信する
+copyFileSync(join(process.cwd(), 'lib', 'digest-template.js'), join(outputDirectory, 'lib', 'digest-template.js'));
 
 // admin.html 用のエディタ本体。admin.htmlは通常のscriptタグで読むのでIIFEにして
 // window.StudiesEditor に載せる
