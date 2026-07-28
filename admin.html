@@ -2207,6 +2207,20 @@
             const label = preview.title || url.trim();
             const domain = preview.domain || '';
             const image = preview.image || '';
+
+            // タイトルが取れないとURLがそのまま見出しになり、画像も付かない簡素なカードになる。
+            // 黙って進めると原因が分からないので、理由を出す
+            if (!preview.title) {
+                const why = {
+                    timeout: 'リンク先の応答が遅く時間切れになりました',
+                    fetch_failed: 'リンク先に接続できませんでした',
+                    no_og_tags: 'リンク先にタイトル情報(OGP)がありませんでした',
+                }[preview.reason]
+                    || (String(preview.reason || '').startsWith('http_')
+                        ? `リンク先が ${String(preview.reason).slice(5)} を返しました(アクセスを拒否された可能性があります)`
+                        : 'リンク先のタイトルを取得できませんでした');
+                showToast(`${why}。URLのみのカードを挿入します`, 6000);
+            }
             const cardHtml = `<a href="${escapeAttr(url.trim())}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="book-link-card" style="display:flex; align-items:stretch; gap:0.5rem; border:1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius:0; overflow:hidden; text-decoration:none; color:inherit; margin:1em 0;">
                 <span style="flex:1; min-width:0; padding:0.5rem 0.7rem; display:flex; flex-direction:column; justify-content:center; gap:0.1rem;">
                     <span style="font-size:0.7rem; font-weight:500; line-height:1.4;">${escapeAttr(label)}</span>
