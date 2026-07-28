@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>記事ネットワークとタグの現状</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+    :root { color-scheme: dark; }
+    body { margin:0; padding:2rem 1.5rem 6rem; background:#0b0b0d; color:#e7e7ea;
+           font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+           font-size:14px; line-height:1.7; }
+    .wrap { max-width:1100px; margin:0 auto; }
+    h1 { font-size:1.1rem; font-weight:600; margin:0 0 .3rem; }
+    h2 { font-size:.85rem; font-weight:600; margin:0 0 .8rem; }
+    .sub { font-size:.75rem; color:#8a8a94; margin-bottom:2rem; }
+    .box { border:1px solid #26262c; border-radius:6px; padding:1rem 1.2rem; margin-bottom:1.2rem; background:#101014; }
+    input { background:#18181d; border:1px solid #2e2e36; color:#e7e7ea; border-radius:4px;
+            padding:.5rem .7rem; font-size:.85rem; width:240px; margin-right:.5rem; }
+    button { background:#2a2a33; border:1px solid #3a3a45; color:#e7e7ea; border-radius:4px;
+             padding:.5rem 1rem; font-size:.85rem; cursor:pointer; }
+    button:hover:not(:disabled) { background:#35353f; }
+    button:disabled { opacity:.4; cursor:default; }
+    .stat-row { display:flex; gap:2.5rem; flex-wrap:wrap; }
+    .stat b { display:block; font-size:1.7rem; font-weight:600; line-height:1.2; }
+    .stat span { font-size:.7rem; color:#8a8a94; }
+    .ok b { color:#5dd39e; } .warn b { color:#e0b756; } .bad b { color:#e5695f; }
+    table { width:100%; border-collapse:collapse; font-size:.78rem; }
+    th, td { text-align:left; padding:.35rem .6rem; border-bottom:1px solid #202027; vertical-align:top; }
+    th { color:#8a8a94; font-weight:500; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; }
+    td.num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    code { background:#18181d; padding:.1rem .35rem; border-radius:3px; font-size:.75rem; }
+    .note { font-size:.72rem; color:#8a8a94; }
+    .hidden { display:none; }
+    .bar { display:inline-block; height:6px; background:#4a7fd0; border-radius:2px; vertical-align:middle; }
+    details { margin:.3rem 0; } summary { cursor:pointer; color:#c7c7cf; font-size:.8rem; }
+    .tag-chip { display:inline-block; background:#1d1d24; border:1px solid #2e2e36;
+                border-radius:3px; padding:.05rem .4rem; margin:.1rem .2rem .1rem 0; font-size:.72rem; }
+    #heat { border-collapse:collapse; font-size:0; }
+    #heat td { padding:0; border:0; width:14px; height:14px; }
+    #heat-wrap { overflow-x:auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <h1>記事ネットワークとタグの現状</h1>
+    <div class="sub">
+        記事の埋め込みベクトルから記事どうしの近さを計算し、いま実際にどんなネットワークが
+        できているかと、現在のタグがそれとどう対応しているかを見ます。
+        <strong>読み取り専用で、タグにも記事にも一切書き込みません。</strong>
+    </div>
+
+    <div class="box" id="login-box">
+        <div style="margin-bottom:.6rem; font-size:.85rem;">埋め込みの読み取りに認証が必要です。</div>
+        <input id="email" type="email" placeholder="メールアドレス" autocomplete="username">
+        <input id="password" type="password" placeholder="パスワード" autocomplete="current-password">
+        <button id="login-btn">ログイン</button>
+        <div class="note" id="login-msg"></div>
+    </div>
+
+    <div class="box hidden" id="run-box">
+        <button id="run-btn">解析する</button>
+        <span class="note" id="log" style="margin-left:1rem;"></span>
+    </div>
+
+    <div id="result"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpeXpsYXdtY3l5YmNoeHp5b3pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMDI2MjQsImV4cCI6MjA5NTU3ODYyNH0.SZVwqWKkk31npqdiiG5m3HdkF4JnQ7SgEzThaFfZ4q4';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
+
+// ── ベクトル ────────────────────────────────────────────────────────────────
+// PostgRESTはpgvectorを "[0.1,0.2,...]" の文字列で返す
+function parseVec(v) {
+    if (Array.isArray(v)) return v;
+    if (typeof v !== 'string') return null;
+    const inner = v.trim().replace(/^\[|\]$/g, '');
+    if (!inner) return null;
+    return inner.split(',').map(Number);
+}
+
+function addInto(acc, vec) {
+    for (let i = 0; i < vec.length; i++) acc[i] = (acc[i] || 0) + vec[i];
+}
+
+function normalize(vec) {
+    let n = 0;
+    for (const x of vec) n += x * x;
+    n = Math.sqrt(n) || 1;
+    return vec.map((x) => x / n);
+}
+
+/** 正規化済みベクトル同士のコサイン類似度 = 内積 */
+function dot(a, b) {
+    let s = 0;
+    for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+    return s;
+}
+
+// ── ログイン ────────────────────────────────────────────────────────────────
+async function refreshAuth() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) { $('login-box').classList.add('hidden'); $('run-box').classList.remove('hidden'); }
+}
+$('login-btn').onclick = async () => {
+    $('login-msg').textContent = 'ログイン中...';
+    const { error } = await sb.auth.signInWithPassword({
+        email: $('email').value.trim(), password: $('password').value });
+    $('login-msg').textContent = error ? 'ログインできませんでした: ' + error.message : '';
+    if (!error) refreshAuth();
+};
+refreshAuth();
+
+// ── 解析 ────────────────────────────────────────────────────────────────────
+$('run-btn').onclick = async () => {
+    $('run-btn').disabled = true;
+    try { await analyze(); }
+    catch (e) { console.error(e); $('log').textContent = '失敗: ' + e.message; }
+    finally { $('run-btn').disabled = false; }
+};
+
+async function analyze() {
+    $('log').textContent = '読み込み中...';
+    const [artRes, tagRes, linkRes] = await Promise.all([
+        sb.from('articles').select('id,title,category,status').order('id'),
+        sb.from('tags').select('id,slug,name,description'),
+        sb.from('article_tags').select('article_id,tag_id'),
+    ]);
+    for (const r of [artRes, tagRes, linkRes]) if (r.error) throw new Error(r.error.message);
+
+    // 埋め込みは件数が多いと重いので分割して取る
+    $('log').textContent = '埋め込みを読み込み中...';
+    let chunks = [], from = 0;
+    for (;;) {
+        const { data, error } = await sb.from('article_chunks')
+            .select('article_id,embedding').range(from, from + 199);
+        if (error) throw new Error(error.message);
+        chunks = chunks.concat(data || []);
+        if (!data || data.length < 200) break;
+        from += 200;
+        $('log').textContent = `埋め込みを読み込み中... ${chunks.length}件`;
+    }
+
+    // 記事ごとにチャンクの平均をとって「記事のベクトル」にする
+    const sums = new Map(), counts = new Map();
+    for (const c of chunks) {
+        const v = parseVec(c.embedding);
+        if (!v) continue;
+        if (!sums.has(c.article_id)) sums.set(c.article_id, new Array(v.length).fill(0));
+        addInto(sums.get(c.article_id), v);
+        counts.set(c.article_id, (counts.get(c.article_id) || 0) + 1);
+    }
+
+    const articles = (artRes.data || []).map((a) => ({
+        ...a,
+        vec: sums.has(a.id) ? normalize(sums.get(a.id)) : null,
+        chunkCount: counts.get(a.id) || 0,
+    }));
+    const withVec = articles.filter((a) => a.vec);
+
+    // タグの対応
+    const tagById = new Map((tagRes.data || []).map((t) => [t.id, t]));
+    const tagsOfArticle = new Map();
+    const articlesOfTag = new Map();
+    for (const l of linkRes.data || []) {
+        if (!tagById.has(l.tag_id)) continue;
+        if (!tagsOfArticle.has(l.article_id)) tagsOfArticle.set(l.article_id, []);
+        tagsOfArticle.get(l.article_id).push(l.tag_id);
+        if (!articlesOfTag.has(l.tag_id)) articlesOfTag.set(l.tag_id, []);
+        articlesOfTag.get(l.tag_id).push(l.article_id);
+    }
+
+    $('log').textContent = '類似度を計算中...';
+    await new Promise((r) => setTimeout(r));
+
+    // 全ペアの類似度
+    const n = withVec.length;
+    const sim = Array.from({ length: n }, () => new Array(n).fill(0));
+    const pairs = [];
+    for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+            const s = dot(withVec[i].vec, withVec[j].vec);
+            sim[i][j] = sim[j][i] = s;
+            pairs.push(s);
+        }
+        sim[i][i] = 1;
+    }
+    pairs.sort((a, b) => a - b);
+
+    $('log').textContent = `完了 (記事${articles.length}件 / タグ${(tagRes.data||[]).length}件)`;
+    render({ articles, withVec, sim, pairs, tagById, tagsOfArticle, articlesOfTag });
+}
+
+// ── 表示 ────────────────────────────────────────────────────────────────────
+const quantile = (sorted, q) => sorted.length ? sorted[Math.floor((sorted.length - 1) * q)] : 0;
+const mean = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+
+function render(d) {
+    const { articles, withVec, sim, pairs, tagById, tagsOfArticle, articlesOfTag } = d;
+    const n = withVec.length;
+    const noVec = articles.filter((a) => !a.vec);
+    const globalMean = mean(pairs);
+
+    // 各記事の最近傍
+    const neighbors = withVec.map((a, i) => {
+        const list = withVec.map((b, j) => ({ j, s: sim[i][j] }))
+            .filter((x) => x.j !== i).sort((x, y) => y.s - x.s);
+        return { i, top: list.slice(0, 5), best: list.length ? list[0].s : 0 };
+    });
+
+    // 近い記事が1つも無い＝ネットワークから浮いている記事
+    const isolatedThreshold = quantile(pairs, 0.9);
+    const isolated = neighbors.filter((x) => x.best < isolatedThreshold);
+
+    // タグごとのまとまり具合: そのタグが付いた記事どうしの平均類似度。
+    // 全体平均より高いほど「意味のあるまとまり」になっている
+    const idxOf = new Map(withVec.map((a, i) => [a.id, i]));
+    const tagStats = [...articlesOfTag.entries()].map(([tagId, ids]) => {
+        const idxs = ids.map((id) => idxOf.get(id)).filter((i) => i != null);
+        const within = [];
+        for (let a = 0; a < idxs.length; a++)
+            for (let b = a + 1; b < idxs.length; b++) within.push(sim[idxs[a]][idxs[b]]);
+        return {
+            tag: tagById.get(tagId),
+            count: ids.length,
+            coherence: within.length ? mean(within) : null,
+            lift: within.length ? mean(within) - globalMean : null,
+        };
+    }).sort((a, b) => b.count - a.count);
+
+    // タグの重なり(統合の候補)
+    const overlaps = [];
+    const tagIds = [...articlesOfTag.keys()];
+    for (let a = 0; a < tagIds.length; a++) {
+        for (let b = a + 1; b < tagIds.length; b++) {
+            const A = new Set(articlesOfTag.get(tagIds[a]));
+            const B = articlesOfTag.get(tagIds[b]);
+            const inter = B.filter((x) => A.has(x)).length;
+            if (!inter) continue;
+            const union = new Set([...A, ...B]).size;
+            overlaps.push({ a: tagById.get(tagIds[a]), b: tagById.get(tagIds[b]), inter, jaccard: inter / union });
+        }
+    }
+    overlaps.sort((x, y) => y.jaccard - x.jaccard);
+
+    const untagged = articles.filter((a) => !(tagsOfArticle.get(a.id) || []).length);
+    const unusedTags = [...tagById.values()].filter((t) => !(articlesOfTag.get(t.id) || []).length);
+
+    // 似た記事が隣り合うように並べ替える(最近傍を辿るだけの簡単な方法)。
+    // これでヒートマップの対角線上にまとまりがブロックとして見える
+    const order = [];
+    const used = new Set();
+    let cur = 0;
+    while (order.length < n) {
+        order.push(cur); used.add(cur);
+        let next = -1, best = -Infinity;
+        for (let j = 0; j < n; j++) if (!used.has(j) && sim[cur][j] > best) { best = sim[cur][j]; next = j; }
+        if (next < 0) { next = [...Array(n).keys()].find((j) => !used.has(j)); if (next == null) break; }
+        cur = next;
+    }
+
+    const lo = quantile(pairs, 0.05), hi = quantile(pairs, 0.98);
+    const cell = (s) => {
+        const t = Math.max(0, Math.min(1, (s - lo) / ((hi - lo) || 1)));
+        return `background:rgba(96,165,250,${t.toFixed(3)})`;
+    };
+    const heat = `<table id="heat"><tbody>${order.map((i) => `<tr>${
+        order.map((j) => `<td style="${cell(i === j ? hi : sim[i][j])}" title="${esc(withVec[i].title)} ↔ ${esc(withVec[j].title)}: ${sim[i][j].toFixed(3)}"></td>`).join('')
+    }</tr>`).join('')}</tbody></table>`;
+
+    const tagChips = (articleId) => (tagsOfArticle.get(articleId) || [])
+        .map((id) => `<span class="tag-chip">${esc(tagById.get(id)?.name || '')}</span>`).join('') || '<span class="note">タグなし</span>';
+
+    $('result').innerHTML = `
+    <div class="box">
+        <div class="stat-row">
+            <div class="stat"><b>${articles.length}</b><span>記事</span></div>
+            <div class="stat ${noVec.length ? 'warn' : 'ok'}"><b>${withVec.length}</b><span>ベクトルあり</span></div>
+            <div class="stat"><b>${tagById.size}</b><span>タグ</span></div>
+            <div class="stat ${untagged.length ? 'warn' : 'ok'}"><b>${untagged.length}</b><span>タグなしの記事</span></div>
+            <div class="stat ${isolated.length ? 'warn' : 'ok'}"><b>${isolated.length}</b><span>孤立した記事</span></div>
+        </div>
+        ${noVec.length ? `<div class="note" style="margin-top:.8rem; color:#e0b756">
+            ${noVec.length}件の記事に埋め込みがありません。管理画面のAI画面で再インデックスしてください。</div>` : ''}
+    </div>
+
+    <div class="box">
+        <h2>記事どうしの近さの分布</h2>
+        <table>
+            <tr><th>指標</th><th class="num">値</th><th>読み方</th></tr>
+            <tr><td>中央値</td><td class="num">${quantile(pairs,0.5).toFixed(3)}</td><td class="note">全体としてどれくらい似ているか</td></tr>
+            <tr><td>上位10%</td><td class="num">${quantile(pairs,0.9).toFixed(3)}</td><td class="note">「近い」と言える水準</td></tr>
+            <tr><td>上位2%</td><td class="num">${quantile(pairs,0.98).toFixed(3)}</td><td class="note">かなり近い組</td></tr>
+            <tr><td>最大 / 最小</td><td class="num">${quantile(pairs,1).toFixed(3)} / ${quantile(pairs,0).toFixed(3)}</td><td class="note">開きが小さいと構造が出にくい</td></tr>
+        </table>
+        <div class="note" style="margin-top:.6rem">
+            中央値と上位10%の差が小さいと「どれも同じくらい似ている」＝まとまりが見えにくい状態です。
+            差が開いているほど、タグにできるまとまりが存在します。
+        </div>
+    </div>
+
+    <div class="box">
+        <h2>近さのヒートマップ</h2>
+        <div class="note" style="margin-bottom:.6rem">
+            似た記事が隣り合うよう並べ替えてあります。対角線上に濃いブロックが見えれば、
+            それがひとつのまとまり（タグの候補）です。マス目にカーソルを乗せると記事名が出ます。
+        </div>
+        <div id="heat-wrap">${heat}</div>
+    </div>
+
+    <div class="box">
+        <h2>現在のタグ（まとまり具合つき）</h2>
+        <table>
+            <tr><th>タグ</th><th class="num">記事数</th><th class="num">結束度</th><th>判定</th></tr>
+            ${tagStats.map(t => {
+                const lift = t.lift;
+                const verdict = t.count < 2 ? '<span class="note">記事1件のみ</span>'
+                    : lift == null ? ''
+                    : lift > 0.06 ? '<span style="color:#5dd39e">よくまとまっている</span>'
+                    : lift > 0.02 ? '<span class="note">ややまとまり</span>'
+                    : '<span style="color:#e0b756">内容がばらついている</span>';
+                return `<tr>
+                    <td>${esc(t.tag?.name || '')} <span class="note">${esc(t.tag?.slug || '')}</span></td>
+                    <td class="num">${t.count}</td>
+                    <td class="num">${t.coherence == null ? '—' : t.coherence.toFixed(3)}</td>
+                    <td>${verdict}</td></tr>`;
+            }).join('') || '<tr><td colspan="4" class="note">タグが付いた記事がありません</td></tr>'}
+        </table>
+        <div class="note" style="margin-top:.6rem">
+            結束度は、そのタグが付いた記事どうしの平均の近さです。全体の平均は
+            <code>${globalMean.toFixed(3)}</code>。これを大きく上回るほど、内容としてまとまったタグです。
+            下回るタグは、名前は同じでも中身がばらついている＝見直しの候補になります。
+        </div>
+        ${unusedTags.length ? `<div class="note" style="margin-top:.6rem; color:#e0b756">
+            どの記事にも付いていないタグ: ${unusedTags.map(t => esc(t.name)).join(', ')}</div>` : ''}
+    </div>
+
+    <div class="box">
+        <h2>統合の候補（記事の重なりが大きいタグの組）</h2>
+        <table>
+            <tr><th>タグA</th><th>タグB</th><th class="num">共通記事</th><th class="num">重なり率</th></tr>
+            ${overlaps.slice(0, 12).map(o => `<tr>
+                <td>${esc(o.a?.name || '')}</td><td>${esc(o.b?.name || '')}</td>
+                <td class="num">${o.inter}</td><td class="num">${(o.jaccard * 100).toFixed(0)}%</td>
+            </tr>`).join('') || '<tr><td colspan="4" class="note">重なりのあるタグの組はありません</td></tr>'}
+        </table>
+        <div class="note" style="margin-top:.6rem">重なり率が高い組は、実質同じことを指している可能性があります。</div>
+    </div>
+
+    <div class="box">
+        <h2>記事ごとの近い記事</h2>
+        <div class="note" style="margin-bottom:.6rem">
+            この隣接関係が、次の段階でLLMに渡す「記事間のネットワーク」そのものです。
+        </div>
+        ${neighbors.map(({ i, top, best }) => {
+            const a = withVec[i];
+            const weak = best < isolatedThreshold;
+            return `<details>
+                <summary>${weak ? '⚠ ' : ''}${esc(a.title)} <span class="note">最近傍 ${best.toFixed(3)}</span></summary>
+                <div style="margin:.3rem 0 .6rem 1rem">
+                    <div style="margin-bottom:.3rem">${tagChips(a.id)}</div>
+                    ${top.map(({ j, s }) => `
+                        <div style="font-size:.75rem; color:#c7c7cf">
+                            <span class="bar" style="width:${Math.max(2, (s / (quantile(pairs,1) || 1)) * 90).toFixed(0)}px"></span>
+                            <span class="note">${s.toFixed(3)}</span> ${esc(withVec[j].title)}
+                        </div>`).join('')}
+                </div>
+            </details>`;
+        }).join('')}
+    </div>
+
+    ${untagged.length ? `<div class="box">
+        <h2>タグが付いていない記事</h2>
+        ${untagged.map(a => `<div style="font-size:.8rem">${esc(a.title)}</div>`).join('')}
+    </div>` : ''}`;
+}
+</script>
+</body>
+</html>

@@ -13,6 +13,8 @@ copyFileSync(join(process.cwd(), 'gradient-backgrounds.css'), join(outputDirecto
 // Tiptap移行の往復監査ページ(読み取り専用)と、それが読み込む候補スキーマ。
 // 監査ページはimport map経由でesm.shから読むので、スキーマは素のまま置く
 copyFileSync(join(process.cwd(), 'audit.html'), join(outputDirectory, 'audit.html'));
+// 記事ネットワークとタグの現状を見る解析ページ(読み取り専用)
+copyFileSync(join(process.cwd(), 'tag-network.html'), join(outputDirectory, 'tag-network.html'));
 mkdirSync(join(outputDirectory, 'lib'), { recursive: true });
 copyFileSync(join(process.cwd(), 'lib', 'editor-schema.mjs'), join(outputDirectory, 'lib', 'editor-schema.mjs'));
 // メールのテンプレート。管理画面のプレビューが送信側と同じ実装を使うために配信する
