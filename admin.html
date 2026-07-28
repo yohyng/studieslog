@@ -1992,6 +1992,9 @@
         // 現在のキャレット位置のビューポート上のY座標を取得する(contenteditable用。
         // Range#getClientRectsで行の矩形が直接取れるので、textareaと違いミラー要素は不要)
         function getCaretViewportTop() {
+            const inst = tiptapEditors['edit-content'];
+            // ゼロ幅文字の仮挿入(下のフォールバック)はProseMirror管理下のDOMを壊すので使わない
+            if (inst) return window.StudiesEditor.caretViewportTop(inst);
             const sel = window.getSelection();
             if (!sel || sel.rangeCount === 0) return null;
             const range = sel.getRangeAt(0).cloneRange();
@@ -2010,7 +2013,10 @@
         }
 
         function repositionCaretTypewriter() {
-            if (!typewriterMode || document.activeElement !== document.getElementById('edit-content')) return;
+            // Tiptapでは実際にフォーカスを持つのは#edit-contentの中に作られる要素なので、
+            // 一致ではなく内包で判定する(従来のエディタでもcontainsは自身にtrueを返す)
+            const host = document.getElementById('edit-content');
+            if (!typewriterMode || !host.contains(document.activeElement)) return;
             const top = getCaretViewportTop();
             if (top == null) return;
             const anchor = window.innerHeight * TYPEWRITER_ANCHOR;
@@ -3692,12 +3698,17 @@
         function convertToPlainText() {
             const editor = document.getElementById('edit-content');
             if (!confirm('本文の書式(太字・見出し・画像など)を全て解除し、プレーンテキストに変換します。元に戻せません。よろしいですか？')) return;
-            const text = stripHtml(editor.innerHTML);
-            editor.innerHTML = text
-                .split('\n')
-                .filter(line => line.trim() !== '')
-                .map(line => `<p>${line}</p>`)
-                .join('') || '<p></p>';
+            const inst = tiptapEditors['edit-content'];
+            if (inst) {
+                window.StudiesEditor.setPlainText(inst);
+            } else {
+                const text = stripHtml(editor.innerHTML);
+                editor.innerHTML = text
+                    .split('\n')
+                    .filter(line => line.trim() !== '')
+                    .map(line => `<p>${line}</p>`)
+                    .join('') || '<p></p>';
+            }
             showToast('プレーンテキストに変換しました');
         }
 
@@ -3705,9 +3716,6 @@
         // ただしクリップボードに画像が含まれている場合(スクリーンショットのコピペなど)は、そのままアップロードして挿入する
         function setupPastePlainText() {
             document.getElementById('edit-content').addEventListener('paste', async (e) => {
-                // Tiptap有効時の貼り付けはStage 4で対応する。ここでexecCommandを走らせると
-                // ProseMirrorの状態と食い違うので何もしない
-                if (tiptapEditors['edit-content']) return;
                 const clipboard = e.clipboardData || window.clipboardData;
                 const imageFiles = Array.from(clipboard.files || []).filter(f => f.type.startsWith('image/'));
                 e.preventDefault();
@@ -3716,7 +3724,9 @@
                     return;
                 }
                 const text = clipboard.getData('text/plain');
-                document.execCommand('insertText', false, text);
+                const inst = tiptapEditors['edit-content'];
+                if (inst) window.StudiesEditor.insertPlainText(inst, text);
+                else document.execCommand('insertText', false, text);
             });
         }
 
