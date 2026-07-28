@@ -72,6 +72,14 @@ module.exports = async function handler(req, res) {
             res.status(200).json(result);
             return;
         }
+        if (action === 'find-working-model') {
+            // ListModelsは「カタログに存在し generateContent に対応している」ことしか示さず、
+            // このAPIキーで実際に呼べるかは反映していない。新規ユーザーへの提供終了のような制限は
+            // 実際に呼び出した瞬間にだけ404として現れる。そのため候補を実際に1つずつ試す。
+            const result = await findWorkingModel(geminiKey);
+            res.status(200).json(result);
+            return;
+        }
         if (action === 'listmodels') {
             const r = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(geminiKey)}`
@@ -435,6 +443,53 @@ ${stripHtml(a.content).slice(0, 8000)}`).join('\n\n---\n\n');
         total: (articles || []).length,
         analyzed: (done || []).length + processed.length,
     };
+}
+
+async function findWorkingModel(geminiKey) {
+    const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(geminiKey)}`
+    );
+    if (!r.ok) throw new Error(`モデル一覧の取得に失敗 (${r.status}): ${(await r.text()).slice(0, 200)}`);
+    const data = await r.json();
+    const candidates = (data.models || [])
+        .filter((m) => (m.supportedGenerationMethods || []).includes('generateContent'))
+        .map((m) => String(m.name || '').replace(/^models\//, ''))
+        // 廃止版・プレビュー版・実験版・視覚/音声特化などは後回しにし、
+        // 素の安定版らしい名前(flash / pro のみで余計な接尾辞が無いもの)を先に試す
+        .sort((a, b) => {
+            const score = (n) => {
+                let s = 0;
+                if (/preview|exp|thinking|vision|audio|tts|image|embed|deprecated/i.test(n)) s -= 10;
+                if (/flash/i.test(n)) s += 3;
+                if (/^gemini-\d+\.\d+-(flash|pro)$/i.test(n)) s += 5;
+                return -s;
+            };
+            return score(a) - score(b);
+        });
+
+    const tried = [];
+    for (const name of candidates.slice(0, 15)) {
+        const r2 = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${name}:generateContent?key=${encodeURIComponent(geminiKey)}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: 'ok とだけ返してください' }] }],
+                    generationConfig: { maxOutputTokens: 5 },
+                }),
+            }
+        );
+        if (r2.ok) {
+            tried.push({ name, ok: true });
+            return { working: name, tried, totalCandidates: candidates.length };
+        }
+        const detail = (await r2.text()).slice(0, 150);
+        tried.push({ name, ok: false, status: r2.status, detail });
+        // 利用上限に達したら、これ以上試しても分からないので打ち切る
+        if (r2.status === 429) break;
+    }
+    return { working: null, tried, totalCandidates: candidates.length };
 }
 
 function stripHtml(html) {
