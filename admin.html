@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="/gradient-backgrounds.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Tiptapエディタ(移行中)。window.StudiesEditor として公開される。
+         エディタを開くのは操作後なので defer で問題ない -->
+    <script src="/editor-bundle.js" defer></script>
 
     <style>
         body {
@@ -25,6 +28,23 @@
         .content-editor blockquote { border-left: 2px solid rgba(255,255,255,0.3); padding-left: 1em; margin: 1em 0; opacity: 0.8; font-style: italic; }
         .content-editor h2 { font-size: 1.2em; margin: 1em 0 0.5em; }
         .content-editor .footnote-ref { color: #7dd3fc; cursor: default; }
+        /* Tiptapは .content-editor の中に自前のcontenteditableを作る。
+           既存の .content-editor 配下のスタイルはそのまま効く */
+        /* ProseMirrorが動作前提としているCSS。これが無いと連続した空白が潰れ、
+           長いURL(百分率エンコードされたAmazonのリンクなど)が折り返されず横へはみ出して、
+           編集欄だけ閲覧画面より本文が広く見えてしまう */
+        .content-editor .tiptap {
+            outline: none;
+            white-space: pre-wrap; word-wrap: break-word;
+        }
+        /* .content-editor の min-height:300px は外側の箱にかかる。内側の編集領域を
+           伸ばしておかないと、下half分の余白をクリックしてもカーソルが入らない */
+        .content-editor:has(.tiptap) { display: flex; flex-direction: column; }
+        .content-editor .tiptap { flex: 1 1 auto; }
+        .content-editor .tiptap p.is-editor-empty:first-child::before {
+            content: attr(data-placeholder); color: rgba(255,255,255,0.25); float: left;
+            height: 0; pointer-events: none;
+        }
         .article-preview { max-height: 3.2em; overflow: hidden; }
         /* ブラウザ既定のドロップダウン展開部は背景が白になることが多く、継承した白文字のままだと見えなくなるため明示的に指定する */
         select option, select optgroup { color: #1a1a1a; background-color: #ffffff; }
@@ -1410,6 +1430,86 @@
         });
         const IMAGE_BUCKET = 'article-images';
 
+        // --- Tiptapエディタへの移行(段階導入) ---------------------------------
+        // 既定でTiptapを使う。?tiptap=0 を付けると従来の contenteditable +
+        // execCommand のエディタに戻せる(デプロイし直さずその場で切り替わる)。
+        // 本文の読み書きは以下の edGet/edSet/edText/edFocus 経由に統一してあり、
+        // どちらのエディタでも同じように動く。
+        const USE_TIPTAP = new URLSearchParams(location.search).get('tiptap') !== '0';
+        const tiptapEditors = {};   // 要素id -> Tiptapのインスタンス
+
+        function tiptapReady() {
+            return USE_TIPTAP && typeof window.StudiesEditor !== 'undefined';
+        }
+
+        // 編集画面を初めて開くときに1度だけ生成する
+        function mountTiptapEditors() {
+            if (!USE_TIPTAP || tiptapEditors['edit-content']) return;
+            if (typeof window.StudiesEditor === 'undefined') {
+                showToast('エディタの読み込みに失敗しました(従来のエディタで続行します)');
+                return;
+            }
+            for (const id of ['edit-content', 'edit-content-en']) {
+                const host = document.getElementById(id);
+                const initial = host.innerHTML;
+                host.innerHTML = '';
+                host.removeAttribute('contenteditable');
+                tiptapEditors[id] = window.StudiesEditor.createEditor({
+                    element: host,
+                    content: initial,
+                    onUpdate: () => {
+                        scheduleAutosaveDraft();
+                        if (id === 'edit-content') {
+                            updateCharCount();
+                            if (!footnotePanelEditing) {
+                                renderFootnoteListPanel();
+                                // 本文から脚注を消した場合に以降の番号を詰める。
+                                // onUpdateの中で更に発行するとネストするので次のタスクへ回す。
+                                // 番号が揃っていれば何も発行しないのでループにはならない
+                                queueMicrotask(() =>
+                                    window.StudiesEditor.renumberFootnotes(tiptapEditors[id]));
+                            }
+                        }
+                    },
+                });
+            }
+        }
+
+        function edGet(id) {
+            const inst = tiptapEditors[id];
+            if (inst) return window.StudiesEditor.getHtml(inst);
+            return document.getElementById(id).innerHTML;
+        }
+
+        function edSet(id, html) {
+            const inst = tiptapEditors[id];
+            if (inst) { window.StudiesEditor.setHtml(inst, html); return; }
+            document.getElementById(id).innerHTML = html;
+        }
+
+        function edText(id) {
+            const inst = tiptapEditors[id];
+            if (inst) return inst.getText();
+            return document.getElementById(id).textContent;
+        }
+
+        // 一覧パネルで入力中は、本文側の更新を受けて一覧を作り直さない(下記参照)
+        let footnotePanelEditing = false;
+
+        /** 本文中の脚注の注釈本文を、文書順の配列で返す */
+        function footnoteNotes() {
+            const inst = tiptapEditors['edit-content'];
+            if (inst) return window.StudiesEditor.listFootnotes(inst).map((f) => f.note);
+            return Array.from(document.getElementById('edit-content')
+                .querySelectorAll('.footnote-ref')).map((el) => el.dataset.note || '');
+        }
+
+        function edFocus(id) {
+            const inst = tiptapEditors[id];
+            if (inst) { inst.commands.focus(); return; }
+            document.getElementById(id).focus();
+        }
+
         let articles = [];
         let bulkMode = false;
         let bulkSelectedIds = new Set();
@@ -1570,7 +1670,7 @@
         }
 
         function updateCharCount() {
-            const count = stripHtml(document.getElementById('edit-content').innerHTML).length;
+            const count = stripHtml(edGet('edit-content')).length;
             document.getElementById('edit-char-count').textContent = `${count.toLocaleString()}文字`;
         }
 
@@ -1786,6 +1886,8 @@
         function showEditorView() {
             document.getElementById('list-view').classList.add('hidden');
             document.getElementById('editor-view').classList.remove('hidden');
+            // 編集画面が表示されてから生成する(非表示のままだと高さが取れない)
+            mountTiptapEditors();
         }
 
         function backToList() {
@@ -1809,8 +1911,11 @@
             typewriterMode = !typewriterMode;
             document.getElementById('app-screen').classList.toggle('typewriter-mode', typewriterMode);
             document.getElementById('typewriter-toggle').style.opacity = typewriterMode ? '1' : '0.4';
+            // このモードでは編集欄の左右の余白が0になる。折り返し幅はその余白を測って
+            // 決めているので、切り替えのたびに計算し直す
+            applyEditorPreviewStyle();
             if (typewriterMode) {
-                document.getElementById('edit-content').focus();
+                edFocus('edit-content');
                 requestAnimationFrame(repositionCaretTypewriter);
             }
         }
@@ -1887,6 +1992,9 @@
         // 現在のキャレット位置のビューポート上のY座標を取得する(contenteditable用。
         // Range#getClientRectsで行の矩形が直接取れるので、textareaと違いミラー要素は不要)
         function getCaretViewportTop() {
+            const inst = tiptapEditors['edit-content'];
+            // ゼロ幅文字の仮挿入(下のフォールバック)はProseMirror管理下のDOMを壊すので使わない
+            if (inst) return window.StudiesEditor.caretViewportTop(inst);
             const sel = window.getSelection();
             if (!sel || sel.rangeCount === 0) return null;
             const range = sel.getRangeAt(0).cloneRange();
@@ -1905,7 +2013,10 @@
         }
 
         function repositionCaretTypewriter() {
-            if (!typewriterMode || document.activeElement !== document.getElementById('edit-content')) return;
+            // Tiptapでは実際にフォーカスを持つのは#edit-contentの中に作られる要素なので、
+            // 一致ではなく内包で判定する(従来のエディタでもcontainsは自身にtrueを返す)
+            const host = document.getElementById('edit-content');
+            if (!typewriterMode || !host.contains(document.activeElement)) return;
             const top = getCaretViewportTop();
             if (top == null) return;
             const anchor = window.innerHeight * TYPEWRITER_ANCHOR;
@@ -2027,11 +2138,31 @@
                 if (t.content_width) {
                     const articleBoxPad = 1.5 * t.font_size * 2;
                     const wrapWidth = Math.max(200, t.content_width - articleBoxPad);
-                    editor.style.maxWidth = wrapWidth + 'px';
+
+                    // 左右の余白も閲覧側の記事枠(padding:1.5rem)と同じにする。
+                    // Tailwindのpx-4(16px)のままだと本文の折り返しは合っていても
+                    // 枠線の位置が閲覧画面と十数pxずれる。
+                    // タイプライターモードは余白0にするCSSがあり、インラインstyleだと
+                    // それを打ち消してしまうので、そのときは指定を外す
+                    if (typewriterMode) {
+                        editor.style.paddingLeft = '';
+                        editor.style.paddingRight = '';
+                    } else {
+                        editor.style.paddingLeft = (1.5 * t.font_size) + 'px';
+                        editor.style.paddingRight = (1.5 * t.font_size) + 'px';
+                    }
+
+                    // box-sizing:border-boxなので、max-widthをwrapWidthにすると枠と余白の分だけ
+                    // 内側で折り返してしまう。実際の枠を測って足し戻す
+                    const cs = getComputedStyle(editor);
+                    const frame = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+                        + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+                    editor.style.maxWidth = (wrapWidth + frame) + 'px';
                     titleEl.style.maxWidth = wrapWidth + 'px';
-                    // 本文欄以外(日付・タグ・保存ボタンなど)の並びも同じ幅に揃え、編集画面全体のガタつきをなくす
+                    // 本文欄以外(日付・タグ・保存ボタンなど)の並びも同じ幅に揃え、編集画面全体のガタつきをなくす。
+                    // 本文欄が枠の分だけ広いので、はみ出さないよう同じだけ広げておく
                     const formCol = document.getElementById('editor-form-col');
-                    if (formCol) formCol.style.maxWidth = wrapWidth + 'px';
+                    if (formCol) formCol.style.maxWidth = (wrapWidth + frame) + 'px';
                 }
             }
             if (siteTypography) {
@@ -2083,7 +2214,14 @@
                 </span>
                 ${image ? `<img src="${escapeAttr(image)}" style="width:3rem; flex-shrink:0; object-fit:cover; aspect-ratio:1;">` : ''}
             </a><p></p>`;
-            document.execCommand('insertHTML', false, cardHtml);
+            const cardInst = tiptapEditors['edit-content'];
+            if (cardInst) {
+                window.StudiesEditor.insertBookLinkCard(cardInst, {
+                    href: url.trim(), label, domain, image,
+                });
+            } else {
+                document.execCommand('insertHTML', false, cardHtml);
+            }
             showToast('挿入しました');
         }
 
@@ -2106,8 +2244,8 @@
             const draft = {
                 title: document.getElementById('edit-title').value,
                 titleEn: document.getElementById('edit-title-en').value,
-                content: document.getElementById('edit-content').innerHTML,
-                contentEn: document.getElementById('edit-content-en').innerHTML,
+                content: edGet('edit-content'),
+                contentEn: edGet('edit-content-en'),
                 savedAt: Date.now(),
             };
             try {
@@ -2132,9 +2270,9 @@
             }
             if (!draft) return;
             const sameAsLoaded = draft.title === document.getElementById('edit-title').value
-                && draft.content === document.getElementById('edit-content').innerHTML
+                && draft.content === edGet('edit-content')
                 && (draft.titleEn || '') === document.getElementById('edit-title-en').value
-                && (draft.contentEn || '') === document.getElementById('edit-content-en').innerHTML;
+                && (draft.contentEn || '') === edGet('edit-content-en');
             if (sameAsLoaded) {
                 clearAutosaveDraft();
                 return;
@@ -2143,8 +2281,8 @@
             if (confirm(`保存されていない自動保存の控え(${when}時点)があります。復元しますか？`)) {
                 document.getElementById('edit-title').value = draft.title;
                 document.getElementById('edit-title-en').value = draft.titleEn || '';
-                document.getElementById('edit-content').innerHTML = draft.content;
-                document.getElementById('edit-content-en').innerHTML = draft.contentEn || '<p></p>';
+                edSet('edit-content', draft.content);
+                edSet('edit-content-en', draft.contentEn || '<p></p>');
                 if ((draft.titleEn || '').trim() || stripHtml(draft.contentEn || '').trim()) {
                     document.getElementById('english-section').open = true;
                 }
@@ -2164,8 +2302,8 @@
             document.getElementById('edit-title-en').value = '';
             document.getElementById('edit-category').value = '';
             document.getElementById('edit-pinned').checked = false;
-            document.getElementById('edit-content').innerHTML = '<p></p>';
-            document.getElementById('edit-content-en').innerHTML = '<p></p>';
+            edSet('edit-content', '<p></p>');
+            edSet('edit-content-en', '<p></p>');
             document.getElementById('english-section').open = false;
             updateCharCount();
             renderFootnoteListPanel();
@@ -2253,11 +2391,10 @@
             document.getElementById('edit-title-en').value = article.title_en || '';
             document.getElementById('edit-category').value = article.category || '';
             document.getElementById('edit-pinned').checked = !!article.pinned;
-            const editor = document.getElementById('edit-content');
-            editor.innerHTML = article.content;
-            migrateInlineFootnoteNotes(editor);
+            edSet('edit-content', article.content);
+            if (!tiptapEditors['edit-content']) migrateInlineFootnoteNotes(document.getElementById('edit-content'));
             renderFootnoteListPanel();
-            document.getElementById('edit-content-en').innerHTML = article.content_en || '<p></p>';
+            edSet('edit-content-en', article.content_en || '<p></p>');
             // 既に英語版が入っている記事は、折りたたみを開いた状態で表示する
             document.getElementById('english-section').open =
                 !!(article.title_en || '').trim() || !!stripHtml(article.content_en || '').trim();
@@ -2362,9 +2499,9 @@
         async function saveArticle(status, scheduledAt = null) {
             const date = document.getElementById('edit-date').value.trim();
             const title = document.getElementById('edit-title').value.trim();
-            const content = document.getElementById('edit-content').innerHTML;
+            const content = edGet('edit-content');
             const titleEn = document.getElementById('edit-title-en').value.trim();
-            const contentEnRaw = document.getElementById('edit-content-en').innerHTML;
+            const contentEnRaw = edGet('edit-content-en');
             const contentEn = stripHtml(contentEnRaw).trim() ? contentEnRaw : '';
 
             if (!date || !title) {
@@ -2962,8 +3099,8 @@
         // APIキーはサーバー側だけが持ち、ブラウザには一切渡らない
         async function translateArticleToEnglish() {
             const title = document.getElementById('edit-title').value.trim();
-            const content = document.getElementById('edit-content').innerHTML;
-            if (!title && !document.getElementById('edit-content').textContent.trim()) {
+            const content = edGet('edit-content');
+            if (!title && !edText('edit-content').trim()) {
                 showToast('先に日本語のタイトルか本文を入力してください');
                 return;
             }
@@ -3382,9 +3519,38 @@
         }
 
         // --- 本文フォーマット・画像挿入 ---
+        // execCommand時代のコマンド名をそのまま受けて、Tiptap有効時はスキーマに沿った
+        // コマンドへ振り替える。ツールバーのonclickは変更しなくて済む。
+        const TIPTAP_COMMANDS = {
+            bold:               (c) => c.toggleBold(),
+            italic:             (c) => c.toggleItalic(),
+            underline:          (c) => c.toggleUnderline(),
+            strikeThrough:      (c) => c.toggleStrike(),
+            insertUnorderedList:(c) => c.toggleBulletList(),
+            insertOrderedList:  (c) => c.toggleOrderedList(),
+            removeFormat:       (c) => c.unsetAllMarks(),
+            undo:               (c) => c.undo(),
+            redo:               (c) => c.redo(),
+        };
+
         function formatText(cmd, val = null) {
-            document.getElementById('edit-content').focus();
-            document.execCommand(cmd, false, val);
+            const inst = tiptapEditors['edit-content'];
+            if (!inst) {
+                document.getElementById('edit-content').focus();
+                document.execCommand(cmd, false, val);
+                return;
+            }
+            const chain = inst.chain().focus();
+            if (cmd === 'formatBlock') {
+                const block = String(val || '').toUpperCase();
+                if (block === 'H2') chain.toggleHeading({ level: 2 }).run();
+                else if (block === 'BLOCKQUOTE') chain.toggleBlockquote().run();
+                else chain.setParagraph().run();
+                return;
+            }
+            const fn = TIPTAP_COMMANDS[cmd];
+            if (fn) fn(chain).run();
+            else chain.run();   // 未対応のコマンドは何もしない(フォーカスだけ戻す)
         }
 
         function insertLink() {
@@ -3407,10 +3573,11 @@
         let savedFootnoteRange = null;
 
         function insertFootnote() {
-            const editor = document.getElementById('edit-content');
-            editor.focus();
+            edFocus('edit-content');
+            // Tiptapはカーソル位置を自前の状態として持っているのでRangeの保存は不要
             const sel = window.getSelection();
-            savedFootnoteRange = sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
+            savedFootnoteRange = (!tiptapEditors['edit-content'] && sel.rangeCount > 0)
+                ? sel.getRangeAt(0).cloneRange() : null;
             const input = document.getElementById('footnote-input');
             input.value = '';
             document.getElementById('footnote-modal').classList.remove('hidden');
@@ -3436,6 +3603,12 @@
             const range = savedFootnoteRange;
             closeFootnoteModal();
             if (!note) return;
+            const inst = tiptapEditors['edit-content'];
+            if (inst) {
+                window.StudiesEditor.insertFootnote(inst, note);
+                renderFootnoteListPanel();
+                return;
+            }
             const editor = document.getElementById('edit-content');
             editor.focus();
             // execCommand('insertHTML', ...)だと、Chromeが挿入時にHTMLを独自に正規化してしまい、
@@ -3483,7 +3656,7 @@
             const editor = document.getElementById('edit-content');
             const panel = document.getElementById('footnote-list-panel');
             const list = document.getElementById('footnote-list-items');
-            const refs = Array.from(editor.querySelectorAll('.footnote-ref'));
+            const refs = footnoteNotes();
             if (refs.length === 0) {
                 panel.classList.add('hidden');
                 list.innerHTML = '';
@@ -3492,10 +3665,10 @@
             panel.classList.remove('hidden');
             // rows=3を最低の高さにしつつ、それより長い内容ならさらに伸ばす(overflow:hiddenにはせず、
             // 万一伸ばしきれなくてもスクロールで読めるようにして、内容が隠れて見えなくなるのを防ぐ)
-            list.innerHTML = refs.map((ref, i) => `
+            list.innerHTML = refs.map((note, i) => `
                 <div class="flex items-start gap-2">
                     <span class="text-xs text-white/40 pt-2 shrink-0">[${i + 1}]</span>
-                    <textarea rows="3" style="min-height: 4.5em;" class="flex-1 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30" oninput="updateFootnoteNoteFromPanel(${i}, this.value); autoGrowTextarea(this);">${escapeAttr(ref.dataset.note || '')}</textarea>
+                    <textarea rows="3" style="min-height: 4.5em;" class="flex-1 bg-white/5 text-sm rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30" oninput="updateFootnoteNoteFromPanel(${i}, this.value); autoGrowTextarea(this);">${escapeAttr(note)}</textarea>
                 </div>
             `).join('');
             list.querySelectorAll('textarea').forEach(autoGrowTextarea);
@@ -3508,6 +3681,15 @@
         }
 
         function updateFootnoteNoteFromPanel(index, value) {
+            const inst = tiptapEditors['edit-content'];
+            if (inst) {
+                // 書き戻すとonUpdateが走る。そこで一覧を作り直すと、入力中のtextareaごと
+                // 差し替わってフォーカスが飛ぶので、その間だけ再描画を抑える
+                footnotePanelEditing = true;
+                try { window.StudiesEditor.updateFootnote(inst, index, value); }
+                finally { footnotePanelEditing = false; }
+                return;
+            }
             const ref = document.getElementById('edit-content').querySelectorAll('.footnote-ref')[index];
             if (ref) ref.dataset.note = value;
         }
@@ -3516,12 +3698,17 @@
         function convertToPlainText() {
             const editor = document.getElementById('edit-content');
             if (!confirm('本文の書式(太字・見出し・画像など)を全て解除し、プレーンテキストに変換します。元に戻せません。よろしいですか？')) return;
-            const text = stripHtml(editor.innerHTML);
-            editor.innerHTML = text
-                .split('\n')
-                .filter(line => line.trim() !== '')
-                .map(line => `<p>${line}</p>`)
-                .join('') || '<p></p>';
+            const inst = tiptapEditors['edit-content'];
+            if (inst) {
+                window.StudiesEditor.setPlainText(inst);
+            } else {
+                const text = stripHtml(editor.innerHTML);
+                editor.innerHTML = text
+                    .split('\n')
+                    .filter(line => line.trim() !== '')
+                    .map(line => `<p>${line}</p>`)
+                    .join('') || '<p></p>';
+            }
             showToast('プレーンテキストに変換しました');
         }
 
@@ -3537,7 +3724,9 @@
                     return;
                 }
                 const text = clipboard.getData('text/plain');
-                document.execCommand('insertText', false, text);
+                const inst = tiptapEditors['edit-content'];
+                if (inst) window.StudiesEditor.insertPlainText(inst, text);
+                else document.execCommand('insertText', false, text);
             });
         }
 
@@ -3602,7 +3791,9 @@
                 showToast(images.length > 1 ? `アップロード中... (${i + 1}/${images.length})` : 'アップロード中...', 60000);
                 const url = await uploadImageFile(images[i]);
                 if (url) {
-                    document.execCommand('insertImage', false, url);
+                    const inst = tiptapEditors['edit-content'];
+                    if (inst) window.StudiesEditor.insertImage(inst, url);
+                    else document.execCommand('insertImage', false, url);
                     inserted++;
                 }
             }
@@ -3620,7 +3811,7 @@
             input.multiple = true;
             input.onchange = async () => {
                 if (!input.files || !input.files.length) return;
-                document.getElementById('edit-content').focus();
+                edFocus('edit-content');
                 await insertImageFiles(input.files);
             };
             input.click();
@@ -3660,8 +3851,13 @@
                 editor.classList.remove('drag-over');
                 const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
                 if (!files.length) return;
-                editor.focus();
-                placeCaretAtPoint(e.clientX, e.clientY);
+                const inst = tiptapEditors['edit-content'];
+                if (inst) {
+                    window.StudiesEditor.focusAtCoords(inst, e.clientX, e.clientY);
+                } else {
+                    editor.focus();
+                    placeCaretAtPoint(e.clientX, e.clientY);
+                }
                 await insertImageFiles(files);
             });
         }
@@ -3704,6 +3900,21 @@
 
         function resizeSelectedImage(percent) {
             if (!selectedImage) return;
+            const style = percent === null ? '' : `width: ${percent}%; height: auto;`;
+            const inst = tiptapEditors['edit-content'];
+            if (inst) {
+                // DOMのstyleを直接変えてもgetHTML()は文書の状態から作られるので保存されない。
+                // 対応するノードの属性を書き換える
+                window.StudiesEditor.setImageStyle(inst, selectedImage, style);
+                // 差し替え後のDOMに合わせて選択枠とツールバーを付け直す
+                const src = selectedImage.getAttribute('src');
+                requestAnimationFrame(() => {
+                    const img = document.getElementById('edit-content')
+                        .querySelector(`img[src="${CSS.escape(src)}"]`);
+                    if (img) selectImage(img); else deselectImage();
+                });
+                return;
+            }
             if (percent === null) {
                 selectedImage.style.width = '';
                 selectedImage.style.height = '';
@@ -3976,6 +4187,85 @@
         });
         twEditor.addEventListener('input', updateCharCount);
         twEditor.addEventListener('input', renderFootnoteListPanel);
+
+        // 引用(blockquote)内で空行のままEnterを押すと引用を抜けてpを挿入する。
+        // Tiptapではスキーマ側が同じ挙動を持っているので、有効時はこの手当ては行わない
+        // (DOMを直接いじるとProseMirrorの状態と食い違うため)
+        twEditor.addEventListener('keydown', function(e) {
+            if (tiptapEditors['edit-content']) return;
+            if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey) return;
+            const sel = window.getSelection();
+            if (!sel || !sel.rangeCount || !sel.getRangeAt(0).collapsed) return;
+            let anchor = sel.getRangeAt(0).startContainer;
+            // カーソルがblockquote内かチェック
+            let bq = null;
+            for (let n = anchor; n && n !== twEditor; n = n.parentNode) {
+                if (n.nodeName === 'BLOCKQUOTE') { bq = n; break; }
+            }
+            if (!bq) return;
+            // blockquote直下の子要素を探す（テキストノードは親要素へ）
+            let child = anchor.nodeType === Node.TEXT_NODE ? anchor.parentNode : anchor;
+            while (child && child.parentNode !== bq) {
+                child = child.parentNode;
+                if (!child || child === twEditor || child === bq) return;
+            }
+            if (!child || child.textContent !== '') return; // 空でなければブラウザ任せ
+            e.preventDefault();
+            bq.removeChild(child);
+            const p = document.createElement('p');
+            p.innerHTML = '<br>';
+            bq.parentNode.insertBefore(p, bq.nextSibling);
+            if (!bq.textContent.trim()) bq.parentNode.removeChild(bq);
+            const r = document.createRange();
+            r.setStart(p, 0);
+            r.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(r);
+        });
+
+        // 引用(blockquote)の先頭でBackspaceを押すと引用フォーマットを外す
+        // 手動DOMいじりはブラウザ間で構造が異なり壊れやすいので execCommand('outdent') に委ねる
+        twEditor.addEventListener('keydown', function(e) {
+            if (tiptapEditors['edit-content']) return;   // Tiptapはスキーマ側で対応
+            if (e.key !== 'Backspace') return;
+            const sel = window.getSelection();
+            if (!sel || !sel.rangeCount || !sel.getRangeAt(0).collapsed) return;
+            const range = sel.getRangeAt(0);
+
+            const anchor = range.startContainer;
+            let bq = null;
+            for (let n = anchor; n && n !== twEditor; n = n.parentNode) {
+                if (n.nodeName === 'BLOCKQUOTE') { bq = n; break; }
+            }
+            if (!bq) return;
+
+            // bq直下の直接の子（カーソルを含む行）を特定
+            let child = anchor;
+            while (child && child.parentNode !== bq) {
+                child = child.parentNode;
+                if (!child || child === twEditor) return;
+            }
+            if (!child) return;
+
+            // 空白テキストノードを無視して前の兄弟があれば通常の行マージ（ブラウザ任せ）
+            let prev = child.previousSibling;
+            while (prev && prev.nodeType === Node.TEXT_NODE && !prev.textContent.trim()) {
+                prev = prev.previousSibling;
+            }
+            if (prev !== null) return;
+
+            // blockquote先頭からカーソルまでの間にテキストがあればブラウザ任せ
+            try {
+                const testRange = document.createRange();
+                testRange.setStart(bq, 0);
+                testRange.setEnd(anchor, range.startOffset);
+                if (testRange.toString() !== '') return;
+            } catch { return; }
+
+            // 先頭にいる → outdent でブラウザにblockquoteを外させる
+            e.preventDefault();
+            document.execCommand('outdent');
+        });
 
         // 自動保存: タイトル・本文(日英)を編集するたびに、少し待ってからlocalStorageへ控えを取る
         [twEditor, 'edit-title-en', 'edit-content-en', 'edit-title'].forEach(target => {
