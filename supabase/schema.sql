@@ -396,3 +396,6 @@ as $$
   order by embedding <=> query_embedding
   limit match_count;
 $$;
+
+-- カテゴリ絞り込みの「All」ラベルのフォント(空文字なら本文フォントに従う)
+alter table public.site_settings add column if not exists all_font text not null default '';

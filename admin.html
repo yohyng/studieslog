@@ -805,6 +805,51 @@
                         <label class="text-xs text-white/50 block mb-3">カテゴリ別の本文フォント(空欄なら本文フォントと同じ)</label>
                         <div class="flex flex-col gap-3">
                             <div>
+                                <div class="text-xs text-white/40 mb-1">All(カテゴリ絞り込みの「All」)</div>
+                                <select id="set-all-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                                    <option value="">本文と同じフォント</option>
+                                    <optgroup label="明朝体">
+                                        <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                        <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                                        <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                                        <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                                        <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                        <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                                        <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                                    </optgroup>
+                                    <optgroup label="ゴシック体">
+                                        <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                                        <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                        <option value="'Zen Kaku Gothic Antique', sans-serif">Zen Kaku Gothic Antique</option>
+                                        <option value="'Murecho', sans-serif">Murecho</option>
+                                        <option value="'RocknRoll One', sans-serif">RocknRoll One</option>
+                                        <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                                        <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                                        <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                                        <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                                    </optgroup>
+                                    <optgroup label="丸ゴシック体">
+                                        <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                                        <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                                    </optgroup>
+                                    <optgroup label="手書き風">
+                                        <option value="'Klee One', cursive">Klee One</option>
+                                    </optgroup>
+                                    <optgroup label="カリグラフィー風">
+                                        <option value="'New Tegomin', serif">New Tegomin</option>
+                                        <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                                    </optgroup>
+                                    <optgroup label="装飾体(英字のみ)">
+                                        <option value="'Fraunces', serif">Fraunces</option>
+                                        <option value="'Bodoni Moda', serif">Bodoni Moda</option>
+                                        <option value="'Abril Fatface', serif">Abril Fatface</option>
+                                        <option value="'Grenze Gotisch', serif">Grenze Gotisch</option>
+                                        <option value="'Italiana', serif">Italiana</option>
+                                        <option value="'Cormorant', serif">Cormorant</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div>
                                 <div class="text-xs text-white/40 mb-1">log</div>
                                 <select id="set-log-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
                                     <option value="">本文と同じフォント</option>
@@ -4060,6 +4105,7 @@
             document.getElementById('set-menu-font-size-value').textContent = (data.menu_font_size || 12) + 'px';
             document.getElementById('set-font').value = data.font;
             document.getElementById('set-title-font').value = data.title_font || '';
+            document.getElementById('set-all-font').value = data.all_font || '';
             document.getElementById('set-log-font').value = data.log_font || '';
             document.getElementById('set-sketch-font').value = data.sketch_font || '';
             document.getElementById('set-essay-font').value = data.essay_font || '';
@@ -4170,6 +4216,7 @@
                 text_color: document.getElementById('set-text-color').value,
                 font: document.getElementById('set-font').value,
                 title_font: document.getElementById('set-title-font').value,
+                all_font: document.getElementById('set-all-font').value,
                 log_font: document.getElementById('set-log-font').value,
                 sketch_font: document.getElementById('set-sketch-font').value,
                 essay_font: document.getElementById('set-essay-font').value,
