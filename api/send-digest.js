@@ -38,7 +38,7 @@ module.exports = async function handler(req, res) {
             { headers: sbHeaders }
         ),
         // メールを閲覧ページと同じ見た目にするため、表示設定も一式取る
-        fetch(`${SUPABASE_URL}/rest/v1/site_settings?id=eq.1&select=site_title,og_image,digest_bg_color,digest_text_color,digest_bg_image,font,title_font,font_size,line_height,letter_spacing,text_align,content_width,bg_color,text_color,body_text_opacity,title_text_opacity,footnote_color`, { headers: sbHeaders }),
+        fetch(`${SUPABASE_URL}/rest/v1/site_settings?id=eq.1&select=site_title,og_image,digest_bg_color,digest_text_color,digest_bg_image,font,title_font,font_size,line_height,letter_spacing,text_align,content_width,bg_color,text_color,body_text_opacity,title_text_opacity,footnote_color,footnote_bg_color`, { headers: sbHeaders }),
     ]);
     const rawArticles = await articlesRes.json();
     const settingsRows = await settingsRes.json();

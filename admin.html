@@ -3186,7 +3186,7 @@
                     .order('date', { ascending: false })
                     .limit(5),
                 // 送信時と同じ見た目にするため、表示設定も一式取る
-                sb.from('site_settings').select('site_title, og_image, digest_bg_color, digest_text_color, digest_bg_image, font, title_font, font_size, line_height, letter_spacing, text_align, content_width, bg_color, text_color, body_text_opacity, title_text_opacity, footnote_color').eq('id', 1).single(),
+                sb.from('site_settings').select('site_title, og_image, digest_bg_color, digest_text_color, digest_bg_image, font, title_font, font_size, line_height, letter_spacing, text_align, content_width, bg_color, text_color, body_text_opacity, title_text_opacity, footnote_color, footnote_bg_color').eq('id', 1).single(),
             ]);
             if (error) {
                 console.error(error);
