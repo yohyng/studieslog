@@ -402,3 +402,22 @@ alter table public.site_settings add column if not exists all_font text not null
 -- 配信メールの背景画像。埋め込み画像(data:)はメールで使えないため、
 -- 表示設定のグラデーション背景を1枚に焼き込んでStorageへ上げ、そのURLを持つ
 alter table public.site_settings add column if not exists digest_bg_image text not null default '';
+
+-- 記事ごとの内容分析。タグを付けるためではなく、記事そのものが何を論じているかを
+-- 記録しておく。タグはこれらを統合した結果としてボトムアップに生まれる。
+-- content_hash を持たせて、本文が変わっていない記事は再分析しないようにする。
+create table if not exists public.article_analysis (
+  article_id bigint primary key references public.articles(id) on delete cascade,
+  summary text not null default '',
+  themes jsonb not null default '[]'::jsonb,
+  concepts jsonb not null default '[]'::jsonb,
+  subjects jsonb not null default '[]'::jsonb,
+  content_hash text not null default '',
+  analyzed_at timestamptz not null default now()
+);
+
+alter table public.article_analysis enable row level security;
+
+drop policy if exists "article_analysis_auth_all" on public.article_analysis;
+create policy "article_analysis_auth_all" on public.article_analysis
+  for all to authenticated using (true) with check (true);

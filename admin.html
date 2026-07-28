@@ -1466,6 +1466,21 @@
                         </details>
                     </div>
                 </div>
+
+                <div class="mt-10 pt-10 border-t border-white/10">
+                    <h3 class="text-xs font-medium text-white/70 mb-2">記事の分析</h3>
+                    <p class="text-xs text-white/40 mb-4">
+                        各記事を単独で読ませて、何を論じているかを抽出します。<strong>既存のタグは一切見せません。</strong>
+                        タグはこの分析を統合した結果として、あとからボトムアップに作ります。<br>
+                        本文が変わっていない記事は飛ばすので、書き足したぶんだけ追加で分析されます。
+                    </p>
+                    <div class="flex items-center gap-3 mb-4">
+                        <button id="analyze-btn" onclick="runArticleAnalysis()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">記事を分析する</button>
+                        <button onclick="runArticleAnalysis(true)" class="px-3 py-2 text-xs text-white/40 hover:text-white/70 transition-colors" title="本文が変わっていない記事も含めて全件やり直します">全件やり直す</button>
+                        <span id="analyze-status" class="text-xs text-white/40"></span>
+                    </div>
+                    <div id="analyze-result" class="flex flex-col gap-3"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -3573,6 +3588,63 @@
             } catch (e) {
                 status.textContent = `エラー: ${e.message}`;
             }
+        }
+
+        // --- 記事の分析(タグのボトムアップ生成の材料) ---
+        // 1回のリクエストで数件ずつしか進まないので、終わるまで繰り返し呼ぶ
+        async function runArticleAnalysis(force = false) {
+            const btn = document.getElementById('analyze-btn');
+            const status = document.getElementById('analyze-status');
+            btn.disabled = true;
+            const collected = [];
+            const failures = [];
+            try {
+                for (let guard = 0; guard < 200; guard++) {
+                    const { data: { session } } = await sb.auth.getSession();
+                    if (!session) { status.textContent = 'ログイン状態を確認できませんでした'; return; }
+                    const res = await fetch('/api/rag', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                        body: JSON.stringify({ action: 'analyze-articles', limit: 4, force: force && guard === 0 }),
+                    });
+                    if (!res.ok) {
+                        const detail = await res.text();
+                        status.textContent = '失敗しました: ' + detail.slice(0, 200);
+                        return;
+                    }
+                    const data = await res.json();
+                    collected.push(...(data.processed || []));
+                    failures.push(...(data.failed || []));
+                    status.textContent = `分析中… ${data.analyzed}/${data.total}（残り${data.remaining}件）`;
+                    renderAnalysisResult(collected, failures);
+                    if (!data.remaining || (!data.processed.length && !data.failed.length)) {
+                        status.textContent = collected.length
+                            ? `完了：${collected.length}件を分析しました`
+                            : 'すべて分析済みです（本文に変更のある記事はありませんでした）';
+                        return;
+                    }
+                    // 全件やり直しは初回だけ。2回目以降はハッシュで飛ばさせる
+                    force = false;
+                }
+            } catch (e) {
+                console.error(e);
+                status.textContent = '失敗しました: ' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function renderAnalysisResult(items, failures) {
+            const wrap = document.getElementById('analyze-result');
+            const chip = (t) => `<span class="inline-block bg-white/10 rounded px-1.5 py-0.5 mr-1 mb-1 text-xs">${escapeAttr(t)}</span>`;
+            wrap.innerHTML = failures.map(f => `
+                <div class="text-xs text-red-300/80">✗ ${escapeAttr(f.title || f.id)} — ${escapeAttr(f.error)}</div>
+            `).join('') + items.map(a => `
+                <div class="text-xs">
+                    <div class="text-white/70 mb-1">${escapeAttr(a.title || '(無題)')}</div>
+                    <div>${(a.themes || []).map(chip).join('')}</div>
+                </div>
+            `).join('');
         }
 
         async function reindexAiArticles() {

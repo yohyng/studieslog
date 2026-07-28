@@ -62,6 +62,15 @@ module.exports = async function handler(req, res) {
             res.status(200).json(result);
             return;
         }
+        if (action === 'analyze-articles') {
+            // 1回のリクエストで少しずつ進める。Geminiの応答は1件あたり数秒かかるので、
+            // 全件を1回で処理しようとすると関数の実行時間の上限に当たる
+            const limit = Number(req.body?.limit) || 5;
+            const force = req.body?.force === true;
+            const result = await analyzeArticles({ serviceKey, geminiKey, limit, force });
+            res.status(200).json(result);
+            return;
+        }
         if (action === 'listmodels') {
             const r = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(geminiKey)}`
@@ -261,6 +270,108 @@ ${query}`;
             similarity: m.similarity,
             excerpt: m.content.slice(0, 120),
         })),
+    };
+}
+
+// ── 記事ごとの内容分析 ──────────────────────────────────────────────────────
+// タグを付けるための処理ではない。「この記事が何を論じているか」だけを記事単独で読み取り、
+// 保存しておく。タグはこれらを統合した結果として、あとからボトムアップに生まれる。
+// そのため、ここでは既存のタグ語彙を一切プロンプトに含めない。
+
+const ANALYZE_PROMPT = `あなたはこのアーカイブの書き手のアシスタントです。以下の記事を読んで、内容を分析してください。
+
+重要な前提: 既存の分類やタグは一切考慮しないでください。この記事そのものが何を扱い、何を論じているかだけを見てください。
+分類のために都合よく丸めず、実際に書かれていることに即して抽出してください。
+
+出力は次の形のJSONのみ。前後に説明やコードブロックの記号を付けないでください。
+{
+  "summary": "1〜2文で、この記事が何を論じているか",
+  "themes": ["この記事の主題。2〜4個。抽象度は中くらい(「建築」のように広すぎず、固有名詞のように狭すぎない)"],
+  "concepts": ["論の中で鍵になっている概念や語。3〜6個"],
+  "subjects": ["具体的に言及されている書名・人名・作品・場所・製品。0〜8個。無ければ空配列"]
+}`;
+
+/** GeminiがJSONをコードブロックで包んで返すことがあるので、それを剥がして解析する */
+function parseJsonLoose(text) {
+    const cleaned = String(text || '').trim()
+        .replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim();
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start < 0 || end < 0) throw new Error('JSONが見つかりません: ' + cleaned.slice(0, 200));
+    return JSON.parse(cleaned.slice(start, end + 1));
+}
+
+function contentHash(text) {
+    return require('node:crypto').createHash('sha1').update(String(text || '')).digest('hex');
+}
+
+async function analyzeArticles({ serviceKey, geminiKey, limit, force }) {
+    const articles = await supabaseRest('/articles?select=id,title,content&order=id', serviceKey, { method: 'GET' });
+    const done = await supabaseRest('/article_analysis?select=article_id,content_hash', serviceKey, { method: 'GET' });
+    const hashById = new Map((done || []).map((r) => [r.article_id, r.content_hash]));
+
+    // 本文が変わっていない記事は飛ばす。書き足すたびに全件を投げ直さずに済む
+    const pending = (articles || []).filter((a) => {
+        const text = stripHtml(a.content);
+        if (!text.trim()) return false;
+        if (force) return true;
+        return hashById.get(a.id) !== contentHash(text);
+    });
+
+    const processed = [];
+    const failed = [];
+    for (const article of pending.slice(0, limit)) {
+        const plain = stripHtml(article.content);
+        const prompt = `${ANALYZE_PROMPT}
+
+# 記事のタイトル
+${article.title || '(無題)'}
+
+# 記事の本文
+${plain.slice(0, 12000)}`;
+
+        try {
+            const r = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${CHAT_MODEL}:generateContent?key=${encodeURIComponent(geminiKey)}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { responseMimeType: 'application/json' },
+                    }),
+                }
+            );
+            if (!r.ok) throw new Error(`gemini ${r.status}: ${(await r.text()).slice(0, 200)}`);
+            const data = await r.json();
+            const parsed = parseJsonLoose(data?.candidates?.[0]?.content?.parts?.[0]?.text || '');
+
+            const row = {
+                article_id: article.id,
+                summary: String(parsed.summary || ''),
+                themes: Array.isArray(parsed.themes) ? parsed.themes.map(String) : [],
+                concepts: Array.isArray(parsed.concepts) ? parsed.concepts.map(String) : [],
+                subjects: Array.isArray(parsed.subjects) ? parsed.subjects.map(String) : [],
+                content_hash: contentHash(plain),
+                analyzed_at: new Date().toISOString(),
+            };
+            await supabaseRest('/article_analysis', serviceKey, {
+                method: 'POST',
+                headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+                body: JSON.stringify([row]),
+            });
+            processed.push({ id: article.id, title: article.title, themes: row.themes });
+        } catch (e) {
+            failed.push({ id: article.id, title: article.title, error: String(e.message || e) });
+        }
+    }
+
+    return {
+        processed,
+        failed,
+        remaining: Math.max(0, pending.length - limit),
+        total: (articles || []).length,
+        analyzed: (done || []).length + processed.length,
     };
 }
 
