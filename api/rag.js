@@ -72,6 +72,14 @@ module.exports = async function handler(req, res) {
             res.status(200).json(result);
             return;
         }
+        if (action === 'discover-tag-clusters') {
+            // 記事のベクトルの近さから「実際に内容が近い」まとまりを先に検出し、
+            // そのまとまりに対してだけLLMに名前(タグ)を提案させる。
+            // クラスタ検出そのものはLLMを使わない純粋な計算で、名前付けとは役割を分ける
+            const result = await discoverTagClusters({ serviceKey, geminiKey });
+            res.status(200).json(result);
+            return;
+        }
         if (action === 'find-working-model') {
             // ListModelsは「カタログに存在し generateContent に対応している」ことしか示さず、
             // このAPIキーで実際に呼べるかは反映していない。新規ユーザーへの提供終了のような制限は
@@ -490,6 +498,194 @@ async function findWorkingModel(geminiKey) {
         if (r2.status === 429) break;
     }
     return { working: null, tried, totalCandidates: candidates.length };
+}
+
+// ── タグのボトムアップ生成(Step 2: クラスタ検出 + 命名) ─────────────────────
+// Step 1(analyze-articles)で溜めた記事ごとの分析結果と、article_chunksの埋め込みを使う。
+// 「似ている記事のまとまりを見つける」のはベクトルの近さだけで決める純粋な計算にし、
+// LLMには「見つかったまとまりに、ぴったりの一言があるか」だけを聞く。
+// 役割を分けることで、実際には近くない記事同士をLLMが意味だけで結びつけてしまう
+// (根拠のないグルーピング)のを防ぐ。
+
+/** PostgRESTが返す pgvector の文字列 "[0.1,0.2,...]" を配列にする */
+function parsePgVector(v) {
+    if (Array.isArray(v)) return v;
+    if (typeof v !== 'string') return null;
+    const inner = v.trim().replace(/^\[|\]$/g, '');
+    if (!inner) return null;
+    return inner.split(',').map(Number);
+}
+
+function normalizeVec(vec) {
+    let n = 0;
+    for (const x of vec) n += x * x;
+    n = Math.sqrt(n) || 1;
+    return vec.map((x) => x / n);
+}
+
+function dotVec(a, b) {
+    let s = 0;
+    for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+    return s;
+}
+
+async function fetchAllRows(path, serviceKey) {
+    let rows = [], from = 0;
+    for (;;) {
+        const page = await supabaseRest(`${path}${path.includes('?') ? '&' : '?'}limit=500&offset=${from}`, serviceKey, { method: 'GET' });
+        rows = rows.concat(page || []);
+        if (!page || page.length < 500) break;
+        from += 500;
+    }
+    return rows;
+}
+
+async function discoverTagClusters({ serviceKey, geminiKey }) {
+    const [articles, chunks, analysisRows] = await Promise.all([
+        supabaseRest('/articles?select=id,title,category', serviceKey, { method: 'GET' }),
+        fetchAllRows('/article_chunks?select=article_id,embedding', serviceKey),
+        supabaseRest('/article_analysis?select=article_id,summary,themes,concepts,subjects', serviceKey, { method: 'GET' }),
+    ]);
+    const articleById = new Map((articles || []).map((a) => [a.id, a]));
+    const analysisById = new Map((analysisRows || []).map((r) => [r.article_id, r]));
+
+    // 記事ごとにチャンクの埋め込みを平均して正規化し、「記事のベクトル」にする
+    const sums = new Map();
+    for (const c of chunks) {
+        const v = parsePgVector(c.embedding);
+        if (!v) continue;
+        if (!sums.has(c.article_id)) sums.set(c.article_id, new Array(v.length).fill(0));
+        const acc = sums.get(c.article_id);
+        for (let i = 0; i < v.length; i++) acc[i] += v[i];
+    }
+    const ids = [...sums.keys()];
+    if (ids.length < 3) {
+        return { clusters: [], articleCount: ids.length, note: '記事の埋め込みが不足しています(3件未満)。先に記事をインデックスしてください。' };
+    }
+    const vecs = ids.map((id) => normalizeVec(sums.get(id)));
+    const n = ids.length;
+
+    // 全ペアの類似度と、全体平均(結束度の基準線)を計算する
+    const sim = Array.from({ length: n }, () => new Array(n).fill(0));
+    let sumSim = 0, pairCount = 0;
+    for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+            const s = dotVec(vecs[i], vecs[j]);
+            sim[i][j] = sim[j][i] = s;
+            sumSim += s;
+            pairCount++;
+        }
+    }
+    const globalMean = pairCount ? sumSim / pairCount : 0;
+
+    // 実際のクラスタが小さい(例:3件)場合、上位K件だけを見る相互最近傍は
+    // 「本当は近くない記事」を無理やり選ばされてしまう(K=5なのに同じ主題の記事が
+    // 2件しか無ければ、残り3枠は無関係な記事で埋まる)。これを避けるため、
+    // 相互最近傍であることに加えて、類似度そのものが「全体の中で統計的に外れ値と
+    // 言えるほど高い」ことも条件にする。
+    // 固定の分位点(上位◯%)は、実際に真に近いペアが全体の何%を占めるかに結果が
+    // 左右されてしまい脆い(真のペアが少ないと、分位点がノイズ側に紛れ込む)。
+    // 平均+標準偏差というデータ自身のばらつきに基づく基準にすることで、
+    // はっきり分離しているデータ(全体的に低い中に一部だけ高い)にも、
+    // Stage Aで見たような連続的でなだらかなデータにも、同じロジックで対応できる
+    const allPairs = [];
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) allPairs.push(sim[i][j]);
+    const stdDev = allPairs.length
+        ? Math.sqrt(allPairs.reduce((s, v) => s + (v - globalMean) ** 2, 0) / allPairs.length)
+        : 0;
+    const simThreshold = globalMean + stdDev;
+
+    const K = Math.min(5, n - 1);
+    const neighborSets = [];
+    for (let i = 0; i < n; i++) {
+        const top = [...Array(n).keys()]
+            .filter((j) => j !== i)
+            .sort((a, b) => sim[i][b] - sim[i][a])
+            .slice(0, K);
+        neighborSets.push(new Set(top));
+    }
+    const adj = Array.from({ length: n }, () => new Set());
+    for (let i = 0; i < n; i++) {
+        for (const j of neighborSets[i]) {
+            if (neighborSets[j].has(i) && sim[i][j] >= simThreshold) { adj[i].add(j); adj[j].add(i); }
+        }
+    }
+
+    // 連結成分を3件以上のものだけクラスタ候補として拾う
+    const seen = new Array(n).fill(false);
+    const components = [];
+    for (let i = 0; i < n; i++) {
+        if (seen[i]) continue;
+        const stack = [i], comp = [];
+        seen[i] = true;
+        while (stack.length) {
+            const cur = stack.pop();
+            comp.push(cur);
+            for (const nb of adj[cur]) if (!seen[nb]) { seen[nb] = true; stack.push(nb); }
+        }
+        if (comp.length >= 3) components.push(comp);
+    }
+
+    const clusters = [];
+    for (const comp of components) {
+        let within = [];
+        for (let a = 0; a < comp.length; a++)
+            for (let b = a + 1; b < comp.length; b++) within.push(sim[comp[a]][comp[b]]);
+        const coherence = within.length ? within.reduce((x, y) => x + y, 0) / within.length : null;
+
+        const members = comp.map((i) => {
+            const id = ids[i];
+            const a = analysisById.get(id);
+            return {
+                id,
+                title: articleById.get(id)?.title || '(無題)',
+                themes: a?.themes || [],
+                concepts: a?.concepts || [],
+            };
+        });
+
+        let tag;
+        try {
+            tag = await proposeTagForCluster(members, geminiKey);
+        } catch (e) {
+            tag = { fits: false, reason: 'エラー: ' + String(e.message || e) };
+        }
+
+        clusters.push({
+            memberIds: comp.map((i) => ids[i]),
+            members,
+            coherence,
+            lift: coherence != null ? coherence - globalMean : null,
+            tag,
+        });
+    }
+    clusters.sort((a, b) => (b.coherence || 0) - (a.coherence || 0));
+
+    return { clusters, articleCount: n, globalMean };
+}
+
+async function proposeTagForCluster(members, geminiKey) {
+    const body = members.map((m) =>
+        `- 「${m.title}」\n  主題: ${(m.themes || []).join('、') || '(なし)'}\n  概念: ${(m.concepts || []).join('、') || '(なし)'}`
+    ).join('\n');
+
+    const prompt = `以下は、埋め込みベクトルの近さから「実際に内容が近い」と確認できた記事群(${members.length}件)です。
+これらに共通して当てはまる、タグとしてふさわしい一言(2〜8文字程度の名詞または短い句)があれば提案してください。
+無理にこじつけないでください。本当にぴったりくるものが無ければ fits を false にしてください。
+
+# 記事群
+${body}
+
+出力は次の形のJSONのみ。前後に説明やコードブロックの記号を付けないでください。
+{
+  "fits": true または false,
+  "tag": "タグ名(fitsがtrueの場合のみ。無ければ省略可)",
+  "description": "このタグが何を指すかの一文(fitsがtrueの場合のみ)",
+  "reason": "なぜこの一言が当てはまるか、または当てはまらないか"
+}`;
+
+    const data = await geminiGenerate(prompt, geminiKey);
+    return parseJsonLoose(data?.candidates?.[0]?.content?.parts?.[0]?.text || '');
 }
 
 function stripHtml(html) {

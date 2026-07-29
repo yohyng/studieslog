@@ -1486,6 +1486,21 @@
                     </div>
                     <div id="analyze-result" class="flex flex-col gap-3"></div>
                 </div>
+
+                <div class="mt-10 pt-10 border-t border-white/10">
+                    <h3 class="text-xs font-medium text-white/70 mb-2">タグ候補(記事のまとまりから探す)</h3>
+                    <p class="text-xs text-white/40 mb-4">
+                        記事の埋め込みベクトルの近さだけで「実際に内容が近い」記事のまとまりを先に見つけ(LLMは使わない、純粋な計算)、
+                        そのまとまりに対してだけ「ぴったりの一言があるか」をLLMに聞きます。<br>
+                        <strong>ここで出るのはあくまで提案です。内容を確認してから、必要なものだけ「適用」してください。</strong>
+                        上の「記事の分析」を先に済ませておくと、タグ名の精度が上がります。
+                    </p>
+                    <div class="flex items-center gap-3 mb-4">
+                        <button id="cluster-btn" onclick="runTagClusterDiscovery()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">タグ候補を探す</button>
+                        <span id="cluster-status" class="text-xs text-white/40"></span>
+                    </div>
+                    <div id="cluster-result" class="flex flex-col gap-4"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -3761,6 +3776,112 @@
                     <div>${(a.themes || []).map(chip).join('')}</div>
                 </div>
             `).join('');
+        }
+
+        // --- タグ候補(記事のまとまりから探す。Step 2: クラスタ検出+命名の提案) ---
+        let tagClusters = [];
+
+        async function runTagClusterDiscovery() {
+            const btn = document.getElementById('cluster-btn');
+            const status = document.getElementById('cluster-status');
+            btn.disabled = true;
+            status.textContent = '記事のまとまりを計算し、タグ名を考えています…（1分ほどかかることがあります）';
+            document.getElementById('cluster-result').innerHTML = '';
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) { status.textContent = 'ログイン状態を確認できませんでした'; return; }
+                const res = await fetch('/api/rag', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                    body: JSON.stringify({ action: 'discover-tag-clusters' }),
+                });
+                const data = await res.json();
+                if (!res.ok) { status.textContent = '失敗しました: ' + (data.detail || data.error); return; }
+                if (data.note) { status.textContent = data.note; return; }
+                tagClusters = data.clusters || [];
+                status.textContent = tagClusters.length
+                    ? `${data.articleCount}記事から${tagClusters.length}件のまとまりが見つかりました。内容を確認して適用してください。`
+                    : `${data.articleCount}記事を調べましたが、3件以上のまとまりは見つかりませんでした。`;
+                renderTagClusters();
+            } catch (e) {
+                console.error(e);
+                status.textContent = 'エラー: ' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function renderTagClusters() {
+            const wrap = document.getElementById('cluster-result');
+            wrap.innerHTML = tagClusters.map((c, i) => {
+                const t = c.tag || {};
+                const titles = c.members.map(m => `<div class="text-xs text-white/60">${escapeAttr(m.title)}</div>`).join('');
+                const themeChips = [...new Set(c.members.flatMap(m => m.themes || []))]
+                    .map(x => `<span class="inline-block bg-white/5 rounded px-1.5 py-0.5 mr-1 mb-1 text-xs text-white/40">${escapeAttr(x)}</span>`).join('');
+                const coherenceNote = c.lift != null && c.lift > 0
+                    ? `<span class="text-xs text-white/30">結束度 ${c.coherence.toFixed(3)}(全体平均より+${c.lift.toFixed(3)})</span>`
+                    : `<span class="text-xs text-white/30">結束度 ${(c.coherence ?? 0).toFixed(3)}</span>`;
+
+                if (!t.fits) {
+                    return `<div class="p-3 rounded bg-white/5 border border-white/10">
+                        <div class="text-xs text-white/40 mb-2">${c.members.length}件のまとまり — ぴったりの一言なし ${coherenceNote}</div>
+                        <div class="mb-2">${titles}</div>
+                        <div class="text-xs text-white/30">理由: ${escapeAttr(t.reason || '')}</div>
+                    </div>`;
+                }
+                return `<div class="p-3 rounded bg-white/5 border border-white/10" id="cluster-card-${i}">
+                    <div class="flex items-center gap-2 mb-2">
+                        <input id="cluster-tag-name-${i}" value="${escapeAttr(t.tag || '')}" class="bg-white/10 text-sm rounded px-2 py-1 border border-white/10 focus:outline-none focus:border-white/30" style="width: 10em;">
+                        <button onclick="applyTagCluster(${i})" class="px-3 py-1 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">適用</button>
+                        ${coherenceNote}
+                    </div>
+                    <div class="text-xs text-white/40 mb-2">${escapeAttr(t.description || '')}</div>
+                    <div class="mb-2">${titles}</div>
+                    <div class="mb-1">${themeChips}</div>
+                    <div class="text-xs text-white/30">理由: ${escapeAttr(t.reason || '')}</div>
+                </div>`;
+            }).join('') || '<div class="text-xs text-white/30">まとまりが見つかりませんでした</div>';
+        }
+
+        // 提案されたクラスタをタグとして確定する。同名のタグが既にあれば使い回し、
+        // 無ければ新規作成してから、まとまりに属する記事全部へ付与する
+        async function applyTagCluster(index) {
+            const cluster = tagClusters[index];
+            if (!cluster) return;
+            const nameInput = document.getElementById(`cluster-tag-name-${index}`);
+            const name = nameInput.value.trim();
+            if (!name) { showToast('タグ名を入力してください'); return; }
+            const slug = slugify(name);
+            if (!slug) { showToast('タグ名を確認してください'); return; }
+
+            await ensureTagsLoaded();
+            let tag = tags.find(t => t.slug === slug);
+            if (!tag) {
+                const { data, error } = await sb.from('tags')
+                    .insert({ name, slug, description: cluster.tag?.description || '' })
+                    .select().single();
+                if (error) {
+                    console.error(error);
+                    showToast(error.code === '23505' ? 'このスラッグは既に使われています' : 'タグの作成に失敗しました');
+                    return;
+                }
+                tag = data;
+                tags.push(tag);
+            }
+
+            // 既存の付与と重複しないよう、まだ付いていない記事にだけ挿入する
+            const { data: existing } = await sb.from('article_tags')
+                .select('article_id').eq('tag_id', tag.id).in('article_id', cluster.memberIds);
+            const already = new Set((existing || []).map(r => r.article_id));
+            const rows = cluster.memberIds.filter(id => !already.has(id)).map(id => ({ article_id: id, tag_id: tag.id }));
+            if (rows.length) {
+                const { error } = await sb.from('article_tags').insert(rows);
+                if (error) { console.error(error); showToast('記事への付与に失敗しました'); return; }
+            }
+
+            showToast(`「${name}」を${cluster.memberIds.length}件の記事に適用しました`);
+            const card = document.getElementById(`cluster-card-${index}`);
+            if (card) card.style.opacity = '0.4';
         }
 
         async function reindexAiArticles() {
