@@ -593,10 +593,15 @@ async function discoverTagClusters({ serviceKey, geminiKey }) {
     const stdDev = allPairs.length
         ? Math.sqrt(allPairs.reduce((s, v) => s + (v - globalMean) ** 2, 0) / allPairs.length)
         : 0;
-    // 係数は0.5。1.0だと、真に近いペアが標本の中で大きな割合を占める場合
-    // (真のペアが多いほど平均globalMean自体が引き上げられ、しきい値が信号の値と
-    // ほぼ重なって検出できなくなる)に弱いことが分かったため、余裕を持たせている
-    const simThreshold = globalMean + stdDev * 0.5;
+    // 係数は1.0。0.5まで緩めたところ、実データ(24記事)で18件もの記事が
+    // 1つの塊に連鎖してしまい(結束度は全体平均+0.028しかない=ほぼ無意味な
+    // まとまり)、安全策のMAX_CLUSTER_SIZEに救われる形になった。これは実際の
+    // コーパスがStage Aで見たとおり「全体的にどの記事も同じくらい似ている」
+    // 連続的でなだらかな分布であることを裏付けている。このデータ形状では
+    // しきい値を緩めるほど連鎖が起きやすいため、1.0に戻す。
+    // (真のペアが標本の大部分を占める極端に小さいサンプルでは1.0だと検出できない
+    // ケースが合成データで見つかっているが、実コーパスの挙動が優先される)
+    const simThreshold = globalMean + stdDev * 1.0;
 
     const K = Math.min(5, n - 1);
     const neighborSets = [];
