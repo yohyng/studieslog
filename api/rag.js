@@ -593,7 +593,10 @@ async function discoverTagClusters({ serviceKey, geminiKey }) {
     const stdDev = allPairs.length
         ? Math.sqrt(allPairs.reduce((s, v) => s + (v - globalMean) ** 2, 0) / allPairs.length)
         : 0;
-    const simThreshold = globalMean + stdDev;
+    // 係数は0.5。1.0だと、真に近いペアが標本の中で大きな割合を占める場合
+    // (真のペアが多いほど平均globalMean自体が引き上げられ、しきい値が信号の値と
+    // ほぼ重なって検出できなくなる)に弱いことが分かったため、余裕を持たせている
+    const simThreshold = globalMean + stdDev * 0.5;
 
     const K = Math.min(5, n - 1);
     const neighborSets = [];
@@ -626,6 +629,14 @@ async function discoverTagClusters({ serviceKey, geminiKey }) {
         if (comp.length >= 3) components.push(comp);
     }
 
+    // 相互最近傍は「弱いつながりを介して無関係な記事まで連鎖してしまう」性質がある
+    // (単連結クラスタリング特有の連鎖効果)。しきい値の掛け目をゆるくすると小さな
+    // 真のクラスタを検出しやすくなる一方、なだらかな連続分布のデータでは逆に
+    // 記事の大部分が1つの巨大な塊に連鎖してしまうことが実験で分かった。
+    // 大きすぎる塊は「本当のまとまり」ではなく連鎖の副作用である可能性が高いため、
+    // 命名(Geminiの呼び出し)はせず、見直しが必要なものとして別に報告する
+    const MAX_CLUSTER_SIZE = 10;
+
     const clusters = [];
     for (const comp of components) {
         let within = [];
@@ -645,10 +656,14 @@ async function discoverTagClusters({ serviceKey, geminiKey }) {
         });
 
         let tag;
-        try {
-            tag = await proposeTagForCluster(members, geminiKey);
-        } catch (e) {
-            tag = { fits: false, reason: 'エラー: ' + String(e.message || e) };
+        if (comp.length > MAX_CLUSTER_SIZE) {
+            tag = { fits: false, tooLarge: true, reason: `${comp.length}件と大きすぎるため命名しませんでした(連鎖的な誤検出の可能性があります)` };
+        } else {
+            try {
+                tag = await proposeTagForCluster(members, geminiKey);
+            } catch (e) {
+                tag = { fits: false, reason: 'エラー: ' + String(e.message || e) };
+            }
         }
 
         clusters.push({
@@ -664,28 +679,51 @@ async function discoverTagClusters({ serviceKey, geminiKey }) {
     return { clusters, articleCount: n, globalMean };
 }
 
+// タグは助詞でつないだ句(「場所性と非場所性」「商業空間の比較」)ではなく、単語1つにしたい。
+// 「技術革新」「消費文化」のような、それ自体で1つの言葉として使われる複合語は許容する。
+// LLMへの指示だけでは守られないことがあるため、返ってきたタグをここでも検査する
+const TAG_PARTICLE_RE = /[とのをはがでからまでやへにも]|\s/;
+
+function looksLikeSingleNoun(tag) {
+    const t = String(tag || '').trim();
+    if (!t) return false;
+    if (t.length > 10) return false;
+    if (TAG_PARTICLE_RE.test(t)) return false;
+    return true;
+}
+
 async function proposeTagForCluster(members, geminiKey) {
     const body = members.map((m) =>
         `- 「${m.title}」\n  主題: ${(m.themes || []).join('、') || '(なし)'}\n  概念: ${(m.concepts || []).join('、') || '(なし)'}`
     ).join('\n');
 
     const prompt = `以下は、埋め込みベクトルの近さから「実際に内容が近い」と確認できた記事群(${members.length}件)です。
-これらに共通して当てはまる、タグとしてふさわしい一言(2〜8文字程度の名詞または短い句)があれば提案してください。
-無理にこじつけないでください。本当にぴったりくるものが無ければ fits を false にしてください。
+これらに共通して当てはまる、タグとしてふさわしい単語が1つあれば提案してください。
 
-# 記事群
-${body}
+タグの形式についての重要な注意:
+- 名詞1語にしてください。「場所性と非場所性」「商業空間の比較」のように助詞(と・の・を・は・が・で等)で
+  つないだ言い回しや、文のような言い回しは禁止です。
+- 「技術革新」「消費文化」「貨幣性」のように、それ自体で1つの言葉として使われる複合語は構いません。
+- ぴったりの単語が無ければ、無理に句をひねり出さず fits を false にしてください。
 
 出力は次の形のJSONのみ。前後に説明やコードブロックの記号を付けないでください。
 {
   "fits": true または false,
-  "tag": "タグ名(fitsがtrueの場合のみ。無ければ省略可)",
+  "tag": "タグ名(名詞1語。fitsがtrueの場合のみ。無ければ省略可)",
   "description": "このタグが何を指すかの一文(fitsがtrueの場合のみ)",
-  "reason": "なぜこの一言が当てはまるか、または当てはまらないか"
+  "reason": "なぜこの単語が当てはまるか、または当てはまる単語が無いか"
 }`;
 
     const data = await geminiGenerate(prompt, geminiKey);
-    return parseJsonLoose(data?.candidates?.[0]?.content?.parts?.[0]?.text || '');
+    const parsed = parseJsonLoose(data?.candidates?.[0]?.content?.parts?.[0]?.text || '');
+
+    if (parsed.fits && !looksLikeSingleNoun(parsed.tag)) {
+        return {
+            fits: false,
+            reason: `LLMは「${parsed.tag}」を提案したが、単語1つの形式ではないため却下: ${parsed.reason || ''}`,
+        };
+    }
+    return parsed;
 }
 
 function stripHtml(html) {

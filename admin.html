@@ -3857,6 +3857,12 @@
                     ? `<span class="text-xs text-white/30">結束度 ${c.coherence.toFixed(3)}(全体平均より+${c.lift.toFixed(3)})</span>`
                     : `<span class="text-xs text-white/30">結束度 ${(c.coherence ?? 0).toFixed(3)}</span>`;
 
+                if (t.tooLarge) {
+                    return `<div class="p-3 rounded bg-yellow-500/5 border border-yellow-500/20">
+                        <div class="text-xs text-yellow-200/70 mb-2">⚠ ${c.members.length}件の大きなまとまり — 命名せず(連鎖的な誤検出の可能性) ${coherenceNote}</div>
+                        <details><summary class="text-xs text-white/40 cursor-pointer">記事一覧を見る</summary><div class="mt-1">${titles}</div></details>
+                    </div>`;
+                }
                 if (!t.fits) {
                     return `<div class="p-3 rounded bg-white/5 border border-white/10">
                         <div class="text-xs text-white/40 mb-2">${c.members.length}件のまとまり — ぴったりの一言なし ${coherenceNote}</div>
