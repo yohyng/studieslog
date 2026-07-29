@@ -30,6 +30,17 @@
         .content-editor blockquote { border-left: 2px solid rgba(255,255,255,0.3); padding-left: 1em; margin: 1em 0; opacity: 0.8; font-style: italic; }
         .content-editor h2 { font-size: 1.2em; margin: 1em 0 0.5em; }
         .content-editor .footnote-ref { color: #7dd3fc; cursor: default; }
+        .content-editor table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+        .content-editor th, .content-editor td { border: 1px solid rgba(255,255,255,0.2); padding: 0.5em 0.7em; text-align: left; position: relative; }
+        .content-editor th { font-weight: 500; background: rgba(255,255,255,0.05); }
+        .content-editor .video-embed { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 1em 0; }
+        /* iframe自体はクリックを拾わせない(編集中に誤って動画を操作しないため)。
+           クリックは下のvideo-embed本体まで通り、ProseMirrorのノード選択として扱われる */
+        .content-editor .video-embed iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+        /* ProseMirrorの表リサイズ用ハンドル */
+        .content-editor .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: -2px; width: 4px; background-color: rgba(255,255,255,0.4); pointer-events: none; }
+        .content-editor .tableWrapper { overflow-x: auto; }
+        .content-editor .resize-cursor { cursor: col-resize; }
         /* Tiptapは .content-editor の中に自前のcontenteditableを作る。
            既存の .content-editor 配下のスタイルはそのまま効く */
         /* ProseMirrorが動作前提としているCSS。これが無いと連続した空白が潰れ、
@@ -202,7 +213,10 @@
                 <!-- 本文 -->
                 <section class="mb-8">
                     <h2 class="tw-hide text-xs font-semibold uppercase tracking-wider text-white/40 mb-3 pb-2 border-b border-white/10">本文</h2>
-                    <div class="tw-hide flex items-center flex-wrap gap-1 mb-2 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs">
+                    <!-- 長い記事をスクロールしてもツールバーを触れるよう、上端に固定する。
+                         sticky の基準は #editor-main-col(overflow-y-autoの実際のスクロール領域)。
+                         下を流れる本文が透けて見えないよう背景を body と同じ不透明色にする -->
+                    <div class="tw-hide flex items-center flex-wrap gap-1 mb-2 border border-white/10 rounded px-2 py-1 text-xs sticky top-0 z-20" style="background-color: #22262a;">
                         <button onclick="formatText('bold')" class="w-7 py-1 font-bold hover:bg-white/10 rounded transition-colors" title="太字 (Ctrl+B)">B</button>
                         <button onclick="formatText('italic')" class="w-7 py-1 italic hover:bg-white/10 rounded transition-colors" title="斜体 (Ctrl+I)">I</button>
                         <button onclick="formatText('underline')" class="w-7 py-1 underline hover:bg-white/10 rounded transition-colors" title="下線 (Ctrl+U)">U</button>
@@ -214,10 +228,13 @@
                         <span class="w-px self-stretch bg-white/10 mx-1"></span>
                         <button onclick="formatText('insertUnorderedList')" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="箇条書き">•</button>
                         <button onclick="formatText('insertOrderedList')" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="番号リスト">1.</button>
+                        <button onclick="insertTable()" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="表を挿入">▦</button>
+                        <span class="w-px self-stretch bg-white/10 mx-1"></span>
                         <button onclick="insertLink()" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="リンク">🔗</button>
                         <button onclick="insertFootnote()" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="本文中に注釈番号を挿入します">¹</button>
                         <button onclick="insertImage()" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="写真を挿入">📷</button>
                         <button onclick="insertBookLinkCard()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="Amazonなどのリンク先のタイトル・画像を取得してカードを挿入します">🔖 リンクカード</button>
+                        <button onclick="insertVideoEmbed()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="YouTube・VimeoのURLを埋め込みます">▶ 動画</button>
                         <span class="w-px self-stretch bg-white/10 mx-1"></span>
                         <button onclick="formatText('removeFormat')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="選択範囲の書式(太字・斜体など)だけ解除">書式クリア</button>
                         <button onclick="convertToPlainText()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="本文全体を書式なしのテキストに変換します">プレーンテキスト化</button>
@@ -2505,6 +2522,24 @@
                 document.execCommand('insertHTML', false, cardHtml);
             }
             showToast('挿入しました');
+        }
+
+        // --- 表の挿入(Tiptap有効時のみ。旧エディタは表のノードを持たないため未対応) ---
+        function insertTable() {
+            const inst = tiptapEditors['edit-content'];
+            if (!inst) { showToast('表の挿入は新しいエディタでのみ使えます'); return; }
+            window.StudiesEditor.insertTable(inst);
+        }
+
+        // --- YouTube・Vimeoの動画埋め込み(Tiptap有効時のみ) ---
+        function insertVideoEmbed() {
+            const inst = tiptapEditors['edit-content'];
+            if (!inst) { showToast('動画埋め込みは新しいエディタでのみ使えます'); return; }
+            const url = prompt('YouTubeまたはVimeoの動画URL');
+            if (!url || !url.trim()) return;
+            const ok = window.StudiesEditor.insertVideoEmbed(inst, url.trim());
+            if (!ok) { showToast('対応していないURLの形式です(YouTube・Vimeoのみ対応)'); return; }
+            showToast('動画を挿入しました');
         }
 
         // --- 自動保存(ブラウザが落ちたりタブを閉じてしまっても本文が消えないようにするための保険) ---
