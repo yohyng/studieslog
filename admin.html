@@ -26,6 +26,10 @@
         .content-editor.drag-over { outline: 2px dashed rgba(255,255,255,0.5); outline-offset: -2px; }
         .content-editor img { display: block; max-width: 100%; max-height: 70vh; width: auto; height: auto; object-fit: contain; border-radius: 0; margin: 1em auto; cursor: pointer; }
         .content-editor img.img-selected { outline: 2px solid rgba(255,255,255,0.6); outline-offset: 2px; }
+        /* 出典などのキャプション付き画像。imgそのものは.content-editor imgの見た目を引き継ぐ */
+        .content-editor .image-figure { margin: 1em auto; max-width: 100%; text-align: center; }
+        .content-editor .image-figure img { margin: 0 auto; }
+        .content-editor .image-caption { font-size: 0.75em; opacity: 0.5; margin-top: 0.4em; }
         .content-editor .book-link-card, .content-editor .book-link-card img { border-radius: 0 !important; }
         .content-editor blockquote { border-left: 2px solid rgba(255,255,255,0.3); padding-left: 1em; margin: 1em 0; opacity: 0.8; font-style: italic; }
         .content-editor h2 { font-size: 1.2em; margin: 1em 0 0.5em; }
@@ -300,6 +304,7 @@
                     <button onclick="resizeSelectedImage(75)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">75%</button>
                     <button onclick="resizeSelectedImage(100)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">100%</button>
                     <button onclick="resizeSelectedImage(null)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors text-white/50">元に戻す</button>
+                    <button onclick="captionSelectedImage()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="出典などのキャプションを付ける">🏷 キャプション</button>
                 </div>
 
                 <!-- SNS投稿(保存済みの記事のみ。下書き文の自動生成とInstagram用画像の切り出し) -->
@@ -4442,6 +4447,26 @@
                 selectedImage.style.width = percent + '%';
                 selectedImage.style.height = 'auto';
             }
+        }
+
+        // 出典などのキャプションを付ける・外す。キャプション有無で内部的にノード型が
+        // 変わり(通常の画像⇔figure)、DOMが作り直されるのでresizeSelectedImageと同様に
+        // srcで選び直す
+        function captionSelectedImage() {
+            if (!selectedImage) return;
+            const inst = tiptapEditors['edit-content'];
+            if (!inst) { showToast('新しいエディタでのみ使えます'); return; }
+            const current = selectedImage.closest('figure.image-figure')
+                ?.querySelector('figcaption')?.textContent || '';
+            const caption = prompt('キャプション(出典など)。空にすると外れます', current);
+            if (caption === null) return;
+            const src = selectedImage.getAttribute('src');
+            window.StudiesEditor.setImageCaption(inst, selectedImage, caption);
+            requestAnimationFrame(() => {
+                const img = document.getElementById('edit-content')
+                    .querySelector(`img[src="${CSS.escape(src)}"]`);
+                if (img) selectImage(img); else deselectImage();
+            });
         }
 
         // --- 表示設定(サイト全体のデフォルト) ---

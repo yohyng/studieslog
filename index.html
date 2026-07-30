@@ -620,10 +620,15 @@
         }
 
         .content-body img { display: block; max-width: 100%; max-height: 70vh; width: auto; height: auto; object-fit: contain; border-radius: 0; margin: 2em auto; }
+        /* 出典などのキャプション付き画像 */
+        .content-body .image-figure { margin: 2em auto; max-width: 100%; text-align: center; }
+        .content-body .image-figure img { margin: 0 auto; }
+        .content-body .image-caption { font-size: 0.75em; opacity: 0.5; margin-top: 0.6em; }
         /* Amazon等のリンクカードは直角にする(過去に挿入済みのinlineスタイルもここで上書き) */
         .content-body .book-link-card, .content-body .book-link-card img { border-radius: 0 !important; }
         @media (min-width: 768px) {
             .content-body img { margin: 1.1em auto; }
+            .content-body .image-figure { margin: 1.1em auto; }
         }
         .content-body blockquote { border-left: 1px solid var(--text-color-solid); padding-left: 1.5em; margin: 2em 0; font-style: italic; opacity: 0.7; }
         .content-body h2 { font-size: 1.2em; margin: 2em 0 1em 0; opacity: 0.9; }
