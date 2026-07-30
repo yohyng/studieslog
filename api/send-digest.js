@@ -1,7 +1,7 @@
 // Vercel Cron(vercel.jsonのcrons)から週1回呼ばれる。前回送信以降に公開された記事があれば、
 // 購読者全員にダイジェストメールを送る。なければ何もしない。
 
-const { buildDigestHtml, extractFirstImage, extractExcerpt } = require('../lib/digest-template');
+const { buildDigestHtml } = require('../lib/digest-template');
 
 const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
 
@@ -34,10 +34,11 @@ module.exports = async function handler(req, res) {
 
     const [articlesRes, settingsRes] = await Promise.all([
         fetch(
-            `${SUPABASE_URL}/rest/v1/articles?${orFilter}&select=id,title,date,content,created_at&order=created_at.asc`,
+            `${SUPABASE_URL}/rest/v1/articles?${orFilter}&select=id,title,date,category,content,created_at&order=created_at.asc`,
             { headers: sbHeaders }
         ),
-        fetch(`${SUPABASE_URL}/rest/v1/site_settings?id=eq.1&select=site_title,og_image,digest_bg_color,digest_text_color,font`, { headers: sbHeaders }),
+        // メールを閲覧ページと同じ見た目にするため、表示設定も一式取る
+        fetch(`${SUPABASE_URL}/rest/v1/site_settings?id=eq.1&select=site_title,og_image,digest_bg_color,digest_text_color,digest_bg_image,font,title_font,font_size,line_height,letter_spacing,text_align,content_width,bg_color,text_color,body_text_opacity,title_text_opacity,footnote_color,footnote_bg_color`, { headers: sbHeaders }),
     ]);
     const rawArticles = await articlesRes.json();
     const settingsRows = await settingsRes.json();
@@ -49,12 +50,13 @@ module.exports = async function handler(req, res) {
         return;
     }
 
+    // 記事本文をそのまま載せる(抜粋ではなく全文)
     const articles = rawArticles.map(a => ({
         id: a.id,
         title: a.title,
         date: a.date,
-        image: extractFirstImage(a.content) || settings.og_image || null,
-        excerpt: extractExcerpt(a.content),
+        category: a.category || '',
+        content: a.content || '',
     }));
 
     const subsRes = await fetch(`${SUPABASE_URL}/rest/v1/subscribers?select=email,unsubscribe_token`, { headers: sbHeaders });
@@ -74,9 +76,12 @@ module.exports = async function handler(req, res) {
             siteUrl,
             articles,
             unsubscribeUrl: `${siteUrl}/api/unsubscribe?token=${sub.unsubscribe_token}`,
+            // digest_* は設定されていればメールだけ上書きする。空ならサイト本体の色に従う
             bgColor: settings.digest_bg_color,
             textColor: settings.digest_text_color,
             fontFamily: settings.font,
+            typography: settings,
+            bgImage: settings.digest_bg_image,
         }),
     }));
 

@@ -60,6 +60,8 @@ const fixtures = [
     ['リンクカード(divの中)', `<div>本文A</div><div>${CARD}</div><div>本文B</div>`],
     ['リンクカード(挿入時の実形)', `<div>本文A</div><div>${CARD}<p></p></div><div>本文B</div>`],
     ['空行(入れ子div)', '<div>A</div><div><div><br></div></div><div>B</div>'],
+    // <p></p> は閲覧ページ(p{margin:0})で高さを持たず空行が消えるので、<br>入りに揃える
+    ['空段落(br無し)', '<p>A</p><p></p><p>B</p>'],
     ['画像', '<p>前</p><img src="https://example.com/a.png"><p>後</p>'],
     ['画像(幅指定)', '<img src="https://example.com/a.png" style="width:50%; height:auto;">'],
     ['画像(選択中クラス混入)', '<img src="https://example.com/a.png" class="img-selected">'],
@@ -73,6 +75,8 @@ const fixtures = [
     ['div段落(execCommand旧)', '<div>divで書かれた段落</div>'],
     ['span style(execCommand旧)', '<p><span style="font-weight:bold">太字っぽいspan</span></p>'],
     ['font tag(execCommand旧)', '<p><font color="#ff0000">赤文字</font></p>'],
+    ['画像キャプション', '<p>前</p><figure class="image-figure"><img src="https://example.com/a.png" style="width:50%; height:auto;"><figcaption class="image-caption">出典: 例のサイト</figcaption></figure><p>後</p>'],
+    ['画像キャプション(スタイル無し)', '<figure class="image-figure"><img src="https://example.com/b.png"><figcaption class="image-caption">出典: 別のサイト</figcaption></figure>'],
     ['水平線', '<p>上</p><hr><p>下</p>'],
     ['コード', '<p><code>inline code</code></p>'],
     ['入れ子リスト', '<ul><li>親<ul><li>子</li></ul></li></ul>'],
@@ -149,6 +153,15 @@ function imageSrcs(html) {
     return Array.from(parse(html).querySelectorAll('img')).map((el) => el.getAttribute('src') || '');
 }
 
+/** 画像キャプション(figure)のsrcとキャプション文言 */
+function figureCaptions(html) {
+    return Array.from(parse(html).querySelectorAll('figure.image-figure')).map((el) => {
+        const img = el.querySelector('img');
+        const cap = el.querySelector('figcaption');
+        return [img ? img.getAttribute('src') : '', cap ? cap.textContent : ''].join(' | ');
+    });
+}
+
 function linkHrefs(html) {
     return Array.from(parse(html).querySelectorAll('a:not(.book-link-card)')).map((el) => el.getAttribute('href') || '');
 }
@@ -199,6 +212,8 @@ for (const [name, input] of fixtures) {
     // 4. 画像src / リンクhref
     const iIn = imageSrcs(input), iOut = imageSrcs(output);
     if (JSON.stringify(iIn) !== JSON.stringify(iOut)) problems.push(`画像src変化: ${JSON.stringify(iIn)} → ${JSON.stringify(iOut)}`);
+    const fIn = figureCaptions(input), fOut = figureCaptions(output);
+    if (JSON.stringify(fIn) !== JSON.stringify(fOut)) problems.push(`画像キャプション変化: ${JSON.stringify(fIn)} → ${JSON.stringify(fOut)}`);
     const lIn = linkHrefs(input), lOut = linkHrefs(output);
     if (JSON.stringify(lIn) !== JSON.stringify(lOut)) problems.push(`リンクhref変化: ${JSON.stringify(lIn)} → ${JSON.stringify(lOut)}`);
 

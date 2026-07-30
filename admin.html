@@ -12,6 +12,8 @@
     <!-- Tiptapエディタ(移行中)。window.StudiesEditor として公開される。
          エディタを開くのは操作後なので defer で問題ない -->
     <script src="/editor-bundle.js" defer></script>
+    <!-- メールのテンプレート(送信側と同じ実装をプレビューでも使う) -->
+    <script src="/lib/digest-template.js"></script>
 
     <style>
         body {
@@ -24,10 +26,25 @@
         .content-editor.drag-over { outline: 2px dashed rgba(255,255,255,0.5); outline-offset: -2px; }
         .content-editor img { display: block; max-width: 100%; max-height: 70vh; width: auto; height: auto; object-fit: contain; border-radius: 0; margin: 1em auto; cursor: pointer; }
         .content-editor img.img-selected { outline: 2px solid rgba(255,255,255,0.6); outline-offset: 2px; }
+        /* 出典などのキャプション付き画像。imgそのものは.content-editor imgの見た目を引き継ぐ */
+        .content-editor .image-figure { margin: 1em auto; max-width: 100%; text-align: center; }
+        .content-editor .image-figure img { margin: 0 auto; }
+        .content-editor .image-caption { font-size: 0.75em; opacity: 0.5; margin-top: 0.4em; }
         .content-editor .book-link-card, .content-editor .book-link-card img { border-radius: 0 !important; }
         .content-editor blockquote { border-left: 2px solid rgba(255,255,255,0.3); padding-left: 1em; margin: 1em 0; opacity: 0.8; font-style: italic; }
         .content-editor h2 { font-size: 1.2em; margin: 1em 0 0.5em; }
         .content-editor .footnote-ref { color: #7dd3fc; cursor: default; }
+        .content-editor table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+        .content-editor th, .content-editor td { border: 1px solid rgba(255,255,255,0.2); padding: 0.5em 0.7em; text-align: left; position: relative; }
+        .content-editor th { font-weight: 500; background: rgba(255,255,255,0.05); }
+        .content-editor .video-embed { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 1em 0; }
+        /* iframe自体はクリックを拾わせない(編集中に誤って動画を操作しないため)。
+           クリックは下のvideo-embed本体まで通り、ProseMirrorのノード選択として扱われる */
+        .content-editor .video-embed iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+        /* ProseMirrorの表リサイズ用ハンドル */
+        .content-editor .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: -2px; width: 4px; background-color: rgba(255,255,255,0.4); pointer-events: none; }
+        .content-editor .tableWrapper { overflow-x: auto; }
+        .content-editor .resize-cursor { cursor: col-resize; }
         /* Tiptapは .content-editor の中に自前のcontenteditableを作る。
            既存の .content-editor 配下のスタイルはそのまま効く */
         /* ProseMirrorが動作前提としているCSS。これが無いと連続した空白が潰れ、
@@ -200,7 +217,10 @@
                 <!-- 本文 -->
                 <section class="mb-8">
                     <h2 class="tw-hide text-xs font-semibold uppercase tracking-wider text-white/40 mb-3 pb-2 border-b border-white/10">本文</h2>
-                    <div class="tw-hide flex items-center flex-wrap gap-1 mb-2 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs">
+                    <!-- 長い記事をスクロールしてもツールバーを触れるよう、上端に固定する。
+                         sticky の基準は #editor-main-col(overflow-y-autoの実際のスクロール領域)。
+                         下を流れる本文が透けて見えないよう背景を body と同じ不透明色にする -->
+                    <div class="tw-hide flex items-center flex-wrap gap-1 mb-2 border border-white/10 rounded px-2 py-1 text-xs sticky top-0 z-20" style="background-color: #22262a;">
                         <button onclick="formatText('bold')" class="w-7 py-1 font-bold hover:bg-white/10 rounded transition-colors" title="太字 (Ctrl+B)">B</button>
                         <button onclick="formatText('italic')" class="w-7 py-1 italic hover:bg-white/10 rounded transition-colors" title="斜体 (Ctrl+I)">I</button>
                         <button onclick="formatText('underline')" class="w-7 py-1 underline hover:bg-white/10 rounded transition-colors" title="下線 (Ctrl+U)">U</button>
@@ -212,10 +232,13 @@
                         <span class="w-px self-stretch bg-white/10 mx-1"></span>
                         <button onclick="formatText('insertUnorderedList')" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="箇条書き">•</button>
                         <button onclick="formatText('insertOrderedList')" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="番号リスト">1.</button>
+                        <button onclick="insertTable()" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="表を挿入">▦</button>
+                        <span class="w-px self-stretch bg-white/10 mx-1"></span>
                         <button onclick="insertLink()" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="リンク">🔗</button>
                         <button onclick="insertFootnote()" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="本文中に注釈番号を挿入します">¹</button>
                         <button onclick="insertImage()" class="w-7 py-1 hover:bg-white/10 rounded transition-colors" title="写真を挿入">📷</button>
                         <button onclick="insertBookLinkCard()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="Amazonなどのリンク先のタイトル・画像を取得してカードを挿入します">🔖 リンクカード</button>
+                        <button onclick="insertVideoEmbed()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="YouTube・VimeoのURLを埋め込みます">▶ 動画</button>
                         <span class="w-px self-stretch bg-white/10 mx-1"></span>
                         <button onclick="formatText('removeFormat')" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="選択範囲の書式(太字・斜体など)だけ解除">書式クリア</button>
                         <button onclick="convertToPlainText()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="本文全体を書式なしのテキストに変換します">プレーンテキスト化</button>
@@ -281,6 +304,7 @@
                     <button onclick="resizeSelectedImage(75)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">75%</button>
                     <button onclick="resizeSelectedImage(100)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors">100%</button>
                     <button onclick="resizeSelectedImage(null)" class="px-2 py-1 hover:bg-white/10 rounded transition-colors text-white/50">元に戻す</button>
+                    <button onclick="captionSelectedImage()" class="px-2 py-1 hover:bg-white/10 rounded transition-colors" title="出典などのキャプションを付ける">🏷 キャプション</button>
                 </div>
 
                 <!-- SNS投稿(保存済みの記事のみ。下書き文の自動生成とInstagram用画像の切り出し) -->
@@ -379,6 +403,21 @@
                         </div>
                     </div>
                     <p class="text-xs text-white/30 mb-6">見出し・本文の色はここから、細かい部分(メタ情報・枠線など)の色は自動で調整されます。</p>
+
+                    <label class="text-xs text-white/50 block mb-2">配信メールの背景（グラデーション・ノイズ）</label>
+                    <p class="text-xs text-white/30 mb-3">
+                        メールでは埋め込み画像(data:)が使えないため、いま表示設定で選んでいる背景を1枚の画像に焼き込んで書き出します。
+                        背景を変えたときは押し直してください。<br>
+                        多くのメールクライアントは既定で外部画像を読み込まないので、画像が出るまでは上の背景色が使われます。
+                    </p>
+                    <div class="flex items-center gap-3 mb-2">
+                        <button onclick="exportDigestBackgroundImage()" id="digest-bg-export-btn"
+                                class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">背景を書き出す</button>
+                        <button onclick="clearDigestBackgroundImage()"
+                                class="px-3 py-1.5 text-xs text-white/40 hover:text-white/70 transition-colors">背景なしにする</button>
+                        <span id="digest-bg-status" class="text-xs text-white/40"></span>
+                    </div>
+                    <div id="digest-bg-preview" class="hidden mb-6 rounded overflow-hidden border border-white/10" style="height: 90px; background-repeat: repeat;"></div>
 
                     <label class="text-xs text-white/50 block mb-2">Subscribeボタンの配色(サイドバー・記事下部共通のデフォルト。記事本文タブで記事下部だけ個別に上書き可)</label>
                     <div class="flex items-center gap-6 mb-4">
@@ -804,6 +843,51 @@
                     <div class="mb-6 pb-6 border-b border-white/10">
                         <label class="text-xs text-white/50 block mb-3">カテゴリ別の本文フォント(空欄なら本文フォントと同じ)</label>
                         <div class="flex flex-col gap-3">
+                            <div>
+                                <div class="text-xs text-white/40 mb-1">All(カテゴリ絞り込みの「All」)</div>
+                                <select id="set-all-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                                    <option value="">本文と同じフォント</option>
+                                    <optgroup label="明朝体">
+                                        <option value="'Shippori Mincho', serif">秀英明朝 (Shippori Mincho)</option>
+                                        <option value="'Shippori Mincho B1', serif">秀英明朝 B1 (角丸)</option>
+                                        <option value="'Noto Serif JP', serif">Noto Serif JP</option>
+                                        <option value="'Zen Old Mincho', serif">Zen Old Mincho</option>
+                                        <option value="'Kaisei Tokumin', serif">Kaisei Tokumin</option>
+                                        <option value="'Kaisei Decol', serif">Kaisei Decol</option>
+                                        <option value="'BIZ UDPMincho', serif">BIZ UDPMincho</option>
+                                    </optgroup>
+                                    <optgroup label="ゴシック体">
+                                        <option value="'Noto Sans JP', sans-serif">Noto Sans JP</option>
+                                        <option value="'Zen Kaku Gothic New', sans-serif">Zen Kaku Gothic New</option>
+                                        <option value="'Zen Kaku Gothic Antique', sans-serif">Zen Kaku Gothic Antique</option>
+                                        <option value="'Murecho', sans-serif">Murecho</option>
+                                        <option value="'RocknRoll One', sans-serif">RocknRoll One</option>
+                                        <option value="'BIZ UDPGothic', sans-serif">BIZ UDPGothic</option>
+                                        <option value="'Sawarabi Gothic', sans-serif">Sawarabi Gothic</option>
+                                        <option value="'M PLUS 1p', sans-serif">M PLUS 1p</option>
+                                        <option value="'Kosugi Maru', sans-serif">Kosugi Maru</option>
+                                    </optgroup>
+                                    <optgroup label="丸ゴシック体">
+                                        <option value="'Zen Maru Gothic', sans-serif">Zen Maru Gothic</option>
+                                        <option value="'M PLUS Rounded 1c', sans-serif">M PLUS Rounded 1c</option>
+                                    </optgroup>
+                                    <optgroup label="手書き風">
+                                        <option value="'Klee One', cursive">Klee One</option>
+                                    </optgroup>
+                                    <optgroup label="カリグラフィー風">
+                                        <option value="'New Tegomin', serif">New Tegomin</option>
+                                        <option value="'Yuji Syuku', serif">Yuji Syuku</option>
+                                    </optgroup>
+                                    <optgroup label="装飾体(英字のみ)">
+                                        <option value="'Fraunces', serif">Fraunces</option>
+                                        <option value="'Bodoni Moda', serif">Bodoni Moda</option>
+                                        <option value="'Abril Fatface', serif">Abril Fatface</option>
+                                        <option value="'Grenze Gotisch', serif">Grenze Gotisch</option>
+                                        <option value="'Italiana', serif">Italiana</option>
+                                        <option value="'Cormorant', serif">Cormorant</option>
+                                    </optgroup>
+                                </select>
+                            </div>
                             <div>
                                 <div class="text-xs text-white/40 mb-1">log</div>
                                 <select id="set-log-font" class="w-full bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
@@ -1372,8 +1456,13 @@
                     <button id="ai-reindex-btn" onclick="reindexAiArticles()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">🔄 記事をインデックスする</button>
                     <span id="ai-reindex-status" class="text-xs text-white/40 ml-3"></span>
                     <div class="mt-3">
-                        <button onclick="checkAiModels()" class="text-xs text-white/30 hover:text-white/60 transition-colors">利用可能なモデルを確認</button>
-                        <span id="ai-models-status" class="text-xs text-white/30 ml-2"></span>
+                        <button onclick="checkAiModels()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">利用可能なモデルを確認（一覧のみ・参考程度）</button>
+                        <button onclick="findWorkingModel()" class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors ml-2">実際に呼び出して動くモデルを探す</button>
+                        <p class="text-xs text-white/30 mt-2">
+                            モデル一覧には「カタログに存在する」というだけで、このAPIキーで実際に呼べるとは限らないものが含まれます。
+                            「実際に呼び出して探す」は候補を1つずつ本当に呼んでみて、動くものを見つけます。
+                        </p>
+                        <div id="ai-models-status" class="text-xs text-white/60 mt-2"></div>
                     </div>
                 </div>
 
@@ -1404,6 +1493,36 @@
                         </details>
                     </div>
                 </div>
+
+                <div class="mt-10 pt-10 border-t border-white/10">
+                    <h3 class="text-xs font-medium text-white/70 mb-2">記事の分析</h3>
+                    <p class="text-xs text-white/40 mb-4">
+                        各記事を単独で読ませて、何を論じているかを抽出します。<strong>既存のタグは一切見せません。</strong>
+                        タグはこの分析を統合した結果として、あとからボトムアップに作ります。<br>
+                        本文が変わっていない記事は飛ばすので、書き足したぶんだけ追加で分析されます。
+                    </p>
+                    <div class="flex items-center gap-3 mb-4">
+                        <button id="analyze-btn" onclick="runArticleAnalysis()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">記事を分析する</button>
+                        <button onclick="runArticleAnalysis(true)" class="px-3 py-2 text-xs text-white/40 hover:text-white/70 transition-colors" title="本文が変わっていない記事も含めて全件やり直します">全件やり直す</button>
+                        <span id="analyze-status" class="text-xs text-white/40"></span>
+                    </div>
+                    <div id="analyze-result" class="flex flex-col gap-3"></div>
+                </div>
+
+                <div class="mt-10 pt-10 border-t border-white/10">
+                    <h3 class="text-xs font-medium text-white/70 mb-2">タグ候補(記事のまとまりから探す)</h3>
+                    <p class="text-xs text-white/40 mb-4">
+                        記事の埋め込みベクトルの近さだけで「実際に内容が近い」記事のまとまりを先に見つけ(LLMは使わない、純粋な計算)、
+                        そのまとまりに対してだけ「ぴったりの一言があるか」をLLMに聞きます。<br>
+                        <strong>ここで出るのはあくまで提案です。内容を確認してから、必要なものだけ「適用」してください。</strong>
+                        上の「記事の分析」を先に済ませておくと、タグ名の精度が上がります。
+                    </p>
+                    <div class="flex items-center gap-3 mb-4">
+                        <button id="cluster-btn" onclick="runTagClusterDiscovery()" class="px-4 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">タグ候補を探す</button>
+                        <span id="cluster-status" class="text-xs text-white/40"></span>
+                    </div>
+                    <div id="cluster-result" class="flex flex-col gap-4"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -1411,6 +1530,15 @@
     <div id="toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs opacity-0 transition-opacity duration-500 pointer-events-none z-50" style="max-width: min(90vw, 32rem); text-align: center; white-space: pre-wrap;">保存されました</div>
 
     <!-- 注釈入力モーダル -->
+    <!-- 画像の拡大表示。Notionのカードは object-cover で切り抜いて出しているので、
+         全体を確認したいときにここで原寸(画面に収まる範囲)で見る -->
+    <div id="image-viewer" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+         onclick="closeImageViewer()">
+        <img id="image-viewer-img" src="" alt="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+        <button type="button" onclick="closeImageViewer()" aria-label="閉じる"
+                class="fixed top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors">✕</button>
+    </div>
+
     <div id="footnote-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onmousedown="if(event.target === this) closeFootnoteModal()">
         <div class="bg-[#2f3438] border border-white/10 rounded-lg p-6 max-w-md w-full">
             <h2 class="text-xs text-white/50 mb-3">注釈の内容</h2>
@@ -2068,6 +2196,168 @@
             }
         }
 
+        // --- 配信メール用の背景画像の書き出し ---
+        // メールでは data: URI が除去され、背景の重ね掛けも効かず、WebPを読めないクライアントもある。
+        // そこで、管理画面に実際に適用されている背景(閲覧ページと同じもの)をcanvasで1枚のPNGに
+        // 焼き込み、Storageへ上げてURLで参照する。
+
+        /** カンマ区切りのCSS値を、括弧の中のカンマを無視して分解する */
+        function splitCssList(value) {
+            const out = [];
+            let depth = 0, current = '';
+            for (const ch of String(value || '')) {
+                if (ch === '(') depth++;
+                if (ch === ')') depth--;
+                if (ch === ',' && depth === 0) { out.push(current.trim()); current = ''; continue; }
+                current += ch;
+            }
+            if (current.trim()) out.push(current.trim());
+            return out;
+        }
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('画像を読み込めませんでした'));
+                img.src = src;
+            });
+        }
+
+        async function exportDigestBackgroundImage() {
+            const btn = document.getElementById('digest-bg-export-btn');
+            const status = document.getElementById('digest-bg-status');
+            btn.disabled = true;
+            status.textContent = '書き出し中…';
+            try {
+                const cs = getComputedStyle(document.body);
+                const layers = splitCssList(cs.backgroundImage);
+                const sizes = splitCssList(cs.backgroundSize);
+                const repeats = splitCssList(cs.backgroundRepeat);
+                if (!layers.length || layers[0] === 'none') {
+                    status.textContent = '背景が設定されていません（表示設定で選んでください）';
+                    return;
+                }
+
+                // CSSの重ね順は「先頭が一番上」。canvasには下から順に描くので反転する
+                const ordered = layers.map((layer, i) =>
+                    ({ layer, size: sizes[i] || 'auto', repeat: repeats[i] || 'repeat' })).reverse();
+
+                // 軸ごとに「その方向へ繰り返すか」を返す。background-size:100vwのような
+                // 引き伸ばし指定は、computed styleの時点で管理画面を開いていたウィンドウ幅の
+                // px値に解決されてしまう。これをそのままタイル幅として使うと、本来は
+                // 「コンテナ幅いっぱいに1枚だけ敷く(repeat-y)」レイヤーまで横に複製してしまい、
+                // タイルの右端と次のタイルの左端がぶつかって継ぎ目が見えてしまう。
+                // 繰り返さない軸は常にキャンバスそのものの幅/高さで1枚だけ敷くようにする
+                function repeatFlags(repeat) {
+                    const r = (repeat || 'repeat').trim();
+                    return {
+                        x: r === 'repeat' || r === 'repeat-x' || r === 'space' || r === 'round',
+                        y: r === 'repeat' || r === 'repeat-y' || r === 'space' || r === 'round',
+                    };
+                }
+
+                // 一番下の画像レイヤーの実寸をタイルの基準にする。
+                // 横に繰り返さないレイヤーは、幅は常にメール本文の幅(700px)で焼く
+                let base = null;
+                for (const { layer, size, repeat } of ordered) {
+                    const m = /^url\(["']?(.+?)["']?\)$/.exec(layer);
+                    if (!m) continue;
+                    const img = await loadImage(m[1]);
+                    const { x: repX, y: repY } = repeatFlags(repeat);
+                    const px = /^(\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px$/.exec(size);
+                    base = {
+                        w: repX && px ? Math.round(+px[1]) : 700,
+                        h: Math.min(2400, repY && px ? Math.round(+px[2]) : (img.naturalHeight || 1000)),
+                    };
+                    break;
+                }
+                if (!base) {
+                    status.textContent = '画像の背景が見つかりませんでした';
+                    return;
+                }
+
+                // スマホなどの高解像度画面では、CSSピクセル数のままだと画像を引き伸ばして
+                // 表示することになり粗く見える。実際に表示するサイズの2倍の解像度で書き出し、
+                // メール側では background-size:100% で表示幅に縮小させることで精細に見せる
+                // (画像は本文にBase64で埋め込まず外部URL参照なので、多少重くてもメール自体が
+                // 開けなくなることはない。とはいえ上限は設けておく)
+                const SCALE = 2;
+                const W = Math.min(base.w * SCALE, 1600);
+                const H = Math.min(base.h * SCALE, 4000);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = W;
+                canvas.height = H;
+                const ctx = canvas.getContext('2d');
+                // JPEGは透過を持てないので、下地に背景色を敷いておく
+                ctx.fillStyle = document.getElementById('set-digest-bg-color').value || '#000000';
+                ctx.fillRect(0, 0, W, H);
+
+                for (const { layer, size, repeat } of ordered) {
+                    const urlMatch = /^url\(["']?(.+?)["']?\)$/.exec(layer);
+                    if (urlMatch) {
+                        const img = await loadImage(urlMatch[1]);
+                        const { x: repX, y: repY } = repeatFlags(repeat);
+                        const px = /^(\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px$/.exec(size);
+                        // 繰り返さない軸はキャンバス全体の寸法で1枚だけ敷く(tw=Wにすると
+                        // x+=twの1回でループが終わるので、繰り返しループはそのまま使い回せる)。
+                        // 実際に繰り返すタイルの寸法はSCALEをかけて、キャンバス全体の解像度と揃える
+                        const tw = repX && px ? +px[1] * SCALE : W;
+                        const th = repY && px ? +px[2] * SCALE : H;
+                        for (let y = 0; y < H; y += th) {
+                            for (let x = 0; x < W; x += tw) ctx.drawImage(img, x, y, tw, th);
+                        }
+                        continue;
+                    }
+                    // silverの暗さ調整のような、単色を重ねるだけのlinear-gradientは色として再現する。
+                    // 斜めの光沢(sheen)は効果が薄いので落とす
+                    const solid = /^linear-gradient\(\s*(rgba?\([^)]*\))\s*,\s*\1\s*\)$/.exec(layer);
+                    if (solid) {
+                        ctx.fillStyle = solid[1];
+                        ctx.fillRect(0, 0, W, H);
+                    }
+                }
+
+                // ノイズのような細かい階調はPNG(可逆圧縮)だと苦手でファイルサイズが膨らみやすい。
+                // JPEGなら見た目にはほぼ差が出ないまま大幅に軽くなるため、2倍解像度にしても
+                // 総容量は同程度かそれ以下に収まる
+                const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+                if (!blob) { status.textContent = '画像の生成に失敗しました'; return; }
+                const file = new File([blob], `digest-bg-${Date.now()}.jpg`, { type: 'image/jpeg' });
+                const url = await uploadImageFile(file);
+                if (!url) { status.textContent = 'アップロードに失敗しました'; return; }
+
+                const { error } = await sb.from('site_settings').update({ digest_bg_image: url }).eq('id', 1);
+                if (error) {
+                    console.error(error);
+                    status.textContent = '保存に失敗しました（digest_bg_image列が必要です）';
+                    return;
+                }
+                showDigestBgPreview(url);
+                status.textContent = `書き出しました（${W}×${H}, ${Math.round(blob.size / 1024)}KB）`;
+            } catch (e) {
+                console.error(e);
+                status.textContent = '書き出しに失敗しました: ' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function clearDigestBackgroundImage() {
+            const { error } = await sb.from('site_settings').update({ digest_bg_image: '' }).eq('id', 1);
+            if (error) { console.error(error); showToast('解除に失敗しました'); return; }
+            showDigestBgPreview('');
+            document.getElementById('digest-bg-status').textContent = '背景なしにしました';
+        }
+
+        function showDigestBgPreview(url) {
+            const el = document.getElementById('digest-bg-preview');
+            el.classList.toggle('hidden', !url);
+            el.style.backgroundImage = url ? `url("${url}")` : '';
+        }
+
         async function applyAdminBackgroundColor() {
             const { data, error } = await sb.from('site_settings')
                 .select('bg_color, gradient_bg_style, bg_image_url, silver_darkness')
@@ -2207,6 +2497,20 @@
             const label = preview.title || url.trim();
             const domain = preview.domain || '';
             const image = preview.image || '';
+
+            // タイトルが取れないとURLがそのまま見出しになり、画像も付かない簡素なカードになる。
+            // 黙って進めると原因が分からないので、理由を出す
+            if (!preview.title) {
+                const why = {
+                    timeout: 'リンク先の応答が遅く時間切れになりました',
+                    fetch_failed: 'リンク先に接続できませんでした',
+                    no_og_tags: 'リンク先にタイトル情報(OGP)がありませんでした',
+                }[preview.reason]
+                    || (String(preview.reason || '').startsWith('http_')
+                        ? `リンク先が ${String(preview.reason).slice(5)} を返しました(アクセスを拒否された可能性があります)`
+                        : 'リンク先のタイトルを取得できませんでした');
+                showToast(`${why}。URLのみのカードを挿入します`, 6000);
+            }
             const cardHtml = `<a href="${escapeAttr(url.trim())}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="book-link-card" style="display:flex; align-items:stretch; gap:0.5rem; border:1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius:0; overflow:hidden; text-decoration:none; color:inherit; margin:1em 0;">
                 <span style="flex:1; min-width:0; padding:0.5rem 0.7rem; display:flex; flex-direction:column; justify-content:center; gap:0.1rem;">
                     <span style="font-size:0.7rem; font-weight:500; line-height:1.4;">${escapeAttr(label)}</span>
@@ -2223,6 +2527,24 @@
                 document.execCommand('insertHTML', false, cardHtml);
             }
             showToast('挿入しました');
+        }
+
+        // --- 表の挿入(Tiptap有効時のみ。旧エディタは表のノードを持たないため未対応) ---
+        function insertTable() {
+            const inst = tiptapEditors['edit-content'];
+            if (!inst) { showToast('表の挿入は新しいエディタでのみ使えます'); return; }
+            window.StudiesEditor.insertTable(inst);
+        }
+
+        // --- YouTube・Vimeoの動画埋め込み(Tiptap有効時のみ) ---
+        function insertVideoEmbed() {
+            const inst = tiptapEditors['edit-content'];
+            if (!inst) { showToast('動画埋め込みは新しいエディタでのみ使えます'); return; }
+            const url = prompt('YouTubeまたはVimeoの動画URL');
+            if (!url || !url.trim()) return;
+            const ok = window.StudiesEditor.insertVideoEmbed(inst, url.trim());
+            if (!ok) { showToast('対応していないURLの形式です(YouTube・Vimeoのみ対応)'); return; }
+            showToast('動画を挿入しました');
         }
 
         // --- 自動保存(ブラウザが落ちたりタブを閉じてしまっても本文が消えないようにするための保険) ---
@@ -2750,12 +3072,13 @@
         let subscribers = [];
 
         async function loadDigestColorSettings() {
-            const { data, error } = await sb.from('site_settings').select('digest_bg_color, digest_text_color, subscribe_bg_color, subscribe_text_color').eq('id', 1).single();
+            const { data, error } = await sb.from('site_settings').select('digest_bg_color, digest_text_color, digest_bg_image, subscribe_bg_color, subscribe_text_color').eq('id', 1).single();
             if (error) {
                 console.error(error);
                 return;
             }
             document.getElementById('set-digest-bg-color').value = data.digest_bg_color || '#f4f1ea';
+            showDigestBgPreview(data.digest_bg_image || '');
             document.getElementById('set-digest-text-color').value = data.digest_text_color || '#2b2b28';
             document.getElementById('set-subscribe-bg-color').value = data.subscribe_bg_color || '#ffffff';
             document.getElementById('set-subscribe-text-color').value = data.subscribe_text_color || '#6b7278';
@@ -2919,81 +3242,6 @@
         }
 
         // send-digest.js / lib/digest-template.js と同じ見た目のHTMLを組み立てる(admin.html側はクライアントJSなのでrequireできず、手動で複製している)
-        function buildDigestPreviewHtml({ siteTitle, siteUrl, articles, unsubscribeUrl, bgColor, textColor, fontFamily }) {
-            const bg = bgColor || '#f4f1ea';
-            const text = textColor || '#2b2b28';
-            const muted = mixHexPreview(text, bg, 0.55);
-            const border = mixHexPreview(text, bg, 0.88);
-            const excerptColor = mixHexPreview(text, bg, 0.3);
-            const fontStack = fontFamily || "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif";
-            const rows = articles.map(a => {
-                const url = `${siteUrl}/article/${a.id}`;
-                const imageCell = a.image
-                    ? `<td width="64" style="width:64px; padding-right:14px; vertical-align:top;"><img src="${escapeAttr(a.image)}" width="64" height="64" style="width:64px; height:64px; object-fit:cover; border-radius:6px; display:block;" alt=""></td>`
-                    : '';
-                const excerptHtml = a.excerpt
-                    ? `<div style="font-size:13px; color:${excerptColor}; line-height:1.6; margin-top:6px; font-family:${fontStack};">${escapeAttr(a.excerpt)}</div>`
-                    : '';
-                return `
-                    <a href="${url}" style="text-decoration:none; display:block; padding:16px 0; border-bottom:1px solid ${border};">
-                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-                            <tr>
-                                ${imageCell}
-                                <td style="vertical-align:middle;">
-                                    <div style="font-size:11px; color:${muted}; margin-bottom:4px; font-family:${fontStack};">${escapeAttr(a.date)}</div>
-                                    <div style="font-size:15px; color:${text}; font-weight:600; line-height:1.5; font-family:${fontStack};">${escapeAttr(a.title)}</div>
-                                    ${excerptHtml}
-                                </td>
-                            </tr>
-                        </table>
-                    </a>
-                `;
-            }).join('');
-
-            const googleFontsUrl = "https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500&family=Shippori+Mincho+B1:wght@400;500&family=Noto+Serif+JP:wght@400;500;700&family=Zen+Old+Mincho:wght@400;700&family=Kaisei+Tokumin:wght@400;500;700&family=Kaisei+Decol:wght@400;700&family=BIZ+UDPMincho:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Kaku+Gothic+Antique:wght@400;500;700&family=Murecho:wght@400;500;700&family=RocknRoll+One&family=BIZ+UDPGothic:wght@400;700&family=Sawarabi+Gothic&family=M+PLUS+1p:wght@400;500;700&family=Kosugi+Maru&family=Zen+Maru+Gothic:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;500;700&family=Klee+One:wght@400;600&family=New+Tegomin&family=Yuji+Syuku&family=Fraunces:wght@400;600;700&family=Bodoni+Moda:wght@400;500;700&family=Abril+Fatface&family=Grenze+Gotisch:wght@400;600;700&family=Italiana&family=Cormorant:wght@300;400;500;600;700&display=swap";
-            return `
-                <head><link rel="stylesheet" href="${googleFontsUrl}"></head>
-                <body style="margin:0; padding:0; background-color:${bg};">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${bg};">
-                        <tr>
-                            <td align="center" style="padding: 40px 16px;">
-                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; font-family:${fontStack};">
-                                    <tr>
-                                        <td align="center" style="padding-bottom: 32px;">
-                                            <div style="font-size:11px; letter-spacing:0.15em; color:${muted}; text-transform:uppercase; margin-bottom:10px;">Weekly Update</div>
-                                            <div style="font-size:22px; color:${text}; font-weight:600;">${escapeAttr(siteTitle)}</div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 0 4px;">
-                                            <p style="font-size:14px; color:${muted}; line-height:1.8; margin:0 0 8px;">今週、${articles.length}件の記事を公開しました。</p>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 0 4px;">
-                                            ${rows}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td align="center" style="padding: 36px 0 8px;">
-                                            <a href="${siteUrl}" style="display:inline-block; padding:12px 28px; background-color:${text}; color:${bg}; text-decoration:none; border-radius:4px; font-size:13px;">サイトで読む</a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td align="center" style="padding-top: 40px; border-top: 1px solid ${border};">
-                                            <p style="font-size:11px; color:${muted}; line-height:1.8; margin: 24px 0 0;">
-                                                このメールは ${escapeAttr(siteTitle)} の更新通知として送信されています。<br>
-                                                <a href="${unsubscribeUrl}" style="color:${muted};">配信停止はこちら</a> ／ <a href="${siteUrl}/contact" style="color:${muted};">お問い合わせ</a>
-                                            </p>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                    </table>
-                </body>
-            `;
-        }
 
         function extractFirstImageFromHtml(html) {
             const m = String(html || '').match(/<img[^>]+src="([^"]+)"/);
@@ -3020,11 +3268,12 @@
         async function previewDigestEmail() {
             const [{ data: items, error }, { data: settingsData }] = await Promise.all([
                 sb.from('articles')
-                    .select('id, title, date, content')
+                    .select('id, title, date, category, content')
                     .or(`status.eq.published,and(status.eq.scheduled,scheduled_at.lte.${new Date().toISOString()})`)
                     .order('date', { ascending: false })
                     .limit(5),
-                sb.from('site_settings').select('site_title, og_image, digest_bg_color, digest_text_color, font').eq('id', 1).single(),
+                // 送信時と同じ見た目にするため、表示設定も一式取る
+                sb.from('site_settings').select('site_title, og_image, digest_bg_color, digest_text_color, digest_bg_image, font, title_font, font_size, line_height, letter_spacing, text_align, content_width, bg_color, text_color, body_text_opacity, title_text_opacity, footnote_color, footnote_bg_color').eq('id', 1).single(),
             ]);
             if (error) {
                 console.error(error);
@@ -3037,11 +3286,13 @@
                 id: a.id,
                 title: a.title,
                 date: a.date,
-                image: extractFirstImageFromHtml(a.content) || settings.og_image || null,
-                excerpt: extractExcerptFromHtml(a.content),
+                category: a.category || '',
+                content: a.content || '',
             }));
 
-            const html = buildDigestPreviewHtml({
+            // 送信側(api/send-digest.js)と同じ lib/digest-template.js を使う。
+            // 以前はここに別実装があり、見た目を手で揃える必要があった
+            const html = window.DigestTemplate.buildDigestHtml({
                 siteTitle: settings.site_title || '',
                 siteUrl,
                 articles,
@@ -3049,6 +3300,8 @@
                 bgColor: settings.digest_bg_color,
                 textColor: settings.digest_text_color,
                 fontFamily: settings.font,
+                typography: settings,
+                bgImage: settings.digest_bg_image,
             });
 
             document.getElementById('email-preview-subject').textContent = `件名: 【${settings.site_title || ''}】今週の更新(${articles.length}件) ※実際の送信内容そのままではなく、直近の公開記事を使った見た目確認用です`;
@@ -3323,8 +3576,10 @@
             filtered.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'pb-4 border-b border-white/10 last:border-b-0 last:pb-0';
+                // aspect-video + object-cover で切り抜いて並べているため、全体は見えない。
+                // タップすると拡大表示で原寸を確認できるようにする
                 const imageHtml = item.coverUrl
-                    ? `<img src="${escapeNotionHtml(item.coverUrl)}" alt="" loading="lazy" class="w-full aspect-video object-cover rounded mb-2" onerror="this.remove()">`
+                    ? `<img src="${escapeNotionHtml(item.coverUrl)}" alt="" loading="lazy" class="w-full aspect-video object-cover rounded mb-2 cursor-zoom-in" onerror="this.remove()" onclick="openImageViewer(this.src)" title="タップで拡大">`
                     : '';
                 const propsHtml = item.properties && item.properties.length
                     ? `<details class="mt-1">
@@ -3376,6 +3631,28 @@
             }
         }
 
+        // --- 画像の拡大表示 ---
+        function openImageViewer(src) {
+            if (!src) return;
+            document.getElementById('image-viewer-img').src = src;
+            document.getElementById('image-viewer').classList.remove('hidden');
+            // 背後がスクロールしてしまわないようにする
+            document.body.style.overflow = 'hidden';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !document.getElementById('image-viewer').classList.contains('hidden')) {
+                closeImageViewer();
+            }
+        });
+
+        function closeImageViewer() {
+            document.getElementById('image-viewer').classList.add('hidden');
+            // srcを空にして、次に開くまで前の画像が残らないようにする
+            document.getElementById('image-viewer-img').src = '';
+            document.body.style.overflow = '';
+        }
+
         function escapeNotionHtml(str) {
             const div = document.createElement('div');
             div.textContent = str;
@@ -3396,13 +3673,261 @@
                 });
                 const result = await res.json();
                 if (!res.ok) { status.textContent = `失敗: ${result.detail || result.error}`; return; }
-                const embedModels = (result.models || []).filter(n => n.includes('embed'));
-                status.textContent = embedModels.length
-                    ? `埋め込みモデル: ${embedModels.join(', ')}`
-                    : `埋め込みモデルなし。全モデル: ${(result.models || []).join(', ')}`;
+                // 設定中のモデルが実際に使えるかを確かめられるようにする。
+                // アカウントによっては提供が終わっているモデルがあり、その場合404になる
+                const chat = result.chatModels || [];
+                const embed = result.embeddingModels || [];
+                const conf = result.configured || {};
+                const mark = (name, list) => list.includes(name) ? '✓ 使えます' : '✗ このキーでは使えません';
+                const line = (label, name, list) => {
+                    const ok = list.includes(name);
+                    return `<div class="mb-1">
+                        <span class="text-white/40">${label}</span>
+                        <code class="bg-white/10 rounded px-1.5 py-0.5 mx-1">${escapeAttr(name || '(未設定)')}</code>
+                        <span class="${ok ? 'text-green-300' : 'text-red-300'}">${ok ? '✓ 使えます' : '✗ このキーでは使えません'}</span>
+                    </div>`;
+                };
+                status.innerHTML = `
+                    ${line('生成 (GEMINI_MODEL)', conf.chat, chat)}
+                    ${line('埋め込み (GEMINI_EMBEDDING_MODEL)', conf.embedding, embed)}
+                    <details class="mt-3"><summary class="cursor-pointer text-white/50">使える生成モデル ${chat.length}件</summary>
+                        <div class="mt-1 flex flex-col gap-0.5">${chat.map(n => `<code class="bg-white/5 rounded px-1.5 py-0.5">${escapeAttr(n)}</code>`).join('')}</div>
+                    </details>
+                    <details class="mt-2"><summary class="cursor-pointer text-white/50">使える埋め込みモデル ${embed.length}件</summary>
+                        <div class="mt-1 flex flex-col gap-0.5">${embed.map(n => `<code class="bg-white/5 rounded px-1.5 py-0.5">${escapeAttr(n)}</code>`).join('')}</div>
+                    </details>`;
             } catch (e) {
                 status.textContent = `エラー: ${e.message}`;
             }
+        }
+
+        async function findWorkingModel() {
+            const status = document.getElementById('ai-models-status');
+            const { data: { session } } = await sb.auth.getSession();
+            if (!session) { showToast('ログイン状態を確認できませんでした'); return; }
+            status.textContent = '候補を順に試しています…（数十秒かかることがあります）';
+            try {
+                const res = await fetch('/api/rag', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'find-working-model' }),
+                });
+                const result = await res.json();
+                if (!res.ok) { status.textContent = `失敗: ${result.detail || result.error}`; return; }
+                const rows = (result.tried || []).map(t =>
+                    `<div class="${t.ok ? 'text-green-300' : 'text-white/40'}">${t.ok ? '✓' : '✗'} <code class="bg-white/10 rounded px-1 py-0.5">${escapeAttr(t.name)}</code>${t.ok ? '' : ` — ${t.status || ''}`}</div>`
+                ).join('');
+                status.innerHTML = result.working
+                    ? `<div class="text-green-300 mb-2">動くモデルが見つかりました: <code class="bg-white/10 rounded px-1.5 py-0.5">${escapeAttr(result.working)}</code></div>
+                       <div class="text-white/40 mb-2">VercelのGEMINI_MODELをこの値にして再デプロイしてください。</div>
+                       <details><summary class="cursor-pointer text-white/40">試した候補(${result.tried.length}/${result.totalCandidates}件中)</summary><div class="mt-1">${rows}</div></details>`
+                    : `<div class="text-red-300 mb-2">${result.tried.length}件試しましたが、動くモデルが見つかりませんでした。</div>
+                       <div class="mt-1">${rows}</div>`;
+            } catch (e) {
+                status.textContent = `エラー: ${e.message}`;
+            }
+        }
+
+        // --- 記事の分析(タグのボトムアップ生成の材料) ---
+        // Geminiの無料枠は回数制限が厳しい(2.5 Flashで5回/分・20回/日)。
+        // 1リクエストに複数記事をまとめて入れるので、必要な回数は「記事数÷ANALYZE_BATCH」。
+        // 26記事なら6回程度で、1日の枠に収まる
+        const ANALYZE_BATCH = 5;
+        const ANALYZE_INTERVAL_SEC = 15;
+
+        // 1回のリクエストで数件ずつしか進まないので、終わるまで繰り返し呼ぶ
+        async function runArticleAnalysis(force = false) {
+            const btn = document.getElementById('analyze-btn');
+            const status = document.getElementById('analyze-status');
+            btn.disabled = true;
+            const collected = [];
+            const failures = [];
+            // 失敗した記事は保存されないので、除外しないと同じ記事を延々と再試行してしまう
+            const skip = [];
+            try {
+                for (let guard = 0; guard < 100; guard++) {
+                    const { data: { session } } = await sb.auth.getSession();
+                    if (!session) { status.textContent = 'ログイン状態を確認できませんでした'; return; }
+                    const res = await fetch('/api/rag', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                        body: JSON.stringify({
+                            action: 'analyze-articles', limit: ANALYZE_BATCH,
+                            force: force && guard === 0, skip,
+                        }),
+                    });
+                    if (!res.ok) {
+                        const detail = await res.text();
+                        status.textContent = '失敗しました: ' + detail.slice(0, 200);
+                        return;
+                    }
+                    const data = await res.json();
+                    collected.push(...(data.processed || []));
+                    for (const f of data.failed || []) {
+                        if (!skip.includes(f.id)) { skip.push(f.id); failures.push(f); }
+                    }
+                    status.textContent = `分析中… ${data.analyzed}/${data.total}（残り${data.remaining}件）`;
+                    renderAnalysisResult(collected, failures);
+
+                    if (data.quotaExceeded) {
+                        status.textContent = `Geminiの利用上限に達しました。${collected.length}件まで分析済みです。`
+                            + '枠が回復してから、もう一度押せば続きから再開します。';
+                        return;
+                    }
+                    if (!data.remaining || (!data.processed.length && !data.failed.length)) {
+                        if (collected.length) {
+                            status.textContent = `完了：${collected.length}件を分析しました`
+                                + (failures.length ? `（${failures.length}件は失敗）` : '');
+                        } else if (failures.length) {
+                            // 全件失敗したときに「すべて分析済み」と出ると誤解を招く
+                            status.textContent = `${failures.length}件すべて失敗しました。下のエラー内容を確認してください。`;
+                        } else {
+                            status.textContent = 'すべて分析済みです（本文に変更のある記事はありませんでした）';
+                        }
+                        return;
+                    }
+
+                    // Geminiの無料枠は1分あたりの回数が少ない(2.5 Flashで5回)。
+                    // 続けて投げると429になるので、次のバッチまで待つ。止まって見えないよう残り秒数を出す
+                    for (let wait = ANALYZE_INTERVAL_SEC; wait > 0; wait--) {
+                        status.textContent = `分析中… ${data.analyzed}/${data.total}`
+                            + `（残り${data.remaining}件 / レート制限のため${wait}秒待機）`;
+                        await new Promise((r) => setTimeout(r, 1000));
+                    }
+                    // 全件やり直しは初回だけ。2回目以降はハッシュで飛ばさせる
+                    force = false;
+                }
+            } catch (e) {
+                console.error(e);
+                status.textContent = '失敗しました: ' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function renderAnalysisResult(items, failures) {
+            const wrap = document.getElementById('analyze-result');
+            const chip = (t) => `<span class="inline-block bg-white/10 rounded px-1.5 py-0.5 mr-1 mb-1 text-xs">${escapeAttr(t)}</span>`;
+            wrap.innerHTML = failures.map(f => `
+                <div class="text-xs text-red-300/80">✗ ${escapeAttr(f.title || f.id)} — ${escapeAttr(f.error)}</div>
+            `).join('') + items.map(a => `
+                <div class="text-xs">
+                    <div class="text-white/70 mb-1">${escapeAttr(a.title || '(無題)')}</div>
+                    <div>${(a.themes || []).map(chip).join('')}</div>
+                </div>
+            `).join('');
+        }
+
+        // --- タグ候補(記事のまとまりから探す。Step 2: クラスタ検出+命名の提案) ---
+        let tagClusters = [];
+
+        async function runTagClusterDiscovery() {
+            const btn = document.getElementById('cluster-btn');
+            const status = document.getElementById('cluster-status');
+            btn.disabled = true;
+            status.textContent = '記事のまとまりを計算し、タグ名を考えています…（1分ほどかかることがあります）';
+            document.getElementById('cluster-result').innerHTML = '';
+            try {
+                const { data: { session } } = await sb.auth.getSession();
+                if (!session) { status.textContent = 'ログイン状態を確認できませんでした'; return; }
+                const res = await fetch('/api/rag', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                    body: JSON.stringify({ action: 'discover-tag-clusters' }),
+                });
+                const data = await res.json();
+                if (!res.ok) { status.textContent = '失敗しました: ' + (data.detail || data.error); return; }
+                if (data.note) { status.textContent = data.note; return; }
+                tagClusters = data.clusters || [];
+                status.textContent = tagClusters.length
+                    ? `${data.articleCount}記事から${tagClusters.length}件のまとまりが見つかりました。内容を確認して適用してください。`
+                    : `${data.articleCount}記事を調べましたが、3件以上のまとまりは見つかりませんでした。`;
+                renderTagClusters();
+            } catch (e) {
+                console.error(e);
+                status.textContent = 'エラー: ' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function renderTagClusters() {
+            const wrap = document.getElementById('cluster-result');
+            wrap.innerHTML = tagClusters.map((c, i) => {
+                const t = c.tag || {};
+                const titles = c.members.map(m => `<div class="text-xs text-white/60">${escapeAttr(m.title)}</div>`).join('');
+                const themeChips = [...new Set(c.members.flatMap(m => m.themes || []))]
+                    .map(x => `<span class="inline-block bg-white/5 rounded px-1.5 py-0.5 mr-1 mb-1 text-xs text-white/40">${escapeAttr(x)}</span>`).join('');
+                const coherenceNote = c.lift != null && c.lift > 0
+                    ? `<span class="text-xs text-white/30">結束度 ${c.coherence.toFixed(3)}(全体平均より+${c.lift.toFixed(3)})</span>`
+                    : `<span class="text-xs text-white/30">結束度 ${(c.coherence ?? 0).toFixed(3)}</span>`;
+
+                if (t.tooLarge) {
+                    return `<div class="p-3 rounded bg-yellow-500/5 border border-yellow-500/20">
+                        <div class="text-xs text-yellow-200/70 mb-2">⚠ ${c.members.length}件の大きなまとまり — 命名せず(連鎖的な誤検出の可能性) ${coherenceNote}</div>
+                        <details><summary class="text-xs text-white/40 cursor-pointer">記事一覧を見る</summary><div class="mt-1">${titles}</div></details>
+                    </div>`;
+                }
+                if (!t.fits) {
+                    return `<div class="p-3 rounded bg-white/5 border border-white/10">
+                        <div class="text-xs text-white/40 mb-2">${c.members.length}件のまとまり — ぴったりの一言なし ${coherenceNote}</div>
+                        <div class="mb-2">${titles}</div>
+                        <div class="text-xs text-white/30">理由: ${escapeAttr(t.reason || '')}</div>
+                    </div>`;
+                }
+                return `<div class="p-3 rounded bg-white/5 border border-white/10" id="cluster-card-${i}">
+                    <div class="flex items-center gap-2 mb-2">
+                        <input id="cluster-tag-name-${i}" value="${escapeAttr(t.tag || '')}" class="bg-white/10 text-sm rounded px-2 py-1 border border-white/10 focus:outline-none focus:border-white/30" style="width: 10em;">
+                        <button onclick="applyTagCluster(${i})" class="px-3 py-1 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">適用</button>
+                        ${coherenceNote}
+                    </div>
+                    <div class="text-xs text-white/40 mb-2">${escapeAttr(t.description || '')}</div>
+                    <div class="mb-2">${titles}</div>
+                    <div class="mb-1">${themeChips}</div>
+                    <div class="text-xs text-white/30">理由: ${escapeAttr(t.reason || '')}</div>
+                </div>`;
+            }).join('') || '<div class="text-xs text-white/30">まとまりが見つかりませんでした</div>';
+        }
+
+        // 提案されたクラスタをタグとして確定する。同名のタグが既にあれば使い回し、
+        // 無ければ新規作成してから、まとまりに属する記事全部へ付与する
+        async function applyTagCluster(index) {
+            const cluster = tagClusters[index];
+            if (!cluster) return;
+            const nameInput = document.getElementById(`cluster-tag-name-${index}`);
+            const name = nameInput.value.trim();
+            if (!name) { showToast('タグ名を入力してください'); return; }
+            const slug = slugify(name);
+            if (!slug) { showToast('タグ名を確認してください'); return; }
+
+            await ensureTagsLoaded();
+            let tag = tags.find(t => t.slug === slug);
+            if (!tag) {
+                const { data, error } = await sb.from('tags')
+                    .insert({ name, slug, description: cluster.tag?.description || '' })
+                    .select().single();
+                if (error) {
+                    console.error(error);
+                    showToast(error.code === '23505' ? 'このスラッグは既に使われています' : 'タグの作成に失敗しました');
+                    return;
+                }
+                tag = data;
+                tags.push(tag);
+            }
+
+            // 既存の付与と重複しないよう、まだ付いていない記事にだけ挿入する
+            const { data: existing } = await sb.from('article_tags')
+                .select('article_id').eq('tag_id', tag.id).in('article_id', cluster.memberIds);
+            const already = new Set((existing || []).map(r => r.article_id));
+            const rows = cluster.memberIds.filter(id => !already.has(id)).map(id => ({ article_id: id, tag_id: tag.id }));
+            if (rows.length) {
+                const { error } = await sb.from('article_tags').insert(rows);
+                if (error) { console.error(error); showToast('記事への付与に失敗しました'); return; }
+            }
+
+            showToast(`「${name}」を${cluster.memberIds.length}件の記事に適用しました`);
+            const card = document.getElementById(`cluster-card-${index}`);
+            if (card) card.style.opacity = '0.4';
         }
 
         async function reindexAiArticles() {
@@ -3924,6 +4449,26 @@
             }
         }
 
+        // 出典などのキャプションを付ける・外す。キャプション有無で内部的にノード型が
+        // 変わり(通常の画像⇔figure)、DOMが作り直されるのでresizeSelectedImageと同様に
+        // srcで選び直す
+        function captionSelectedImage() {
+            if (!selectedImage) return;
+            const inst = tiptapEditors['edit-content'];
+            if (!inst) { showToast('新しいエディタでのみ使えます'); return; }
+            const current = selectedImage.closest('figure.image-figure')
+                ?.querySelector('figcaption')?.textContent || '';
+            const caption = prompt('キャプション(出典など)。空にすると外れます', current);
+            if (caption === null) return;
+            const src = selectedImage.getAttribute('src');
+            window.StudiesEditor.setImageCaption(inst, selectedImage, caption);
+            requestAnimationFrame(() => {
+                const img = document.getElementById('edit-content')
+                    .querySelector(`img[src="${CSS.escape(src)}"]`);
+                if (img) selectImage(img); else deselectImage();
+            });
+        }
+
         // --- 表示設定(サイト全体のデフォルト) ---
         function pickColor(inputId, value) {
             const input = document.getElementById(inputId);
@@ -4013,6 +4558,7 @@
             document.getElementById('set-menu-font-size-value').textContent = (data.menu_font_size || 12) + 'px';
             document.getElementById('set-font').value = data.font;
             document.getElementById('set-title-font').value = data.title_font || '';
+            document.getElementById('set-all-font').value = data.all_font || '';
             document.getElementById('set-log-font').value = data.log_font || '';
             document.getElementById('set-sketch-font').value = data.sketch_font || '';
             document.getElementById('set-essay-font').value = data.essay_font || '';
@@ -4123,6 +4669,7 @@
                 text_color: document.getElementById('set-text-color').value,
                 font: document.getElementById('set-font').value,
                 title_font: document.getElementById('set-title-font').value,
+                all_font: document.getElementById('set-all-font').value,
                 log_font: document.getElementById('set-log-font').value,
                 sketch_font: document.getElementById('set-sketch-font').value,
                 essay_font: document.getElementById('set-essay-font').value,

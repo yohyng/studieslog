@@ -579,6 +579,8 @@
         .category-label[data-category="log"], .category-filter-item[data-category="log"] { font-family: var(--log-font, inherit); }
         .category-label[data-category="sketch"], .category-filter-item[data-category="sketch"] { font-family: var(--sketch-font, inherit); }
         .category-label[data-category="essay"], .category-filter-item[data-category="essay"] { font-family: var(--essay-font, inherit); }
+        /* カテゴリ絞り込みの「All」。data-categoryが空なので上の3つのどれにも当たらない */
+        .category-filter-item[data-category=""] { font-family: var(--all-font, inherit); }
         .group:hover .article-title { opacity: 1; }
 
         .article-snippet {
@@ -618,13 +620,24 @@
         }
 
         .content-body img { display: block; max-width: 100%; max-height: 70vh; width: auto; height: auto; object-fit: contain; border-radius: 0; margin: 2em auto; }
+        /* 出典などのキャプション付き画像 */
+        .content-body .image-figure { margin: 2em auto; max-width: 100%; text-align: center; }
+        .content-body .image-figure img { margin: 0 auto; }
+        .content-body .image-caption { font-size: 0.75em; opacity: 0.5; margin-top: 0.6em; }
         /* Amazon等のリンクカードは直角にする(過去に挿入済みのinlineスタイルもここで上書き) */
         .content-body .book-link-card, .content-body .book-link-card img { border-radius: 0 !important; }
         @media (min-width: 768px) {
             .content-body img { margin: 1.1em auto; }
+            .content-body .image-figure { margin: 1.1em auto; }
         }
         .content-body blockquote { border-left: 1px solid var(--text-color-solid); padding-left: 1.5em; margin: 2em 0; font-style: italic; opacity: 0.7; }
         .content-body h2 { font-size: 1.2em; margin: 2em 0 1em 0; opacity: 0.9; }
+        .content-body table { width: 100%; border-collapse: collapse; margin: 2em 0; font-size: 0.9em; }
+        .content-body th, .content-body td { border: 0.5px solid var(--divider-color); padding: 0.6em 0.8em; text-align: left; }
+        .content-body th { font-weight: 500; opacity: 0.85; }
+        /* YouTube/Vimeoの埋め込み。16:9で幅いっぱいにレスポンシブ表示する */
+        .content-body .video-embed { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 2em 0; }
+        .content-body .video-embed iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
         .footnote-ref { color: var(--footnote-color); background: var(--footnote-bg-color); padding: 0; border-radius: 0; }
         .footnote-ref a { color: inherit; text-decoration: none; }
         .footnote-list { margin-top: 2.5em; padding-top: 1.2em; border-top: 0.5px solid var(--divider-color); font-size: 0.8em; list-style: none; }
@@ -723,6 +736,13 @@
                  (ハンバーガーがX字に変わったように見せるため)。menu-panel自体がposition:absoluteの
                  スライド元なので、このボタンもabsoluteにしておけばパネルと一緒にスライドする -->
             <button onclick="toggleMenu()" class="absolute z-10 opacity-50 hover:opacity-100 transition-opacity text-lg leading-none" style="left: 1.5rem; bottom: 1rem;" aria-label="閉じる">×</button>
+            <!-- 文字サイズの大小は、閉じる(×)ボタンのすぐ上に置く。×と同じくabsoluteなので
+                 パネルと一緒にスライドする -->
+            <div class="absolute z-10 flex items-center gap-1.5" style="left: 1.5rem; bottom: 3rem;">
+                <button onclick="adjustUserFontScale(-0.1)" class="glass-chip w-6 h-6 inline-flex items-center justify-center hover:opacity-80 transition-opacity" style="box-shadow: none; font-size: 0.65rem;" aria-label="文字を小さく" title="文字を小さく">A-</button>
+                <span class="font-scale-value opacity-60" style="font-size: 0.65rem; min-width: 2em; text-align: center;"></span>
+                <button onclick="adjustUserFontScale(0.1)" class="glass-chip w-6 h-6 inline-flex items-center justify-center hover:opacity-80 transition-opacity" style="box-shadow: none; font-size: 0.65rem;" aria-label="文字を大きく" title="文字を大きく">A+</button>
+            </div>
             <div class="h-full p-5" style="background: color-mix(in srgb, var(--bg-color) 5%, transparent); backdrop-filter: blur(10px) saturate(190%); -webkit-backdrop-filter: blur(10px) saturate(190%); color: var(--text-color); border-right: 1px solid color-mix(in srgb, currentColor 30%, transparent); box-shadow: inset -1px 0 0 color-mix(in srgb, white 25%, transparent), 4px 0 16px color-mix(in srgb, black 10%, transparent);">
                 <div id="sidebar-title" onclick="toggleMenu(); goHome();" class="cursor-pointer opacity-90 hover:opacity-100 transition-opacity mb-8 font-medium tracking-widest" style="font-size: var(--menu-font-size); font-family: var(--site-title-font, inherit);">fragments</div>
                 <nav class="flex flex-col gap-3" style="font-size: var(--menu-font-size); font-family: var(--site-title-font, inherit);">
@@ -735,11 +755,6 @@
                         <span id="locale-btn-ja" onclick="setLocale('ja')" class="cursor-pointer opacity-100 hover:opacity-100 transition-opacity" style="text-decoration: underline;">JP</span>
                         <span class="opacity-40">/</span>
                         <span id="locale-btn-en" onclick="setLocale('en')" class="cursor-pointer opacity-50 hover:opacity-100 transition-opacity">EN</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 mt-2 pt-3" style="border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);">
-                        <button onclick="adjustUserFontScale(-0.1)" class="glass-chip w-6 h-6 inline-flex items-center justify-center hover:opacity-80 transition-opacity" style="box-shadow: none; font-size: 0.65rem;" aria-label="文字を小さく" title="文字を小さく">A-</button>
-                        <span class="font-scale-value opacity-60" style="font-size: 0.65rem; min-width: 2em; text-align: center;"></span>
-                        <button onclick="adjustUserFontScale(0.1)" class="glass-chip w-6 h-6 inline-flex items-center justify-center hover:opacity-80 transition-opacity" style="box-shadow: none; font-size: 0.65rem;" aria-label="文字を大きく" title="文字を大きく">A+</button>
                     </div>
                 </nav>
             </div>
@@ -1042,6 +1057,8 @@
             else document.documentElement.style.removeProperty('--sketch-font');
             if (data.essay_font) document.documentElement.style.setProperty('--essay-font', data.essay_font);
             else document.documentElement.style.removeProperty('--essay-font');
+            if (data.all_font) document.documentElement.style.setProperty('--all-font', data.all_font);
+            else document.documentElement.style.removeProperty('--all-font');
             siteLineHeight = data.line_height;
             document.documentElement.style.setProperty('--base-line-height', data.line_height);
             document.documentElement.style.setProperty('--base-letter-spacing', data.letter_spacing + 'em');
@@ -2040,18 +2057,11 @@
                 <span class="category-filter-item cursor-pointer transition-opacity hover:opacity-100 ${cat === '' ? 'opacity-90' : 'opacity-50'}" data-category="${escapeHtml(cat)}" onclick="filterCardCategory(this)">${escapeHtml(cat || 'All')}</span>
             `).join('<span class="opacity-30" style="margin: 0 0.4em;">/</span>');
 
-            const allTags = [...new Map(articles.flatMap(a => a.tags || []).map(t => [t.slug, t])).values()]
-                .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-            const tagFilterHtml = allTags.length > 0 ? `
-                <div class="tag-filter-row flex flex-wrap gap-2 mb-8">
-                    <span class="tag-filter-item glass-chip cursor-pointer px-2 py-0.5 opacity-90 hover:opacity-100 transition-opacity" data-tag="" onclick="filterCardTag(this)" style="font-size: var(--tag-font-size); font-family: var(--tag-font);">All</span>
-                    ${allTags.map(t => `<span class="tag-filter-item glass-chip cursor-pointer px-2 py-0.5 opacity-50 hover:opacity-100 transition-opacity" data-tag="${escapeHtml(t.slug)}" onclick="filterCardTag(this)" style="background: color-mix(in srgb, var(--tag-bg-color) 55%, transparent); color: var(--tag-text-color); font-size: var(--tag-font-size); font-family: var(--tag-font);">#${escapeHtml(t.name)}</span>`).join('')}
-                </div>
-            ` : '';
-
+            // タグでの絞り込みはこのパネルには置かない(カテゴリと文字サイズのみ)。
+            // タグ一覧は /tags から辿れる。cardActiveTagsは空のままなのでapplyCardFiltersは
+            // カテゴリだけで絞り込む
             document.getElementById('card-filter-panel').innerHTML = `
                 <div class="category-filter-row text-sm mb-4">${categoryFilterHtml}</div>
-                ${tagFilterHtml}
                 <div class="flex items-center gap-3 pt-3" style="border-top: 0.5px solid var(--divider-color); font-size: 0.75rem;">
                     <span class="opacity-60">文字サイズ</span>
                     <button onclick="adjustUserFontScale(-0.1)" class="glass-chip w-6 h-6 inline-flex items-center justify-center hover:opacity-80 transition-opacity" style="box-shadow: none;" aria-label="文字を小さく" title="文字を小さく">A-</button>
