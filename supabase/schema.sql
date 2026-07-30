@@ -399,6 +399,9 @@ $$;
 
 -- カテゴリ絞り込みの「All」ラベルのフォント(空文字なら本文フォントに従う)
 alter table public.site_settings add column if not exists all_font text not null default '';
+-- ブックリンクカード(Amazonなど)の枠線設定
+alter table public.site_settings add column if not exists card_border_enabled boolean not null default true;
+alter table public.site_settings add column if not exists card_border_color text not null default '';
 -- 配信メールの背景画像。埋め込み画像(data:)はメールで使えないため、
 -- 表示設定のグラデーション背景を1枚に焼き込んでStorageへ上げ、そのURLを持つ
 alter table public.site_settings add column if not exists digest_bg_image text not null default '';

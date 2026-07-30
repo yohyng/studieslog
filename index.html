@@ -50,6 +50,7 @@
             --list-heading-text-color: #6b7278;
             --selection-bg-color: #ffffff;
             --selection-text-color: #6b7278;
+            --card-border: 1px solid rgba(255, 255, 255, 0.2);
             --content-width: 42rem;
             --base-line-height: 2.2;
             --base-font-size: 16px;
@@ -626,6 +627,8 @@
         .content-body .image-caption { font-size: 0.75em; opacity: 0.5; margin-top: 0.6em; }
         /* Amazon等のリンクカードは直角にする(過去に挿入済みのinlineスタイルもここで上書き) */
         .content-body .book-link-card, .content-body .book-link-card img { border-radius: 0 !important; }
+        /* ブックリンクカードの枠線設定。CSS変数で上書き(設定から選択可能) */
+        .content-body .book-link-card[style] { border: var(--card-border) !important; }
         @media (min-width: 768px) {
             .content-body img { margin: 1.1em auto; }
             .content-body .image-figure { margin: 1.1em auto; }
@@ -1114,6 +1117,11 @@
             document.documentElement.style.setProperty('--body-text-opacity', data.body_text_opacity != null ? data.body_text_opacity : 0.75);
             document.documentElement.style.setProperty('--header-spacing', (data.header_spacing != null ? data.header_spacing : 288) + 'px');
             document.documentElement.style.setProperty('--title-text-opacity', data.title_text_opacity != null ? data.title_text_opacity : 1);
+            // ブックリンクカード(Amazon등)の枠線設定
+            const cardBorderEnabled = data.card_border_enabled !== false;
+            const cardBorderColor = data.card_border_color || '#ffffff';
+            const cardBorder = cardBorderEnabled ? `1px solid ${cardBorderColor}` : 'none';
+            document.documentElement.style.setProperty('--card-border', cardBorder);
             const footerTitle = data.site_title || document.getElementById('site-title').textContent;
             document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} ${footerTitle}`;
         }

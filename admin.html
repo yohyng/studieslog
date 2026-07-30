@@ -16,6 +16,8 @@
     <script src="/lib/digest-template.js"></script>
 
     <style>
+    
+        :root { --card-border: 1px solid rgba(255, 255, 255, 0.2); }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
             background-color: #22262a;
@@ -31,6 +33,8 @@
         .content-editor .image-figure img { margin: 0 auto; }
         .content-editor .image-caption { font-size: 0.75em; opacity: 0.5; margin-top: 0.4em; }
         .content-editor .book-link-card, .content-editor .book-link-card img { border-radius: 0 !important; }
+        /* ブックリンクカードの枠線設定。CSS変数で上書き(設定から選択可能) */
+        .content-editor .book-link-card[style] { border: var(--card-border) !important; }
         .content-editor blockquote { border-left: 2px solid rgba(255,255,255,0.3); padding-left: 1em; margin: 1em 0; opacity: 0.8; font-style: italic; }
         .content-editor h2 { font-size: 1.2em; margin: 1em 0 0.5em; }
         .content-editor .footnote-ref { color: #7dd3fc; cursor: default; }
@@ -1421,6 +1425,22 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- ブックリンクカード(Amazonなど)の枠線設定 -->
+                    <div class="mb-6">
+                        <label class="text-xs text-white/50 block mb-2">ブックリンクカード(Amazonなど)の枠線</label>
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input id="set-card-border-enabled" type="checkbox" class="w-4 h-4">
+                                <span class="text-xs text-white/40">枠線を表示</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input id="set-card-border-color" type="color" class="w-10 h-10 rounded cursor-pointer" disabled>
+                                <span class="text-xs text-white/40">色</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-white/30 mt-3">チェックを外すと枠線が非表示になります。色はチェック時に有効です。</p>
+                    </div>
                 </div>
 
                 <!-- Aboutページ -->
@@ -2469,6 +2489,13 @@
                 dateEl.style.color = siteTypography.text_color;
                 dateEl.style.opacity = '0.4';
             }
+        }
+
+        function updateCardBorderPreview() {
+            const cardBorderEnabled = document.getElementById('set-card-border-enabled').checked;
+            const cardBorderColor = document.getElementById('set-card-border-color').value || '#ffffff';
+            const cardBorder = cardBorderEnabled ? `1px solid ${cardBorderColor}` : 'none';
+            document.documentElement.style.setProperty('--card-border', cardBorder);
         }
 
         // --- 紹介リンク(書籍など) : カーソル位置に直接挿入し、本文と一緒に自由に移動・削除できるようにする ---
@@ -4629,6 +4656,15 @@
             document.getElementById('set-sns-instagram-url').value = data.sns_instagram_url || '';
             document.getElementById('set-sns-website-url').value = data.sns_website_url || '';
             document.getElementById('set-og-image').value = data.og_image || '';
+            document.getElementById('set-card-border-enabled').checked = data.card_border_enabled !== false;
+            document.getElementById('set-card-border-color').value = data.card_border_color || '#ffffff';
+            document.getElementById('set-card-border-color').disabled = !document.getElementById('set-card-border-enabled').checked;
+            document.getElementById('set-card-border-enabled').addEventListener('change', (e) => {
+                document.getElementById('set-card-border-color').disabled = !e.target.checked;
+                updateCardBorderPreview();
+            });
+            document.getElementById('set-card-border-color').addEventListener('change', updateCardBorderPreview);
+            updateCardBorderPreview();
             checkSetContrast();
         }
 
@@ -4705,7 +4741,9 @@
                 sns_facebook_url: document.getElementById('set-sns-facebook-url').value.trim(),
                 sns_instagram_url: document.getElementById('set-sns-instagram-url').value.trim(),
                 sns_website_url: document.getElementById('set-sns-website-url').value.trim(),
-                og_image: document.getElementById('set-og-image').value.trim()
+                og_image: document.getElementById('set-og-image').value.trim(),
+                card_border_enabled: document.getElementById('set-card-border-enabled').checked,
+                card_border_color: document.getElementById('set-card-border-color').value
             };
             const { error } = await sb.from('site_settings').update(payload).eq('id', 1);
             if (error) {
