@@ -1578,7 +1578,7 @@
          ピンチ/ホイールで拡大縮小、拡大中はドラッグで位置調整できる(背景クリックで閉じる。
          画像自体のクリックはズーム操作と競合するので閉じない) -->
     <div id="image-viewer" class="hidden fixed z-[60] flex items-center justify-center bg-black/80 p-4 overflow-hidden"
-         onclick="if (event.target === this) closeImageViewer()">
+         style="touch-action: none;" onclick="if (event.target === this) closeImageViewer()">
         <img id="image-viewer-img" src="" alt="" style="max-width: 100%; max-height: 100%; object-fit: contain; touch-action: none;">
         <button type="button" onclick="closeImageViewer()" aria-label="閉じる"
                 class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors">✕</button>
@@ -3784,13 +3784,17 @@
         }
 
         function setupImageViewerZoom() {
+            const viewer = document.getElementById('image-viewer');
             const img = document.getElementById('image-viewer-img');
 
+            // ピンチ/ホイールはモーダル全体(viewer)で拾う。object-fit:containの余白部分に
+            // 指がかかってもimg側だけのリスナーだと取りこぼし、ブラウザ標準のページ全体ピンチズームに
+            // 奪われてしまうため。touch-action:noneと合わせてページ側のズームを確実に抑える
             const dist = (t1, t2) => Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
             let pinchStartDist = null;
             let pinchStartScale = 1;
 
-            img.addEventListener('touchstart', (e) => {
+            viewer.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 2) {
                     e.preventDefault();
                     pinchStartDist = dist(e.touches[0], e.touches[1]);
@@ -3798,7 +3802,7 @@
                 }
             }, { passive: false });
 
-            img.addEventListener('touchmove', (e) => {
+            viewer.addEventListener('touchmove', (e) => {
                 if (e.touches.length === 2 && pinchStartDist) {
                     e.preventDefault();
                     const scale = pinchStartScale * (dist(e.touches[0], e.touches[1]) / pinchStartDist);
@@ -3807,13 +3811,13 @@
                 }
             }, { passive: false });
 
-            img.addEventListener('touchend', (e) => {
+            viewer.addEventListener('touchend', (e) => {
                 if (e.touches.length < 2) pinchStartDist = null;
                 if (viewerScale <= 1.01) resetImageViewerZoom();
             });
 
             // デスクトップ: ホイールで拡大縮小(トラックパッドのピンチもwheelイベントとして届く)
-            img.addEventListener('wheel', (e) => {
+            viewer.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const scale = viewerScale * (1 - e.deltaY * 0.0015);
                 viewerScale = Math.min(Math.max(scale, VIEWER_MIN_SCALE), VIEWER_MAX_SCALE);
