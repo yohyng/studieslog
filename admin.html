@@ -498,6 +498,25 @@
                     <button onclick="switchSettingsTab('about')" data-settings-tab="about" class="settings-tab-btn px-3 py-2 text-xs whitespace-nowrap">About</button>
                 </div>
 
+                <!-- 表示設定テンプレート: 全体設定〜Aboutまでの表示設定を丸ごとスナップショットして
+                     名前を付けて保存し、あとで一括で呼び出せる。「適用」はフォームに反映するだけなので、
+                     確定するには通常の保存ボタンを押す必要がある -->
+                <div class="mb-8 pb-6 border-b border-white/10">
+                    <label class="text-xs text-white/50 block mb-2">表示設定テンプレート</label>
+                    <div class="flex gap-2 items-center flex-wrap">
+                        <select id="set-preset-select" class="flex-1 min-w-[10rem] bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                            <option value="">テンプレートを選択...</option>
+                        </select>
+                        <button onclick="applySettingPreset()" class="px-3 py-2 text-xs rounded bg-white/10 hover:bg-white/20">適用</button>
+                        <button onclick="deleteSettingPreset()" class="px-3 py-2 text-xs rounded bg-white/10 hover:bg-white/20 text-red-300">削除</button>
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                        <input id="set-preset-name" type="text" placeholder="新しいテンプレート名" class="flex-1 bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                        <button onclick="saveSettingPreset()" class="px-3 py-2 text-xs rounded bg-white/10 hover:bg-white/20 whitespace-nowrap">名前で保存</button>
+                    </div>
+                    <p class="text-xs text-white/30 mt-2">現在の表示設定全体をテンプレートとして保存できます。「適用」は画面に反映するだけなので、確定するにはこのページ下部の保存ボタンを押してください。</p>
+                </div>
+
                 <!-- 全体設定: サイト構成、タイトル、メニュー、背景色、台形装飾、選択ハイライト色など、
                      ページ全体・複数のセクションにまたがる見た目の設定 -->
                 <div class="settings-tab-panel" data-settings-panel="overall">
@@ -4542,13 +4561,9 @@
             });
         }
 
-        async function loadSiteSettings() {
-            const { data, error } = await sb.from('site_settings').select('*').eq('id', 1).single();
-            if (error || !data) {
-                console.error(error);
-                showToast(`表示設定の読み込みに失敗しました: ${error ? (error.code || '') + ' ' + (error.message || error) : ''}`, 8000);
-                return;
-            }
+        // 表示設定フォームの各入力欄にdataの値を反映する。サーバーの現在値を読み込む時と、
+        // テンプレートを選んで一括適用する時の両方から呼ばれる共通処理
+        function applySettingsDataToForm(data) {
             document.getElementById('set-homepage-layout').value = data.homepage_layout || 'timeline';
             const cardFontScale = data.card_font_scale || 1;
             document.getElementById('set-card-font-scale').value = cardFontScale;
@@ -4659,17 +4674,95 @@
             document.getElementById('set-card-border-enabled').checked = data.card_border_enabled !== false;
             document.getElementById('set-card-border-color').value = data.card_border_color || '#ffffff';
             document.getElementById('set-card-border-color').disabled = !document.getElementById('set-card-border-enabled').checked;
+            updateCardBorderPreview();
+            checkSetContrast();
+        }
+
+        async function loadSiteSettings() {
+            const { data, error } = await sb.from('site_settings').select('*').eq('id', 1).single();
+            if (error || !data) {
+                console.error(error);
+                showToast(`表示設定の読み込みに失敗しました: ${error ? (error.code || '') + ' ' + (error.message || error) : ''}`, 8000);
+                return;
+            }
+            applySettingsDataToForm(data);
             document.getElementById('set-card-border-enabled').addEventListener('change', (e) => {
                 document.getElementById('set-card-border-color').disabled = !e.target.checked;
                 updateCardBorderPreview();
             });
             document.getElementById('set-card-border-color').addEventListener('change', updateCardBorderPreview);
-            updateCardBorderPreview();
-            checkSetContrast();
+            await loadSettingPresets();
         }
 
-        async function saveSiteSettings() {
-            const payload = {
+        // --- 表示設定テンプレート(丸ごとプリセット保存/呼び出し) ---
+        let settingPresets = [];
+
+        async function loadSettingPresets() {
+            const { data, error } = await sb.from('site_setting_presets').select('*').order('created_at', { ascending: false });
+            if (error) {
+                console.error(error);
+                return;
+            }
+            settingPresets = data || [];
+            const select = document.getElementById('set-preset-select');
+            const current = select.value;
+            select.innerHTML = '<option value="">テンプレートを選択...</option>'
+                + settingPresets.map(p => `<option value="${p.id}">${escapeAttr(p.name)}</option>`).join('');
+            if (current && settingPresets.some(p => String(p.id) === current)) select.value = current;
+        }
+
+        function applySettingPreset() {
+            const id = document.getElementById('set-preset-select').value;
+            if (!id) {
+                showToast('テンプレートを選択してください');
+                return;
+            }
+            const preset = settingPresets.find(p => String(p.id) === id);
+            if (!preset) return;
+            applySettingsDataToForm(preset.data);
+            showToast(`テンプレート「${preset.name}」を反映しました。保存ボタンを押すと確定します`);
+        }
+
+        async function saveSettingPreset() {
+            const nameInput = document.getElementById('set-preset-name');
+            const name = nameInput.value.trim();
+            if (!name) {
+                showToast('テンプレート名を入力してください');
+                return;
+            }
+            const payload = buildSiteSettingsPayload();
+            const { error } = await sb.from('site_setting_presets').insert({ name, data: payload });
+            if (error) {
+                console.error(error);
+                showToast(`テンプレートの保存に失敗しました: ${error.code || ''} ${error.message || error}`, 8000);
+                return;
+            }
+            nameInput.value = '';
+            await loadSettingPresets();
+            showToast(`テンプレート「${name}」を保存しました`);
+        }
+
+        async function deleteSettingPreset() {
+            const id = document.getElementById('set-preset-select').value;
+            if (!id) {
+                showToast('削除するテンプレートを選択してください');
+                return;
+            }
+            const preset = settingPresets.find(p => String(p.id) === id);
+            if (!preset) return;
+            if (!confirm(`テンプレート「${preset.name}」を削除しますか？`)) return;
+            const { error } = await sb.from('site_setting_presets').delete().eq('id', id);
+            if (error) {
+                console.error(error);
+                showToast(`削除に失敗しました: ${error.code || ''} ${error.message || error}`, 8000);
+                return;
+            }
+            await loadSettingPresets();
+            showToast('テンプレートを削除しました');
+        }
+
+        function buildSiteSettingsPayload() {
+            return {
                 homepage_layout: document.getElementById('set-homepage-layout').value,
                 card_font_scale: parseFloat(document.getElementById('set-card-font-scale').value) || 1,
                 card_title_font: document.getElementById('set-card-title-font').value,
@@ -4745,6 +4838,10 @@
                 card_border_enabled: document.getElementById('set-card-border-enabled').checked,
                 card_border_color: document.getElementById('set-card-border-color').value
             };
+        }
+
+        async function saveSiteSettings() {
+            const payload = buildSiteSettingsPayload();
             const { error } = await sb.from('site_settings').update(payload).eq('id', 1);
             if (error) {
                 console.error(error);

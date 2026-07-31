@@ -424,3 +424,18 @@ alter table public.article_analysis enable row level security;
 drop policy if exists "article_analysis_auth_all" on public.article_analysis;
 create policy "article_analysis_auth_all" on public.article_analysis
   for all to authenticated using (true) with check (true);
+
+-- 表示設定(site_settingsの内容)を丸ごとスナップショットして名前を付けて保存し、
+-- あとで呼び出して一括適用できるようにするためのプリセット
+create table if not exists public.site_setting_presets (
+  id bigint generated always as identity primary key,
+  name text not null,
+  data jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.site_setting_presets enable row level security;
+
+drop policy if exists "site_setting_presets_auth_all" on public.site_setting_presets;
+create policy "site_setting_presets_auth_all" on public.site_setting_presets
+  for all to authenticated using (true) with check (true);
