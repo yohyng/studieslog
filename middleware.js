@@ -35,8 +35,10 @@ export default async function middleware(request) {
         const settings = (settingsRows && settingsRows[0]) || {};
 
         const title = escapeAttr(article.title || settings.site_title || '');
+        // 本文中の画像・手動設定のog_imageが無い記事でも、必ず見た目の整ったカードになるよう
+        // タイトル入りのOGP画像を自動生成するエンドポイントにフォールバックする
+        const image = extractFirstImage(article.content) || settings.og_image || `${url.origin}/api/og-image?id=${id}`;
         const description = escapeAttr(stripAndTruncate(article.content, 140));
-        const image = extractFirstImage(article.content) || settings.og_image || '';
         const siteName = escapeAttr(settings.site_title || '');
         const pageUrl = escapeAttr(url.toString());
 

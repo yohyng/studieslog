@@ -5,6 +5,7 @@
     "test:schema": "node scripts/schema-fixture-test.mjs"
   },
   "dependencies": {
+    "@vercel/og": "1.0.0",
     "@tiptap/core": "3.29.1",
     "@tiptap/extension-image": "3.29.1",
     "@tiptap/extension-table": "3.29.1",

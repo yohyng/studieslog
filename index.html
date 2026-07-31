@@ -7,11 +7,24 @@
          拡大側は制限していないので、読みづらいときのピンチイン(拡大)はこれまで通りできる -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
     <title>fragments</title>
-    <!-- 個別記事(/article/:id)はmiddleware.jsがクローラー向けにOGPを差し替えるため、ここはそれ以外のページ向けの既定値 -->
+    <!-- 個別記事(/article/:id)はmiddleware.jsがクローラー向けにOGPを差し替えるため、ここはそれ以外のページ向けの既定値。
+         画像は/api/og-imageが動的に生成する(タイトル・サイト名・台形装飾入りのカード) -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="fragments">
     <meta property="og:description" content="空間にまつわる議論をプロトタイプする">
-    <meta name="twitter:card" content="summary">
+    <meta property="og:image" content="/api/og-image">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <!-- PWA: ホーム画面に追加できるようにする。サイト全体を常に最新の状態で見せたいので
+         (vercel.jsonでno-cache指定済み)、オフラインキャッシュは持たせず見た目まわりだけ整える -->
+    <link rel="manifest" href="/icons/manifest.json">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#6b7278">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="fragments">
 
     <!-- 自前のCSSをTailwind(CDN版、読み込み・生成が非同期で少し遅れる)より先に置き、
          最低限の見た目(背景色・中央寄せ・余白)がすぐ効くようにしておく -->
@@ -3115,6 +3128,12 @@
         setupTitleRectSway();
 
         applyStaticTranslations();
+
+        // PWAとしてホーム画面に追加できるようにする(Service Workerの登録自体がインストール可能条件の一つ)。
+        // sw.jsは何もキャッシュしないので、失敗しても閲覧には影響しない
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
 
         (async () => {
             await applySiteSettings();

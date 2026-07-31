@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- サイトヘッダーのタイトル横に出る不定形の台形装飾(TITLE_SHAPE_VARIANTSの1つ目)を、
+       アイコン用に512x512へスケール・中央配置したもの。ここでは揺れ・ランダム化はせず固定形にする -->
+  <rect width="512" height="512" fill="#6b7278"/>
+  <polygon points="307.5,86.1 410.5,123.1 293.1,426 101.5,238.5" fill="none" stroke="#ffffff" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

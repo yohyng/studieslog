@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理画面</title>
     <meta name="robots" content="noindex, nofollow">
+
+    <!-- PWA: iPadなどでホーム画面に追加し、記事編集ツールとして直接開けるようにする。
+         start_urlは/admin.htmlを指す専用のmanifest(index.html側とは別ファイル) -->
+    <link rel="manifest" href="/icons/manifest-admin.json">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#6b7278">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="studieslog admin">
+
     <!-- 閲覧ページと同じグラデーション背景クラス(gradient-*)を共有するための埋め込み画像入りCSS -->
     <link rel="stylesheet" href="/gradient-backgrounds.css">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -1190,7 +1200,7 @@
                     </div>
 
                     <div class="mb-6 pb-6 border-b border-white/10">
-                        <label class="text-xs text-white/50 block mb-2">SNSシェア時の既定画像(記事に画像がない場合に使われます)</label>
+                        <label class="text-xs text-white/50 block mb-2">SNSシェア時の既定画像(空欄の場合、記事に画像が無ければタイトル入りの画像を自動生成します)</label>
                         <div class="flex gap-2 mb-2">
                             <input id="set-og-image" type="text" placeholder="https://..." class="flex-1 bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
                             <button onclick="uploadOgImage()" class="px-3 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap">📷 アップロード</button>
@@ -5025,6 +5035,11 @@
         setupTypewriterToggleDrag();
         setupNotionPanelResizeDrag();
         setupImageViewerZoom();
+        // PWAとしてホーム画面に追加できるようにする。sw.jsは何もキャッシュしないので、
+        // 失敗しても操作には影響しない
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
         checkAuth();
 
         // タイプライターモード中、キャレット位置が変わるたびに固定位置へスクロールし直す
