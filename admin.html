@@ -1574,10 +1574,12 @@
     <!-- 注釈入力モーダル -->
     <!-- 画像の拡大表示。Notionのカードは object-cover で切り抜いて出しているので、
          全体を確認したいときにここで原寸(画面に収まる範囲)で見る。
-         Notionパネルの上にだけ出したいので、位置・サイズはinsetでなくJSでパネルの矩形に合わせる -->
-    <div id="image-viewer" class="hidden fixed z-[60] flex items-center justify-center bg-black/80 p-4"
-         onclick="closeImageViewer()">
-        <img id="image-viewer-img" src="" alt="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+         Notionパネルの上にだけ出したいので、位置・サイズはinsetでなくJSでパネルの矩形に合わせる。
+         ピンチ/ホイールで拡大縮小、拡大中はドラッグで位置調整できる(背景クリックで閉じる。
+         画像自体のクリックはズーム操作と競合するので閉じない) -->
+    <div id="image-viewer" class="hidden fixed z-[60] flex items-center justify-center bg-black/80 p-4 overflow-hidden"
+         onclick="if (event.target === this) closeImageViewer()">
+        <img id="image-viewer-img" src="" alt="" style="max-width: 100%; max-height: 100%; object-fit: contain; touch-action: none;">
         <button type="button" onclick="closeImageViewer()" aria-label="閉じる"
                 class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors">✕</button>
     </div>
@@ -3741,6 +3743,7 @@
             if (!src) return;
             document.getElementById('image-viewer-img').src = src;
             positionImageViewer();
+            resetImageViewerZoom();
             document.getElementById('image-viewer').classList.remove('hidden');
             // 背後がスクロールしてしまわないようにする
             document.body.style.overflow = 'hidden';
@@ -3759,6 +3762,100 @@
             document.getElementById('image-viewer-img').src = '';
             document.body.style.overflow = '';
             window.removeEventListener('resize', positionImageViewer);
+        }
+
+        // 画像ビューアのピンチズーム/ホイールズーム/ドラッグ操作。
+        // transformで拡大縮小・移動するだけなので、実データ(記事の内容)には一切触れない
+        let viewerScale = 1, viewerX = 0, viewerY = 0;
+        const VIEWER_MIN_SCALE = 1, VIEWER_MAX_SCALE = 5;
+
+        function applyImageViewerTransform() {
+            document.getElementById('image-viewer-img').style.transform =
+                `translate(${viewerX}px, ${viewerY}px) scale(${viewerScale})`;
+        }
+
+        function resetImageViewerZoom() {
+            viewerScale = 1;
+            viewerX = 0;
+            viewerY = 0;
+            applyImageViewerTransform();
+            const img = document.getElementById('image-viewer-img');
+            img.style.cursor = 'zoom-in';
+        }
+
+        function setupImageViewerZoom() {
+            const img = document.getElementById('image-viewer-img');
+
+            const dist = (t1, t2) => Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+            let pinchStartDist = null;
+            let pinchStartScale = 1;
+
+            img.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    pinchStartDist = dist(e.touches[0], e.touches[1]);
+                    pinchStartScale = viewerScale;
+                }
+            }, { passive: false });
+
+            img.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2 && pinchStartDist) {
+                    e.preventDefault();
+                    const scale = pinchStartScale * (dist(e.touches[0], e.touches[1]) / pinchStartDist);
+                    viewerScale = Math.min(Math.max(scale, VIEWER_MIN_SCALE), VIEWER_MAX_SCALE);
+                    applyImageViewerTransform();
+                }
+            }, { passive: false });
+
+            img.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) pinchStartDist = null;
+                if (viewerScale <= 1.01) resetImageViewerZoom();
+            });
+
+            // デスクトップ: ホイールで拡大縮小(トラックパッドのピンチもwheelイベントとして届く)
+            img.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const scale = viewerScale * (1 - e.deltaY * 0.0015);
+                viewerScale = Math.min(Math.max(scale, VIEWER_MIN_SCALE), VIEWER_MAX_SCALE);
+                if (viewerScale <= 1.01) resetImageViewerZoom(); else applyImageViewerTransform();
+            }, { passive: false });
+
+            // 拡大中はドラッグで表示位置をずらせる
+            let dragging = false, dragStartX = 0, dragStartY = 0, dragOriginX = 0, dragOriginY = 0;
+            img.addEventListener('pointerdown', (e) => {
+                if (viewerScale <= 1.01) return;
+                dragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                dragOriginX = viewerX;
+                dragOriginY = viewerY;
+                img.setPointerCapture(e.pointerId);
+                img.style.cursor = 'grabbing';
+            });
+            img.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                viewerX = dragOriginX + (e.clientX - dragStartX);
+                viewerY = dragOriginY + (e.clientY - dragStartY);
+                applyImageViewerTransform();
+            });
+            function endDrag() {
+                if (!dragging) return;
+                dragging = false;
+                img.style.cursor = viewerScale > 1.01 ? 'grab' : 'zoom-in';
+            }
+            img.addEventListener('pointerup', endDrag);
+            img.addEventListener('pointercancel', endDrag);
+
+            // ダブルクリック/ダブルタップで拡大⇔リセットを切り替え
+            img.addEventListener('dblclick', () => {
+                if (viewerScale > 1.01) {
+                    resetImageViewerZoom();
+                } else {
+                    viewerScale = 2.5;
+                    applyImageViewerTransform();
+                    img.style.cursor = 'grab';
+                }
+            });
         }
 
         function escapeNotionHtml(str) {
@@ -4923,6 +5020,7 @@
         setupPastePlainText();
         setupTypewriterToggleDrag();
         setupNotionPanelResizeDrag();
+        setupImageViewerZoom();
         checkAuth();
 
         // タイプライターモード中、キャレット位置が変わるたびに固定位置へスクロールし直す
