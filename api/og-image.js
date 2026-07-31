@@ -1,9 +1,10 @@
 // 記事・サイトのOGP画像をリクエストごとに動的生成する。
-// 本文中に画像が無い記事や、手動でog_imageを設定していない記事でも、
-// タイトル・サイト名・台形装飾入りの見た目が整ったカードになるようにするためのもの。
-// middleware.js(記事ページのクローラー向けOGP差し替え)からのフォールバック先として使う。
+// 本文中の画像だけをそのままシェアカードにすると記事のタイトルが分からないので、
+// タイトル・サイト名・台形装飾を必ず重ねる。本文に画像があればそれを背景に敷き、
+// 無ければサイトの背景色のみのシンプルな見た目になる。
+// middleware.js(記事ページのクローラー向けOGP差し替え)から常にこちらを参照する。
 //
-// クエリ: ?id=記事ID(タイトルをDBから取得) または ?title=文字列(直接指定、idより優先)
+// クエリ: ?id=記事ID(タイトルをDBから取得) / ?title=文字列(直接指定、idより優先) / ?bg=本文中の画像URL(背景に敷く、任意)
 import { ImageResponse } from '@vercel/og';
 
 export const config = { runtime: 'edge' };
@@ -39,6 +40,7 @@ function el(type, props, ...children) {
 export default async function handler(request) {
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
+    const bgImage = url.searchParams.get('bg') || '';
     let title = url.searchParams.get('title') || '';
     let siteName = '';
     let bgColor = '#6b7278';
@@ -68,15 +70,34 @@ export default async function handler(request) {
     title = truncate(title, 42) || siteName || 'fragments';
     siteName = truncate(siteName, 30);
 
+    // 背景画像がある場合は敷いた上から、下にいくほど暗くなるグラデーションを重ねて
+    // 文字が常に読めるようにする(装飾・タイトルは白固定なので、textColorが暗色設定でも
+    // ここは白のまま。背景が無いときはサイトの背景色がそのまま出るのでオーバーレイ自体を省く)
+    const bgLayers = bgImage ? [
+        el('img', {
+            src: bgImage,
+            style: { position: 'absolute', top: 0, left: 0, width: '1200px', height: '630px', objectFit: 'cover' },
+        }),
+        el('div', {
+            style: {
+                position: 'absolute', top: 0, left: 0, width: '1200px', height: '630px',
+                backgroundImage: 'linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.25) 55%, rgba(0,0,0,0.05) 100%)',
+            },
+        }),
+    ] : [];
+    const overlayTextColor = bgImage ? '#ffffff' : textColor;
+
     const tree = el('div', {
         style: {
             width: '1200px',
             height: '630px',
             display: 'flex',
             position: 'relative',
+            overflow: 'hidden',
             backgroundColor: bgColor,
         },
     },
+        ...bgLayers,
         el('svg', {
             width: 480,
             height: 464,
@@ -86,7 +107,7 @@ export default async function handler(request) {
             el('path', {
                 d: SHAPE_PATH,
                 fill: 'none',
-                stroke: textColor,
+                stroke: overlayTextColor,
                 strokeWidth: 2,
                 opacity: 0.35,
             })
@@ -102,7 +123,7 @@ export default async function handler(request) {
             },
         },
             siteName && el('div', {
-                style: { fontFamily: 'Noto Sans JP', fontSize: 28, color: textColor, opacity: 0.55, marginBottom: '18px' },
+                style: { fontFamily: 'Noto Sans JP', fontSize: 28, color: overlayTextColor, opacity: 0.7, marginBottom: '18px' },
             }, siteName),
             el('div', {
                 style: {
@@ -111,7 +132,7 @@ export default async function handler(request) {
                     fontWeight: 700,
                     fontSize: 58,
                     lineHeight: 1.4,
-                    color: textColor,
+                    color: overlayTextColor,
                     maxWidth: '760px',
                 },
             }, title)
