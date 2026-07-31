@@ -1573,12 +1573,13 @@
 
     <!-- 注釈入力モーダル -->
     <!-- 画像の拡大表示。Notionのカードは object-cover で切り抜いて出しているので、
-         全体を確認したいときにここで原寸(画面に収まる範囲)で見る -->
-    <div id="image-viewer" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+         全体を確認したいときにここで原寸(画面に収まる範囲)で見る。
+         Notionパネルの上にだけ出したいので、位置・サイズはinsetでなくJSでパネルの矩形に合わせる -->
+    <div id="image-viewer" class="hidden fixed z-[60] flex items-center justify-center bg-black/80 p-4"
          onclick="closeImageViewer()">
         <img id="image-viewer-img" src="" alt="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
         <button type="button" onclick="closeImageViewer()" aria-label="閉じる"
-                class="fixed top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors">✕</button>
+                class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors">✕</button>
     </div>
 
     <div id="footnote-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onmousedown="if(event.target === this) closeFootnoteModal()">
@@ -2188,6 +2189,7 @@
                 const maxWidth = Math.min(MAX_WIDTH, window.innerWidth - 280);
                 const newWidth = Math.min(Math.max(startWidth - dx, MIN_WIDTH), maxWidth);
                 panel.style.width = `${newWidth}px`;
+                if (!document.getElementById('image-viewer').classList.contains('hidden')) positionImageViewer();
             });
 
             function endDrag() {
@@ -3724,13 +3726,25 @@
             }
         }
 
-        // --- 画像の拡大表示 ---
+        // --- 画像の拡大表示(Notionパネルの上にだけ出す) ---
+        // パネルは幅可変(ドラッグ)なので、開くたびに現在の矩形に合わせて配置し直す
+        function positionImageViewer() {
+            const rect = document.getElementById('notion-panel').getBoundingClientRect();
+            const viewer = document.getElementById('image-viewer');
+            viewer.style.top = `${rect.top}px`;
+            viewer.style.left = `${rect.left}px`;
+            viewer.style.width = `${rect.width}px`;
+            viewer.style.height = `${rect.height}px`;
+        }
+
         function openImageViewer(src) {
             if (!src) return;
             document.getElementById('image-viewer-img').src = src;
+            positionImageViewer();
             document.getElementById('image-viewer').classList.remove('hidden');
             // 背後がスクロールしてしまわないようにする
             document.body.style.overflow = 'hidden';
+            window.addEventListener('resize', positionImageViewer);
         }
 
         document.addEventListener('keydown', (e) => {
@@ -3744,6 +3758,7 @@
             // srcを空にして、次に開くまで前の画像が残らないようにする
             document.getElementById('image-viewer-img').src = '';
             document.body.style.overflow = '';
+            window.removeEventListener('resize', positionImageViewer);
         }
 
         function escapeNotionHtml(str) {
