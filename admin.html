@@ -341,6 +341,9 @@
             </div>
             </div>
 
+            <!-- Notionパネルとの境界線。ドラッグで#notion-panelの幅を変えられる(パネルが閉じている間は非表示) -->
+            <div id="notion-panel-resizer" class="tw-hide hidden w-1.5 shrink-0 cursor-col-resize hover:bg-white/20 transition-colors" style="touch-action: none;" title="ドラッグで幅を調整"></div>
+
             <!-- Notionパネル(参照専用。ここからの操作で編集画面の内容が変わることはない。開くと編集エリアとは独立してスクロールする) -->
             <aside id="notion-panel" class="tw-hide hidden w-[380px] lg:w-[440px] shrink-0 border-l border-white/10 flex-col overflow-hidden">
                 <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/10">
@@ -2156,6 +2159,47 @@
             });
         }
 
+        // Notionパネルの幅をドラッグで調整する。パネルは画面右側にあるので、
+        // 境界線を左へ動かす(dxが負)ほど幅が広がる。選んだ幅はlocalStorageに保存し、次回開いた時にも復元する
+        function setupNotionPanelResizeDrag() {
+            const resizer = document.getElementById('notion-panel-resizer');
+            const panel = document.getElementById('notion-panel');
+            const STORAGE_KEY = 'studieslog_admin_notion_panel_width';
+            const MIN_WIDTH = 280;
+            const MAX_WIDTH = 800;
+
+            const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+            if (saved) panel.style.width = `${saved}px`;
+
+            let dragging = false;
+            let startX = 0, startWidth = 0;
+
+            resizer.addEventListener('pointerdown', (e) => {
+                dragging = true;
+                startX = e.clientX;
+                startWidth = panel.getBoundingClientRect().width;
+                resizer.setPointerCapture(e.pointerId);
+                document.body.style.userSelect = 'none';
+            });
+
+            resizer.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                const dx = e.clientX - startX;
+                const maxWidth = Math.min(MAX_WIDTH, window.innerWidth - 280);
+                const newWidth = Math.min(Math.max(startWidth - dx, MIN_WIDTH), maxWidth);
+                panel.style.width = `${newWidth}px`;
+            });
+
+            function endDrag() {
+                if (!dragging) return;
+                dragging = false;
+                document.body.style.userSelect = '';
+                localStorage.setItem(STORAGE_KEY, String(Math.round(panel.getBoundingClientRect().width)));
+            }
+            resizer.addEventListener('pointerup', endDrag);
+            resizer.addEventListener('pointercancel', endDrag);
+        }
+
         // 現在のキャレット位置のビューポート上のY座標を取得する(contenteditable用。
         // Range#getClientRectsで行の矩形が直接取れるので、textareaと違いミラー要素は不要)
         function getCaretViewportTop() {
@@ -3450,15 +3494,18 @@
         function toggleNotionPanel() {
             const panel = document.getElementById('notion-panel');
             const opener = document.getElementById('notion-panel-opener');
+            const resizer = document.getElementById('notion-panel-resizer');
             const opening = panel.classList.contains('hidden');
             if (opening) {
                 panel.classList.remove('hidden');
                 panel.classList.add('flex');
+                resizer.classList.remove('hidden');
                 opener.classList.add('hidden');
                 if (!notionDatabasesLoaded) loadNotionDatabaseList();
             } else {
                 panel.classList.add('hidden');
                 panel.classList.remove('flex');
+                resizer.classList.add('hidden');
                 opener.classList.remove('hidden');
             }
         }
@@ -4860,6 +4907,7 @@
         setupImageResize();
         setupPastePlainText();
         setupTypewriterToggleDrag();
+        setupNotionPanelResizeDrag();
         checkAuth();
 
         // タイプライターモード中、キャレット位置が変わるたびに固定位置へスクロールし直す
