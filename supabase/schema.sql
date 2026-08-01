@@ -18,7 +18,11 @@ alter table public.articles add column if not exists text_align text;
 -- 紹介リンク(書籍など)。[{"label": "...", "url": "..."}, ...] の配列
 alter table public.articles add column if not exists book_links jsonb not null default '[]';
 
--- 下書き/予約/公開の状態。既存記事を巻き込んで非公開にしないよう、デフォルトは'published'
+-- 記事の状態。'draft'(書きかけ) / 'private'(書き上げたが今は公開しない) /
+-- 'scheduled'(予約投稿) / 'published'(公開中)の4種類。
+-- 下のRLSは'published'と時刻の来た'scheduled'だけを許可する形(許可リスト)なので、
+-- ここに新しい状態を足しても、それは自動的に非公開として扱われる。
+-- 既存記事を巻き込んで非公開にしないよう、デフォルトは'published'
 alter table public.articles add column if not exists status text not null default 'published';
 
 -- 予約投稿の公開予定日時(status='scheduled'の時だけ使う)
@@ -41,7 +45,7 @@ alter table public.articles add column if not exists content_en text not null de
 
 alter table public.articles enable row level security;
 
--- 閲覧は誰でも可能(公開ブログのため)。下書きは常に隠すが、
+-- 閲覧は誰でも可能(公開ブログのため)。下書き・非公開は常に隠すが、
 -- 予約投稿(status='scheduled')は予定日時を過ぎた瞬間に自動で見えるようになる(cron不要)
 drop policy if exists "articles_public_read" on public.articles;
 create policy "articles_public_read" on public.articles

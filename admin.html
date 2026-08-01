@@ -342,6 +342,7 @@
                 <div class="tw-hide flex flex-wrap items-center gap-3 mt-6 pt-6 border-t border-white/10">
                     <span id="edit-status-label" class="text-xs text-white/40"></span>
                     <button onclick="saveArticle('draft')" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">下書き保存</button>
+                    <button onclick="saveArticle('private')" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors" title="書き上げた記事を、今は公開せず手元に置いておきます。公開中の記事に対して押すと公開を取り下げます">非公開にする</button>
                     <input type="datetime-local" id="edit-scheduled-at" class="bg-white/5 text-xs rounded px-2 py-2.5 border border-white/10 focus:outline-none focus:border-white/30">
                     <button onclick="saveScheduledArticle()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">予約投稿</button>
                     <button onclick="saveArticle('published')" class="px-5 py-2.5 text-xs bg-white/20 hover:bg-white/30 rounded transition-colors">公開する</button>
@@ -1893,6 +1894,8 @@
                 let badgeHtml = '';
                 if (article.status === 'draft') {
                     badgeHtml = '<span class="text-xs px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-200/80">下書き</span>';
+                } else if (article.status === 'private') {
+                    badgeHtml = '<span class="text-xs px-1.5 py-0.5 rounded bg-white/15 text-white/70">非公開</span>';
                 } else if (article.status === 'scheduled' && effectiveStatus === 'scheduled') {
                     const d = new Date(article.scheduled_at);
                     const label = d.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -2892,6 +2895,7 @@
 
         function formatStatusLabel(article) {
             if (article.status === 'draft') return '下書き';
+            if (article.status === 'private') return '非公開';
             if (article.status === 'scheduled' && computeEffectiveStatus(article) === 'scheduled') {
                 const d = new Date(article.scheduled_at);
                 return `予約済み(${d.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}に公開)`;
@@ -2954,7 +2958,9 @@
             }
             await syncArticleTags(data.id);
             clearAutosaveDraft();
-            showToast(status === 'draft' ? '下書き保存しました' : status === 'scheduled' ? '予約投稿を設定しました' : '公開しました');
+            showToast(status === 'draft' ? '下書き保存しました'
+                : status === 'private' ? '非公開で保存しました'
+                : status === 'scheduled' ? '予約投稿を設定しました' : '公開しました');
 
             // 一覧には戻らず、その場で保存後の状態(ステータス表示・削除ボタン・SNS共有欄など)に切り替える
             editingId = data.id;
