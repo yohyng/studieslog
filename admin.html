@@ -158,6 +158,7 @@
                 <h1 class="text-sm font-medium tracking-wide whitespace-nowrap">管理画面</h1>
                 <nav class="flex items-center gap-1 text-xs">
                     <button id="nav-articles" onclick="showTab('articles')" class="px-3 py-1.5 rounded transition-colors bg-white/10">記事</button>
+                    <button id="nav-schedule" onclick="showTab('schedule')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">投稿管理</button>
                     <button id="nav-tags" onclick="showTab('tags')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">タグ</button>
                     <button id="nav-subscribers" onclick="showTab('subscribers')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">サブスクリプション</button>
                     <button id="nav-inquiries" onclick="showTab('inquiries')" class="px-3 py-1.5 rounded transition-colors hover:bg-white/10">お問い合わせ</button>
@@ -399,6 +400,34 @@
                 <div id="notion-db-toggle-bar" class="shrink-0 flex flex-col border-b border-white/10"></div>
                 <div id="notion-panel-list" class="flex-1 min-h-0 overflow-y-auto flex flex-col text-xs"></div>
             </aside>
+        </div>
+
+        <!-- 投稿管理ビュー(公開タイミングの全体像)。
+             公開済みとこれからの予約を1本の時間軸に並べ、どの時期にどんな記事が出ているかを
+             見ながら日付を直せるようにする。予約投稿は「公開する枠」が先にあるものなので、
+             並べ替えでは日時を動かさず、その枠に入る記事の側を入れ替える -->
+        <div id="schedule-view" class="hidden flex-1 overflow-y-auto">
+            <div class="max-w-3xl mx-auto px-5 sm:px-8 py-8 sm:py-10">
+                <h2 class="text-sm font-medium mb-1">投稿管理</h2>
+                <p class="text-xs text-white/40 mb-6">これまでに公開した記事と、これから公開される予約投稿を、月ごとに並べています。日付を直接編集して、公開の間隔や偏りを整えられます。</p>
+
+                <div class="flex flex-wrap items-center gap-3 mb-6 pb-4 border-b border-white/10">
+                    <span id="timeline-summary" class="text-xs text-white/50"></span>
+                    <div class="ml-auto flex items-center gap-2">
+                        <label class="text-xs text-white/40">カテゴリ</label>
+                        <select id="timeline-category" onchange="renderTimeline()" class="bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
+                            <option value="">すべて</option>
+                            <option value="log">log</option>
+                            <option value="sketch">sketch</option>
+                            <option value="essay">essay</option>
+                            <option value="__none__">未設定</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="timeline-list" class="flex flex-col gap-6"></div>
+                <div id="timeline-empty" class="hidden text-xs text-white/40 text-center py-16">表示できる記事がありません。</div>
+            </div>
         </div>
 
         <!-- タグ一覧ビュー -->
@@ -1849,6 +1878,7 @@
         // --- タブ切り替え(記事 / タグ / 表示設定) ---
         function showTab(tab) {
             document.getElementById('nav-articles').classList.toggle('bg-white/10', tab === 'articles');
+            document.getElementById('nav-schedule').classList.toggle('bg-white/10', tab === 'schedule');
             document.getElementById('nav-tags').classList.toggle('bg-white/10', tab === 'tags');
             document.getElementById('nav-subscribers').classList.toggle('bg-white/10', tab === 'subscribers');
             document.getElementById('nav-inquiries').classList.toggle('bg-white/10', tab === 'inquiries');
@@ -1857,6 +1887,7 @@
 
             document.getElementById('list-view').classList.add('hidden');
             document.getElementById('editor-view').classList.add('hidden');
+            document.getElementById('schedule-view').classList.add('hidden');
             document.getElementById('tags-view').classList.add('hidden');
             document.getElementById('tag-editor-view').classList.add('hidden');
             document.getElementById('subscribers-view').classList.add('hidden');
@@ -1867,6 +1898,9 @@
             if (tab === 'articles') {
                 showListView();
                 loadArticleList();
+            } else if (tab === 'schedule') {
+                document.getElementById('schedule-view').classList.remove('hidden');
+                loadTimeline();
             } else if (tab === 'tags') {
                 showTagListView();
                 loadTagsList();
@@ -1968,6 +2002,177 @@
                 else d = String(x).localeCompare(String(y), 'ja');
                 return d !== 0 ? d * sign : b.id - a.id;
             });
+        }
+
+        // --- 投稿管理(公開タイミングの全体像) ---
+        // 公開済みとこれからの予約を1本の時間軸に月ごとに並べ、公開の間隔や偏りを見ながら
+        // 日付を直せるようにする。記事一覧(articles)とは別に、この画面用に読み直す
+        let timelineArticles = [];
+
+        const CATEGORY_CHIP_COLORS = {
+            log: 'bg-sky-400/25 text-sky-100',
+            sketch: 'bg-amber-400/25 text-amber-100',
+            essay: 'bg-emerald-400/25 text-emerald-100',
+        };
+
+        /** 並び順に使う日付。予約投稿は予約日時を、それ以外は記事の日付を見る */
+        function timelineKey(a) {
+            if (a.status === 'scheduled' && a.scheduled_at) return dateString(new Date(a.scheduled_at));
+            return a.date || '';
+        }
+
+        function isUpcoming(a) {
+            return a.status === 'scheduled' && a.scheduled_at && new Date(a.scheduled_at) > new Date();
+        }
+
+        async function loadTimeline() {
+            const { data, error } = await sb.from('articles')
+                .select('id,title,date,category,status,scheduled_at')
+                .in('status', ['published', 'scheduled']);
+            if (error) {
+                console.error(error);
+                showToast('投稿の読み込みに失敗しました');
+                return;
+            }
+            timelineArticles = data || [];
+            renderTimeline();
+        }
+
+        function renderTimeline() {
+            const list = document.getElementById('timeline-list');
+            const filter = document.getElementById('timeline-category').value;
+            list.innerHTML = '';
+
+            const shown = timelineArticles
+                .filter((a) => !filter || (filter === '__none__' ? !a.category : a.category === filter))
+                .sort((a, b) => {
+                    const d = timelineKey(b).localeCompare(timelineKey(a));
+                    return d !== 0 ? d : b.id - a.id;
+                });
+
+            document.getElementById('timeline-empty').classList.toggle('hidden', shown.length > 0);
+            const upcomingCount = shown.filter(isUpcoming).length;
+            document.getElementById('timeline-summary').textContent =
+                `これから公開 ${upcomingCount}件 / 公開済み ${shown.length - upcomingCount}件`;
+
+            // ↑↓で入れ替える相手を決めるため、これからの予約だけを時系列に並べておく
+            const slots = shown.filter(isUpcoming)
+                .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
+
+            const monthCounts = new Map();
+            shown.forEach((a) => {
+                const m = timelineKey(a).slice(0, 7);
+                monthCounts.set(m, (monthCounts.get(m) || 0) + 1);
+            });
+
+            let currentMonth = null;
+            let monthBox = null;
+            shown.forEach((a) => {
+                const month = timelineKey(a).slice(0, 7);
+                if (month !== currentMonth) {
+                    currentMonth = month;
+                    const section = document.createElement('div');
+                    const head = document.createElement('div');
+                    head.className = 'flex items-center gap-2 mb-2 pb-1 border-b border-white/10';
+                    const label = month ? `${month.split('.')[0]}年${Number(month.split('.')[1])}月` : '日付なし';
+                    head.innerHTML = `<span class="text-xs text-white/60">${label}</span>`
+                        + `<span class="text-xs text-white/30">${monthCounts.get(month)}件</span>`;
+                    section.appendChild(head);
+                    monthBox = document.createElement('div');
+                    monthBox.className = 'flex flex-col gap-1.5';
+                    section.appendChild(monthBox);
+                    list.appendChild(section);
+                }
+                monthBox.appendChild(timelineRow(a, slots));
+            });
+        }
+
+        function timelineRow(a, slots) {
+            const row = document.createElement('div');
+            row.className = 'flex flex-wrap items-center gap-2 bg-white/5 border border-white/10 rounded px-3 py-2';
+            const upcoming = isUpcoming(a);
+
+            const chip = a.category
+                ? `<span class="text-xs px-1.5 py-0.5 rounded ${CATEGORY_CHIP_COLORS[a.category] || 'bg-white/15 text-white/70'}">${escapeAttr(a.category)}</span>`
+                : '<span class="text-xs px-1.5 py-0.5 rounded bg-white/10 text-white/40">未設定</span>';
+            const badge = upcoming
+                ? '<span class="text-xs px-1.5 py-0.5 rounded bg-sky-400/20 text-sky-200/80">予約</span>'
+                : '';
+
+            // これからの予約は時刻まで意味を持つので日時で、公開済みは日付だけで扱う
+            const dateField = upcoming
+                ? `<input type="datetime-local" value="${escapeAttr(toDatetimeLocalValue(a.scheduled_at))}" onchange="changeTimelineSchedule(${a.id}, this.value)" class="bg-white/5 text-xs rounded px-2 py-1 border border-white/10 focus:outline-none focus:border-white/30">`
+                : `<input type="date" value="${escapeAttr((a.date || '').replace(/\./g, '-'))}" onchange="changeTimelineDate(${a.id}, this.value)" class="bg-white/5 text-xs rounded px-2 py-1 border border-white/10 focus:outline-none focus:border-white/30">`;
+
+            let moveButtons = '';
+            if (upcoming) {
+                const i = slots.findIndex((x) => x.id === a.id);
+                const prev = slots[i - 1], next = slots[i + 1];
+                const btn = (target, arrow, title) => `<button type="button" title="${title}" ${target ? '' : 'disabled'}`
+                    + ` onclick="swapScheduleSlots(${a.id}, ${target ? target.id : 0})"`
+                    + ` class="px-1.5 py-1 text-xs rounded transition-colors ${target ? 'text-white/60 hover:bg-white/10' : 'text-white/15'}">${arrow}</button>`;
+                moveButtons = `<div class="flex items-center">${btn(prev, '↑', 'ひとつ早い枠と入れ替える')}${btn(next, '↓', 'ひとつ遅い枠と入れ替える')}</div>`;
+            }
+
+            row.innerHTML = chip + badge
+                + `<button type="button" onclick="openArticleFromTimeline(${a.id})" class="flex-1 min-w-[8rem] text-left text-sm truncate hover:text-white/80 transition-colors">${escapeAttr(a.title || '(無題)')}</button>`
+                + dateField + moveButtons;
+            return row;
+        }
+
+        async function changeTimelineDate(id, value) {
+            if (!value) return;
+            const { error } = await sb.from('articles').update({ date: value.replace(/-/g, '.') }).eq('id', id);
+            if (error) {
+                console.error(error);
+                showToast('日付の変更に失敗しました');
+                return;
+            }
+            showToast('日付を変更しました');
+            await loadTimeline();
+        }
+
+        async function changeTimelineSchedule(id, value) {
+            if (!value) return;
+            const when = new Date(value);
+            const { error } = await sb.from('articles')
+                .update({ scheduled_at: when.toISOString(), date: dateString(when) }).eq('id', id);
+            if (error) {
+                console.error(error);
+                showToast('公開日時の変更に失敗しました');
+                return;
+            }
+            showToast('公開日時を変更しました');
+            await loadTimeline();
+        }
+
+        // 公開日時(枠)はその場に残し、枠に入る記事の側を入れ替える。
+        // 日付順に並ぶ閲覧ページと食い違わないよう、dateも新しい枠に合わせ直す
+        async function swapScheduleSlots(idA, idB) {
+            if (!idB) return;
+            const a = timelineArticles.find((x) => x.id === idA);
+            const b = timelineArticles.find((x) => x.id === idB);
+            if (!a || !b) return;
+            for (const [id, iso] of [[a.id, b.scheduled_at], [b.id, a.scheduled_at]]) {
+                const { error } = await sb.from('articles')
+                    .update({ scheduled_at: iso, date: dateString(new Date(iso)) }).eq('id', id);
+                if (error) {
+                    console.error(error);
+                    showToast('入れ替えに失敗しました');
+                    return;
+                }
+            }
+            await loadTimeline();
+        }
+
+        // この画面から直接来た場合、記事一覧(articles)が空のことがあるので読み直してから開く。
+        // 編集後はbackToList()で記事一覧へ戻るので、ナビの選択もそちらへ合わせておく
+        async function openArticleFromTimeline(id) {
+            if (!articles.some((a) => a.id === id)) await loadArticleList();
+            document.getElementById('nav-schedule').classList.remove('bg-white/10');
+            document.getElementById('nav-articles').classList.add('bg-white/10');
+            document.getElementById('schedule-view').classList.add('hidden');
+            await openEditEditor(id);
         }
 
         function articleHasTranslation(article) {
