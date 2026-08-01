@@ -428,6 +428,13 @@
                         背景を変えたときは押し直してください。<br>
                         多くのメールクライアントは既定で外部画像を読み込まないので、画像が出るまでは上の背景色が使われます。
                     </p>
+                    <!-- 背景画像と、Gmailのダークモード対策(文字の背後を必ず単色にする)は両立しない。
+                         迷いやすいところなので、選ぶ前に分かるようここに書いておく -->
+                    <p class="text-xs text-white/30 mb-3">
+                        なお、Gmailアプリは受信側がダークモードだと独自に色を反転させ、対策をしないと文字だけが黒くなって背景に埋もれます。
+                        これを防ぐには文字の背後が単色である必要があるため、背景画像を設定すると<b>本文の列だけが単色で塗られ</b>、
+                        まわりの画像との境目が出ます。境目が気になる場合は「背景なしにする」を選んでください(背景色1色になり、境目は出ません)。
+                    </p>
                     <div class="flex items-center gap-3 mb-2">
                         <button onclick="exportDigestBackgroundImage()" id="digest-bg-export-btn"
                                 class="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">背景を書き出す</button>
