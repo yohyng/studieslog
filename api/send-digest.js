@@ -1,9 +1,19 @@
 // Vercel Cron(vercel.jsonのcrons)から週1回呼ばれる。前回送信以降に公開された記事があれば、
 // 購読者全員にダイジェストメールを送る。なければ何もしない。
 
-const { buildDigestHtml } = require('../lib/digest-template');
+const { buildDigestHtml, buildDigestSubject } = require('../lib/digest-template');
 
 const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
+
+// articles.date は「2026.08.03」形式のテキストで、閲覧ページの並び順にも使っている実質の公開日。
+// 記事を書いた人が日本時間で入力する前提なので、比較する境界日も日本時間に直して同じ書式に揃える
+function toArticleDateString(iso) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date(iso));
+    const get = (type) => parts.find((p) => p.type === type).value;
+    return `${get('year')}.${get('month')}.${get('day')}`;
+}
 
 module.exports = async function handler(req, res) {
     const auth = req.headers.authorization || '';
@@ -28,13 +38,27 @@ module.exports = async function handler(req, res) {
     const lastSentAt = (stateRows && stateRows[0] && stateRows[0].last_sent_at) || new Date(0).toISOString();
     const nowIso = new Date().toISOString();
 
-    // 公開済み記事は作成日時、予約投稿は予約日時を基準に「前回送信以降の新着」を判定する
-    // (予約投稿はcronで自動的にstatusが書き換わらないため、created_atだけで判定すると予定日時を過ぎても永久に拾われない)
-    const orFilter = `or=(and(status.eq.published,created_at.gt.${encodeURIComponent(lastSentAt)}),and(status.eq.scheduled,scheduled_at.gt.${encodeURIComponent(lastSentAt)},scheduled_at.lte.${encodeURIComponent(nowIso)}))`;
+    // 公開済み記事は「作成日時が前回送信より後」または「日付(date)が前回送信日より後」で新着と見なす。
+    //
+    // created_at だけで見ていると、非公開や下書きのまま寝かせておいた記事を後から公開したときに、
+    // 作成日時が古いままなので永久に拾われない。date は公開時にどのみち直す値(閲覧ページの並び順が
+    // これなので、直さないと一覧の中ほどに埋もれる)なので、そちらでも拾えるようにする。
+    //
+    // 逆に date だけで見ると、date は日単位しか持たないため、送信した当日にもう1本公開した記事が
+    // 「前回送信日より後」に当てはまらず落ちてしまう。両方のORにしておくと、片方が取りこぼす分を
+    // もう片方が拾う。今の条件に足す形なので、これまで送られていた記事が送られなくなることはない。
+    //
+    // 予約投稿は予約日時を基準にする(予約投稿はcronで自動的にstatusが書き換わらないため、
+    // created_atだけで判定すると予定日時を過ぎても永久に拾われない)
+    const lastSentDay = toArticleDateString(lastSentAt);
+    const publishedFilter = `and(status.eq.published,or(created_at.gt.${encodeURIComponent(lastSentAt)},date.gt.${encodeURIComponent(lastSentDay)}))`;
+    const scheduledFilter = `and(status.eq.scheduled,scheduled_at.gt.${encodeURIComponent(lastSentAt)},scheduled_at.lte.${encodeURIComponent(nowIso)})`;
+    const orFilter = `or=(${publishedFilter},${scheduledFilter})`;
 
     const [articlesRes, settingsRes] = await Promise.all([
         fetch(
-            `${SUPABASE_URL}/rest/v1/articles?${orFilter}&select=id,title,date,category,content,created_at&order=created_at.asc`,
+            // 並び順も閲覧ページ(date降順)に合わせる。メールは古い順に並べたいのでascにする
+            `${SUPABASE_URL}/rest/v1/articles?${orFilter}&select=id,title,date,category,content,created_at&order=date.asc,id.asc`,
             { headers: sbHeaders }
         ),
         // メールを閲覧ページと同じ見た目にするため、表示設定も一式取る
@@ -45,7 +69,14 @@ module.exports = async function handler(req, res) {
     const settings = (settingsRows && settingsRows[0]) || {};
     const siteTitle = settings.site_title || '';
 
-    if (!Array.isArray(rawArticles) || rawArticles.length === 0) {
+    // 抽出条件の書式を誤ると配列ではなくエラーオブジェクトが返る。これを「新着なし」と同じ扱いに
+    // してしまうと、配信が黙って止まったまま誰も気づけないので、はっきり失敗として返す
+    if (!Array.isArray(rawArticles)) {
+        console.error('failed to fetch articles', rawArticles);
+        res.status(502).json({ sent: false, error: 'failed to fetch articles', detail: rawArticles });
+        return;
+    }
+    if (rawArticles.length === 0) {
         res.status(200).json({ sent: false, reason: 'no new articles since last send' });
         return;
     }
@@ -70,7 +101,7 @@ module.exports = async function handler(req, res) {
     const messages = subscribers.map(sub => ({
         from: fromEmail,
         to: sub.email,
-        subject: `【${siteTitle}】今週の更新(${articles.length}件)`,
+        subject: buildDigestSubject({ siteTitle, articles }),
         html: buildDigestHtml({
             siteTitle,
             siteUrl,

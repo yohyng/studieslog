@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理画面</title>
     <meta name="robots" content="noindex, nofollow">
+
+    <!-- PWA: iPadなどでホーム画面に追加し、記事編集ツールとして直接開けるようにする。
+         start_urlは/admin.htmlを指す専用のmanifest(index.html側とは別ファイル) -->
+    <link rel="manifest" href="/icons/manifest-admin.json">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#6b7278">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="studieslog admin">
+
     <!-- 閲覧ページと同じグラデーション背景クラス(gradient-*)を共有するための埋め込み画像入りCSS -->
     <link rel="stylesheet" href="/gradient-backgrounds.css">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,6 +26,8 @@
     <script src="/lib/digest-template.js"></script>
 
     <style>
+    
+        :root { --card-border: 1px solid rgba(255, 255, 255, 0.2); }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
             background-color: #22262a;
@@ -31,6 +43,8 @@
         .content-editor .image-figure img { margin: 0 auto; }
         .content-editor .image-caption { font-size: 0.75em; opacity: 0.5; margin-top: 0.4em; }
         .content-editor .book-link-card, .content-editor .book-link-card img { border-radius: 0 !important; }
+        /* ブックリンクカードの枠線設定。CSS変数で上書き(設定から選択可能) */
+        .content-editor .book-link-card[style] { border: var(--card-border) !important; }
         .content-editor blockquote { border-left: 2px solid rgba(255,255,255,0.3); padding-left: 1em; margin: 1em 0; opacity: 0.8; font-style: italic; }
         .content-editor h2 { font-size: 1.2em; margin: 1em 0 0.5em; }
         .content-editor .footnote-ref { color: #7dd3fc; cursor: default; }
@@ -328,6 +342,7 @@
                 <div class="tw-hide flex flex-wrap items-center gap-3 mt-6 pt-6 border-t border-white/10">
                     <span id="edit-status-label" class="text-xs text-white/40"></span>
                     <button onclick="saveArticle('draft')" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">下書き保存</button>
+                    <button onclick="saveArticle('private')" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors" title="書き上げた記事を、今は公開せず手元に置いておきます。公開中の記事に対して押すと公開を取り下げます">非公開にする</button>
                     <input type="datetime-local" id="edit-scheduled-at" class="bg-white/5 text-xs rounded px-2 py-2.5 border border-white/10 focus:outline-none focus:border-white/30">
                     <button onclick="saveScheduledArticle()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">予約投稿</button>
                     <button onclick="saveArticle('published')" class="px-5 py-2.5 text-xs bg-white/20 hover:bg-white/30 rounded transition-colors">公開する</button>
@@ -336,6 +351,9 @@
                 </div>
             </div>
             </div>
+
+            <!-- Notionパネルとの境界線。ドラッグで#notion-panelの幅を変えられる(パネルが閉じている間は非表示) -->
+            <div id="notion-panel-resizer" class="tw-hide hidden w-1.5 shrink-0 cursor-col-resize hover:bg-white/20 transition-colors" style="touch-action: none;" title="ドラッグで幅を調整"></div>
 
             <!-- Notionパネル(参照専用。ここからの操作で編集画面の内容が変わることはない。開くと編集エリアとは独立してスクロールする) -->
             <aside id="notion-panel" class="tw-hide hidden w-[380px] lg:w-[440px] shrink-0 border-l border-white/10 flex-col overflow-hidden">
@@ -409,6 +427,13 @@
                         メールでは埋め込み画像(data:)が使えないため、いま表示設定で選んでいる背景を1枚の画像に焼き込んで書き出します。
                         背景を変えたときは押し直してください。<br>
                         多くのメールクライアントは既定で外部画像を読み込まないので、画像が出るまでは上の背景色が使われます。
+                    </p>
+                    <!-- 背景画像と、Gmailのダークモード対策(文字の背後を必ず単色にする)は両立しない。
+                         迷いやすいところなので、選ぶ前に分かるようここに書いておく -->
+                    <p class="text-xs text-white/30 mb-3">
+                        なお、Gmailアプリは受信側がダークモードだと独自に色を反転させ、対策をしないと文字だけが黒くなって背景に埋もれます。
+                        これを防ぐには文字の背後が単色である必要があるため、背景画像を設定すると<b>本文の列だけが単色で塗られ</b>、
+                        まわりの画像との境目が出ます。境目が気になる場合は「背景なしにする」を選んでください(背景色1色になり、境目は出ません)。
                     </p>
                     <div class="flex items-center gap-3 mb-2">
                         <button onclick="exportDigestBackgroundImage()" id="digest-bg-export-btn"
@@ -492,6 +517,25 @@
                     <button onclick="switchSettingsTab('card')" data-settings-tab="card" class="settings-tab-btn px-3 py-2 text-xs whitespace-nowrap">カード表示</button>
                     <button onclick="switchSettingsTab('tag')" data-settings-tab="tag" class="settings-tab-btn px-3 py-2 text-xs whitespace-nowrap">タグ表示</button>
                     <button onclick="switchSettingsTab('about')" data-settings-tab="about" class="settings-tab-btn px-3 py-2 text-xs whitespace-nowrap">About</button>
+                </div>
+
+                <!-- 表示設定テンプレート: 全体設定〜Aboutまでの表示設定を丸ごとスナップショットして
+                     名前を付けて保存し、あとで一括で呼び出せる。「適用」はフォームに反映するだけなので、
+                     確定するには通常の保存ボタンを押す必要がある -->
+                <div class="mb-8 pb-6 border-b border-white/10">
+                    <label class="text-xs text-white/50 block mb-2">表示設定テンプレート</label>
+                    <div class="flex gap-2 items-center flex-wrap">
+                        <select id="set-preset-select" class="flex-1 min-w-[10rem] bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                            <option value="">テンプレートを選択...</option>
+                        </select>
+                        <button onclick="applySettingPreset()" class="px-3 py-2 text-xs rounded bg-white/10 hover:bg-white/20">適用</button>
+                        <button onclick="deleteSettingPreset()" class="px-3 py-2 text-xs rounded bg-white/10 hover:bg-white/20 text-red-300">削除</button>
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                        <input id="set-preset-name" type="text" placeholder="新しいテンプレート名" class="flex-1 bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
+                        <button onclick="saveSettingPreset()" class="px-3 py-2 text-xs rounded bg-white/10 hover:bg-white/20 whitespace-nowrap">名前で保存</button>
+                    </div>
+                    <p class="text-xs text-white/30 mt-2">現在の表示設定全体をテンプレートとして保存できます。「適用」は画面に反映するだけなので、確定するにはこのページ下部の保存ボタンを押してください。</p>
                 </div>
 
                 <!-- 全体設定: サイト構成、タイトル、メニュー、背景色、台形装飾、選択ハイライト色など、
@@ -1164,7 +1208,7 @@
                     </div>
 
                     <div class="mb-6 pb-6 border-b border-white/10">
-                        <label class="text-xs text-white/50 block mb-2">SNSシェア時の既定画像(記事に画像がない場合に使われます)</label>
+                        <label class="text-xs text-white/50 block mb-2">SNSシェア時の既定画像(空欄の場合、記事に画像が無ければタイトル入りの画像を自動生成します)</label>
                         <div class="flex gap-2 mb-2">
                             <input id="set-og-image" type="text" placeholder="https://..." class="flex-1 bg-white/5 text-sm rounded px-3 py-2 border border-white/10 focus:outline-none focus:border-white/30">
                             <button onclick="uploadOgImage()" class="px-3 py-2 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors whitespace-nowrap">📷 アップロード</button>
@@ -1421,6 +1465,22 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- ブックリンクカード(Amazonなど)の枠線設定 -->
+                    <div class="mb-6">
+                        <label class="text-xs text-white/50 block mb-2">ブックリンクカード(Amazonなど)の枠線</label>
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input id="set-card-border-enabled" type="checkbox" class="w-4 h-4">
+                                <span class="text-xs text-white/40">枠線を表示</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input id="set-card-border-color" type="color" class="w-10 h-10 rounded cursor-pointer" disabled>
+                                <span class="text-xs text-white/40">色</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-white/30 mt-3">チェックを外すと枠線が非表示になります。色はチェック時に有効です。</p>
+                    </div>
                 </div>
 
                 <!-- Aboutページ -->
@@ -1531,12 +1591,15 @@
 
     <!-- 注釈入力モーダル -->
     <!-- 画像の拡大表示。Notionのカードは object-cover で切り抜いて出しているので、
-         全体を確認したいときにここで原寸(画面に収まる範囲)で見る -->
-    <div id="image-viewer" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
-         onclick="closeImageViewer()">
-        <img id="image-viewer-img" src="" alt="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+         全体を確認したいときにここで原寸(画面に収まる範囲)で見る。
+         Notionパネルの上にだけ出したいので、位置・サイズはinsetでなくJSでパネルの矩形に合わせる。
+         ピンチ/ホイールで拡大縮小、拡大中はドラッグで位置調整できる(背景クリックで閉じる。
+         画像自体のクリックはズーム操作と競合するので閉じない) -->
+    <div id="image-viewer" class="hidden fixed z-[60] flex items-center justify-center bg-black/80 p-4 overflow-hidden"
+         style="touch-action: none;" onclick="if (event.target === this) closeImageViewer()">
+        <img id="image-viewer-img" src="" alt="" style="max-width: 100%; max-height: 100%; object-fit: contain; touch-action: none;">
         <button type="button" onclick="closeImageViewer()" aria-label="閉じる"
-                class="fixed top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors">✕</button>
+                class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors">✕</button>
     </div>
 
     <div id="footnote-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onmousedown="if(event.target === this) closeFootnoteModal()">
@@ -1838,6 +1901,8 @@
                 let badgeHtml = '';
                 if (article.status === 'draft') {
                     badgeHtml = '<span class="text-xs px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-200/80">下書き</span>';
+                } else if (article.status === 'private') {
+                    badgeHtml = '<span class="text-xs px-1.5 py-0.5 rounded bg-white/15 text-white/70">非公開</span>';
                 } else if (article.status === 'scheduled' && effectiveStatus === 'scheduled') {
                     const d = new Date(article.scheduled_at);
                     const label = d.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -2115,6 +2180,48 @@
                 }
                 toggleTypewriterMode();
             });
+        }
+
+        // Notionパネルの幅をドラッグで調整する。パネルは画面右側にあるので、
+        // 境界線を左へ動かす(dxが負)ほど幅が広がる。選んだ幅はlocalStorageに保存し、次回開いた時にも復元する
+        function setupNotionPanelResizeDrag() {
+            const resizer = document.getElementById('notion-panel-resizer');
+            const panel = document.getElementById('notion-panel');
+            const STORAGE_KEY = 'studieslog_admin_notion_panel_width';
+            const MIN_WIDTH = 280;
+            const MAX_WIDTH = 800;
+
+            const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+            if (saved) panel.style.width = `${saved}px`;
+
+            let dragging = false;
+            let startX = 0, startWidth = 0;
+
+            resizer.addEventListener('pointerdown', (e) => {
+                dragging = true;
+                startX = e.clientX;
+                startWidth = panel.getBoundingClientRect().width;
+                resizer.setPointerCapture(e.pointerId);
+                document.body.style.userSelect = 'none';
+            });
+
+            resizer.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                const dx = e.clientX - startX;
+                const maxWidth = Math.min(MAX_WIDTH, window.innerWidth - 280);
+                const newWidth = Math.min(Math.max(startWidth - dx, MIN_WIDTH), maxWidth);
+                panel.style.width = `${newWidth}px`;
+                if (!document.getElementById('image-viewer').classList.contains('hidden')) positionImageViewer();
+            });
+
+            function endDrag() {
+                if (!dragging) return;
+                dragging = false;
+                document.body.style.userSelect = '';
+                localStorage.setItem(STORAGE_KEY, String(Math.round(panel.getBoundingClientRect().width)));
+            }
+            resizer.addEventListener('pointerup', endDrag);
+            resizer.addEventListener('pointercancel', endDrag);
         }
 
         // 現在のキャレット位置のビューポート上のY座標を取得する(contenteditable用。
@@ -2471,6 +2578,13 @@
             }
         }
 
+        function updateCardBorderPreview() {
+            const cardBorderEnabled = document.getElementById('set-card-border-enabled').checked;
+            const cardBorderColor = document.getElementById('set-card-border-color').value || '#ffffff';
+            const cardBorder = cardBorderEnabled ? `1px solid ${cardBorderColor}` : 'none';
+            document.documentElement.style.setProperty('--card-border', cardBorder);
+        }
+
         // --- 紹介リンク(書籍など) : カーソル位置に直接挿入し、本文と一緒に自由に移動・削除できるようにする ---
         async function insertBookLinkCard() {
             const editor = document.getElementById('edit-content');
@@ -2788,6 +2902,7 @@
 
         function formatStatusLabel(article) {
             if (article.status === 'draft') return '下書き';
+            if (article.status === 'private') return '非公開';
             if (article.status === 'scheduled' && computeEffectiveStatus(article) === 'scheduled') {
                 const d = new Date(article.scheduled_at);
                 return `予約済み(${d.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}に公開)`;
@@ -2850,7 +2965,9 @@
             }
             await syncArticleTags(data.id);
             clearAutosaveDraft();
-            showToast(status === 'draft' ? '下書き保存しました' : status === 'scheduled' ? '予約投稿を設定しました' : '公開しました');
+            showToast(status === 'draft' ? '下書き保存しました'
+                : status === 'private' ? '非公開で保存しました'
+                : status === 'scheduled' ? '予約投稿を設定しました' : '公開しました');
 
             // 一覧には戻らず、その場で保存後の状態(ステータス表示・削除ボタン・SNS共有欄など)に切り替える
             editingId = data.id;
@@ -3404,15 +3521,18 @@
         function toggleNotionPanel() {
             const panel = document.getElementById('notion-panel');
             const opener = document.getElementById('notion-panel-opener');
+            const resizer = document.getElementById('notion-panel-resizer');
             const opening = panel.classList.contains('hidden');
             if (opening) {
                 panel.classList.remove('hidden');
                 panel.classList.add('flex');
+                resizer.classList.remove('hidden');
                 opener.classList.add('hidden');
                 if (!notionDatabasesLoaded) loadNotionDatabaseList();
             } else {
                 panel.classList.add('hidden');
                 panel.classList.remove('flex');
+                resizer.classList.add('hidden');
                 opener.classList.remove('hidden');
             }
         }
@@ -3631,13 +3751,26 @@
             }
         }
 
-        // --- 画像の拡大表示 ---
+        // --- 画像の拡大表示(Notionパネルの上にだけ出す) ---
+        // パネルは幅可変(ドラッグ)なので、開くたびに現在の矩形に合わせて配置し直す
+        function positionImageViewer() {
+            const rect = document.getElementById('notion-panel').getBoundingClientRect();
+            const viewer = document.getElementById('image-viewer');
+            viewer.style.top = `${rect.top}px`;
+            viewer.style.left = `${rect.left}px`;
+            viewer.style.width = `${rect.width}px`;
+            viewer.style.height = `${rect.height}px`;
+        }
+
         function openImageViewer(src) {
             if (!src) return;
             document.getElementById('image-viewer-img').src = src;
+            positionImageViewer();
+            resetImageViewerZoom();
             document.getElementById('image-viewer').classList.remove('hidden');
             // 背後がスクロールしてしまわないようにする
             document.body.style.overflow = 'hidden';
+            window.addEventListener('resize', positionImageViewer);
         }
 
         document.addEventListener('keydown', (e) => {
@@ -3651,6 +3784,105 @@
             // srcを空にして、次に開くまで前の画像が残らないようにする
             document.getElementById('image-viewer-img').src = '';
             document.body.style.overflow = '';
+            window.removeEventListener('resize', positionImageViewer);
+        }
+
+        // 画像ビューアのピンチズーム/ホイールズーム/ドラッグ操作。
+        // transformで拡大縮小・移動するだけなので、実データ(記事の内容)には一切触れない
+        let viewerScale = 1, viewerX = 0, viewerY = 0;
+        const VIEWER_MIN_SCALE = 1, VIEWER_MAX_SCALE = 5;
+
+        function applyImageViewerTransform() {
+            document.getElementById('image-viewer-img').style.transform =
+                `translate(${viewerX}px, ${viewerY}px) scale(${viewerScale})`;
+        }
+
+        function resetImageViewerZoom() {
+            viewerScale = 1;
+            viewerX = 0;
+            viewerY = 0;
+            applyImageViewerTransform();
+            const img = document.getElementById('image-viewer-img');
+            img.style.cursor = 'zoom-in';
+        }
+
+        function setupImageViewerZoom() {
+            const viewer = document.getElementById('image-viewer');
+            const img = document.getElementById('image-viewer-img');
+
+            // ピンチ/ホイールはモーダル全体(viewer)で拾う。object-fit:containの余白部分に
+            // 指がかかってもimg側だけのリスナーだと取りこぼし、ブラウザ標準のページ全体ピンチズームに
+            // 奪われてしまうため。touch-action:noneと合わせてページ側のズームを確実に抑える
+            const dist = (t1, t2) => Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+            let pinchStartDist = null;
+            let pinchStartScale = 1;
+
+            viewer.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    pinchStartDist = dist(e.touches[0], e.touches[1]);
+                    pinchStartScale = viewerScale;
+                }
+            }, { passive: false });
+
+            viewer.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2 && pinchStartDist) {
+                    e.preventDefault();
+                    const scale = pinchStartScale * (dist(e.touches[0], e.touches[1]) / pinchStartDist);
+                    viewerScale = Math.min(Math.max(scale, VIEWER_MIN_SCALE), VIEWER_MAX_SCALE);
+                    applyImageViewerTransform();
+                }
+            }, { passive: false });
+
+            viewer.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) pinchStartDist = null;
+                if (viewerScale <= 1.01) resetImageViewerZoom();
+            });
+
+            // デスクトップ: ホイールで拡大縮小(トラックパッドのピンチもwheelイベントとして届く)
+            viewer.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const scale = viewerScale * (1 - e.deltaY * 0.0015);
+                viewerScale = Math.min(Math.max(scale, VIEWER_MIN_SCALE), VIEWER_MAX_SCALE);
+                if (viewerScale <= 1.01) resetImageViewerZoom(); else applyImageViewerTransform();
+            }, { passive: false });
+
+            // 拡大中はドラッグで表示位置をずらせる
+            let dragging = false, dragStartX = 0, dragStartY = 0, dragOriginX = 0, dragOriginY = 0;
+            img.addEventListener('pointerdown', (e) => {
+                if (viewerScale <= 1.01) return;
+                dragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                dragOriginX = viewerX;
+                dragOriginY = viewerY;
+                img.setPointerCapture(e.pointerId);
+                img.style.cursor = 'grabbing';
+            });
+            img.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                viewerX = dragOriginX + (e.clientX - dragStartX);
+                viewerY = dragOriginY + (e.clientY - dragStartY);
+                applyImageViewerTransform();
+            });
+            function endDrag() {
+                if (!dragging) return;
+                dragging = false;
+                img.style.cursor = viewerScale > 1.01 ? 'grab' : 'zoom-in';
+            }
+            img.addEventListener('pointerup', endDrag);
+            img.addEventListener('pointercancel', endDrag);
+
+            // ダブルクリック/ダブルタップで拡大⇔リセットを切り替え
+            img.addEventListener('dblclick', () => {
+                if (viewerScale > 1.01) {
+                    resetImageViewerZoom();
+                } else {
+                    viewerScale = 2.5;
+                    applyImageViewerTransform();
+                    img.style.cursor = 'grab';
+                }
+            });
         }
 
         function escapeNotionHtml(str) {
@@ -4515,13 +4747,9 @@
             });
         }
 
-        async function loadSiteSettings() {
-            const { data, error } = await sb.from('site_settings').select('*').eq('id', 1).single();
-            if (error || !data) {
-                console.error(error);
-                showToast(`表示設定の読み込みに失敗しました: ${error ? (error.code || '') + ' ' + (error.message || error) : ''}`, 8000);
-                return;
-            }
+        // 表示設定フォームの各入力欄にdataの値を反映する。サーバーの現在値を読み込む時と、
+        // テンプレートを選んで一括適用する時の両方から呼ばれる共通処理
+        function applySettingsDataToForm(data) {
             document.getElementById('set-homepage-layout').value = data.homepage_layout || 'timeline';
             const cardFontScale = data.card_font_scale || 1;
             document.getElementById('set-card-font-scale').value = cardFontScale;
@@ -4629,11 +4857,98 @@
             document.getElementById('set-sns-instagram-url').value = data.sns_instagram_url || '';
             document.getElementById('set-sns-website-url').value = data.sns_website_url || '';
             document.getElementById('set-og-image').value = data.og_image || '';
+            document.getElementById('set-card-border-enabled').checked = data.card_border_enabled !== false;
+            document.getElementById('set-card-border-color').value = data.card_border_color || '#ffffff';
+            document.getElementById('set-card-border-color').disabled = !document.getElementById('set-card-border-enabled').checked;
+            updateCardBorderPreview();
             checkSetContrast();
         }
 
-        async function saveSiteSettings() {
-            const payload = {
+        async function loadSiteSettings() {
+            const { data, error } = await sb.from('site_settings').select('*').eq('id', 1).single();
+            if (error || !data) {
+                console.error(error);
+                showToast(`表示設定の読み込みに失敗しました: ${error ? (error.code || '') + ' ' + (error.message || error) : ''}`, 8000);
+                return;
+            }
+            applySettingsDataToForm(data);
+            document.getElementById('set-card-border-enabled').addEventListener('change', (e) => {
+                document.getElementById('set-card-border-color').disabled = !e.target.checked;
+                updateCardBorderPreview();
+            });
+            document.getElementById('set-card-border-color').addEventListener('change', updateCardBorderPreview);
+            await loadSettingPresets();
+        }
+
+        // --- 表示設定テンプレート(丸ごとプリセット保存/呼び出し) ---
+        let settingPresets = [];
+
+        async function loadSettingPresets() {
+            const { data, error } = await sb.from('site_setting_presets').select('*').order('created_at', { ascending: false });
+            if (error) {
+                console.error(error);
+                return;
+            }
+            settingPresets = data || [];
+            const select = document.getElementById('set-preset-select');
+            const current = select.value;
+            select.innerHTML = '<option value="">テンプレートを選択...</option>'
+                + settingPresets.map(p => `<option value="${p.id}">${escapeAttr(p.name)}</option>`).join('');
+            if (current && settingPresets.some(p => String(p.id) === current)) select.value = current;
+        }
+
+        function applySettingPreset() {
+            const id = document.getElementById('set-preset-select').value;
+            if (!id) {
+                showToast('テンプレートを選択してください');
+                return;
+            }
+            const preset = settingPresets.find(p => String(p.id) === id);
+            if (!preset) return;
+            applySettingsDataToForm(preset.data);
+            showToast(`テンプレート「${preset.name}」を反映しました。保存ボタンを押すと確定します`);
+        }
+
+        async function saveSettingPreset() {
+            const nameInput = document.getElementById('set-preset-name');
+            const name = nameInput.value.trim();
+            if (!name) {
+                showToast('テンプレート名を入力してください');
+                return;
+            }
+            const payload = buildSiteSettingsPayload();
+            const { error } = await sb.from('site_setting_presets').insert({ name, data: payload });
+            if (error) {
+                console.error(error);
+                showToast(`テンプレートの保存に失敗しました: ${error.code || ''} ${error.message || error}`, 8000);
+                return;
+            }
+            nameInput.value = '';
+            await loadSettingPresets();
+            showToast(`テンプレート「${name}」を保存しました`);
+        }
+
+        async function deleteSettingPreset() {
+            const id = document.getElementById('set-preset-select').value;
+            if (!id) {
+                showToast('削除するテンプレートを選択してください');
+                return;
+            }
+            const preset = settingPresets.find(p => String(p.id) === id);
+            if (!preset) return;
+            if (!confirm(`テンプレート「${preset.name}」を削除しますか？`)) return;
+            const { error } = await sb.from('site_setting_presets').delete().eq('id', id);
+            if (error) {
+                console.error(error);
+                showToast(`削除に失敗しました: ${error.code || ''} ${error.message || error}`, 8000);
+                return;
+            }
+            await loadSettingPresets();
+            showToast('テンプレートを削除しました');
+        }
+
+        function buildSiteSettingsPayload() {
+            return {
                 homepage_layout: document.getElementById('set-homepage-layout').value,
                 card_font_scale: parseFloat(document.getElementById('set-card-font-scale').value) || 1,
                 card_title_font: document.getElementById('set-card-title-font').value,
@@ -4705,8 +5020,14 @@
                 sns_facebook_url: document.getElementById('set-sns-facebook-url').value.trim(),
                 sns_instagram_url: document.getElementById('set-sns-instagram-url').value.trim(),
                 sns_website_url: document.getElementById('set-sns-website-url').value.trim(),
-                og_image: document.getElementById('set-og-image').value.trim()
+                og_image: document.getElementById('set-og-image').value.trim(),
+                card_border_enabled: document.getElementById('set-card-border-enabled').checked,
+                card_border_color: document.getElementById('set-card-border-color').value
             };
+        }
+
+        async function saveSiteSettings() {
+            const payload = buildSiteSettingsPayload();
             const { error } = await sb.from('site_settings').update(payload).eq('id', 1);
             if (error) {
                 console.error(error);
@@ -4725,6 +5046,13 @@
         setupImageResize();
         setupPastePlainText();
         setupTypewriterToggleDrag();
+        setupNotionPanelResizeDrag();
+        setupImageViewerZoom();
+        // PWAとしてホーム画面に追加できるようにする。sw.jsは何もキャッシュしないので、
+        // 失敗しても操作には影響しない
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
         checkAuth();
 
         // タイプライターモード中、キャレット位置が変わるたびに固定位置へスクロールし直す

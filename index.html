@@ -7,11 +7,24 @@
          拡大側は制限していないので、読みづらいときのピンチイン(拡大)はこれまで通りできる -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
     <title>fragments</title>
-    <!-- 個別記事(/article/:id)はmiddleware.jsがクローラー向けにOGPを差し替えるため、ここはそれ以外のページ向けの既定値 -->
+    <!-- 個別記事(/article/:id)はmiddleware.jsがクローラー向けにOGPを差し替えるため、ここはそれ以外のページ向けの既定値。
+         画像は/api/og-imageが動的に生成する(タイトル・サイト名・台形装飾入りのカード) -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="fragments">
     <meta property="og:description" content="空間にまつわる議論をプロトタイプする">
-    <meta name="twitter:card" content="summary">
+    <meta property="og:image" content="/api/og-image">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <!-- PWA: ホーム画面に追加できるようにする。サイト全体を常に最新の状態で見せたいので
+         (vercel.jsonでno-cache指定済み)、オフラインキャッシュは持たせず見た目まわりだけ整える -->
+    <link rel="manifest" href="/icons/manifest.json">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#6b7278">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="fragments">
 
     <!-- 自前のCSSをTailwind(CDN版、読み込み・生成が非同期で少し遅れる)より先に置き、
          最低限の見た目(背景色・中央寄せ・余白)がすぐ効くようにしておく -->
@@ -50,6 +63,7 @@
             --list-heading-text-color: #6b7278;
             --selection-bg-color: #ffffff;
             --selection-text-color: #6b7278;
+            --card-border: 1px solid rgba(255, 255, 255, 0.2);
             --content-width: 42rem;
             --base-line-height: 2.2;
             --base-font-size: 16px;
@@ -626,6 +640,8 @@
         .content-body .image-caption { font-size: 0.75em; opacity: 0.5; margin-top: 0.6em; }
         /* Amazon等のリンクカードは直角にする(過去に挿入済みのinlineスタイルもここで上書き) */
         .content-body .book-link-card, .content-body .book-link-card img { border-radius: 0 !important; }
+        /* ブックリンクカードの枠線設定。CSS変数で上書き(設定から選択可能) */
+        .content-body .book-link-card[style] { border: var(--card-border) !important; }
         @media (min-width: 768px) {
             .content-body img { margin: 1.1em auto; }
             .content-body .image-figure { margin: 1.1em auto; }
@@ -1114,6 +1130,11 @@
             document.documentElement.style.setProperty('--body-text-opacity', data.body_text_opacity != null ? data.body_text_opacity : 0.75);
             document.documentElement.style.setProperty('--header-spacing', (data.header_spacing != null ? data.header_spacing : 288) + 'px');
             document.documentElement.style.setProperty('--title-text-opacity', data.title_text_opacity != null ? data.title_text_opacity : 1);
+            // ブックリンクカード(Amazon등)の枠線設定
+            const cardBorderEnabled = data.card_border_enabled !== false;
+            const cardBorderColor = data.card_border_color || '#ffffff';
+            const cardBorder = cardBorderEnabled ? `1px solid ${cardBorderColor}` : 'none';
+            document.documentElement.style.setProperty('--card-border', cardBorder);
             const footerTitle = data.site_title || document.getElementById('site-title').textContent;
             document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} ${footerTitle}`;
         }
@@ -3107,6 +3128,12 @@
         setupTitleRectSway();
 
         applyStaticTranslations();
+
+        // PWAとしてホーム画面に追加できるようにする(Service Workerの登録自体がインストール可能条件の一つ)。
+        // sw.jsは何もキャッシュしないので、失敗しても閲覧には影響しない
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
 
         (async () => {
             await applySiteSettings();

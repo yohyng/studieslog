@@ -1,7 +1,7 @@
 // 管理画面から呼ばれる。購読者リストの中で「管理者用テストアドレス」に指定された1件だけに、
 // 実際にResendでダイジェストメールを送る(見え方の実機確認用。他の購読者には送らない)。
 
-const { buildDigestHtml } = require('../lib/digest-template');
+const { buildDigestHtml, buildDigestSubject } = require('../lib/digest-template');
 
 const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
 
@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
     const nowIso = new Date().toISOString();
     const orFilter = `or=(status.eq.published,and(status.eq.scheduled,scheduled_at.lte.${encodeURIComponent(nowIso)}))`;
     const articlesRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/articles?${orFilter}&select=id,title,date,category,content,created_at&order=created_at.desc&limit=5`,
+        `${SUPABASE_URL}/rest/v1/articles?${orFilter}&select=id,title,date,category,content,created_at&order=date.desc,id.desc&limit=5`,
         { headers: sbHeaders }
     );
     const rawArticles = await articlesRes.json();
@@ -83,7 +83,7 @@ module.exports = async function handler(req, res) {
         body: JSON.stringify({
             from: fromEmail,
             to: adminSub.email,
-            subject: `【テスト】【${siteTitle}】今週の更新(${articles.length}件)`,
+            subject: `【テスト】${buildDigestSubject({ siteTitle, articles })}`,
             html: buildDigestHtml({
                 siteTitle,
                 siteUrl,

@@ -35,8 +35,13 @@ export default async function middleware(request) {
         const settings = (settingsRows && settingsRows[0]) || {};
 
         const title = escapeAttr(article.title || settings.site_title || '');
+        // 本文中の画像だけをそのままシェアカードにすると記事のタイトルが分からないので、
+        // 常にタイトル入りの自動生成カードを使う(本文に画像があれば背景として敷く)。
+        // ただし管理画面で手動でog_imageを設定している場合は、その意図を尊重してそのまま使う
+        const contentImage = extractFirstImage(article.content);
+        const image = settings.og_image
+            || `${url.origin}/api/og-image?id=${id}${contentImage ? `&bg=${encodeURIComponent(contentImage)}` : ''}`;
         const description = escapeAttr(stripAndTruncate(article.content, 140));
-        const image = extractFirstImage(article.content) || settings.og_image || '';
         const siteName = escapeAttr(settings.site_title || '');
         const pageUrl = escapeAttr(url.toString());
 

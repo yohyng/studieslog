@@ -1,4 +1,4 @@
-const { copyFileSync, mkdirSync, rmSync } = require('node:fs');
+const { copyFileSync, mkdirSync, rmSync, cpSync } = require('node:fs');
 const { join } = require('node:path');
 const esbuild = require('esbuild');
 
@@ -9,6 +9,10 @@ mkdirSync(outputDirectory, { recursive: true });
 copyFileSync(join(process.cwd(), 'index.html'), join(outputDirectory, 'index.html'));
 copyFileSync(join(process.cwd(), 'admin.html'), join(outputDirectory, 'admin.html'));
 copyFileSync(join(process.cwd(), 'gradient-backgrounds.css'), join(outputDirectory, 'gradient-backgrounds.css'));
+// PWA: favicon/アイコン各種・manifest(閲覧ページ/管理画面で別々)
+cpSync(join(process.cwd(), 'icons'), join(outputDirectory, 'icons'), { recursive: true });
+// Service Workerはスコープをサイト全体にするため、ルート直下に置く必要がある
+copyFileSync(join(process.cwd(), 'sw.js'), join(outputDirectory, 'sw.js'));
 
 // Tiptap移行の往復監査ページ(読み取り専用)と、それが読み込む候補スキーマ。
 // 監査ページはimport map経由でesm.shから読むので、スキーマは素のまま置く

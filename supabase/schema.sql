@@ -18,7 +18,11 @@ alter table public.articles add column if not exists text_align text;
 -- 紹介リンク(書籍など)。[{"label": "...", "url": "..."}, ...] の配列
 alter table public.articles add column if not exists book_links jsonb not null default '[]';
 
--- 下書き/予約/公開の状態。既存記事を巻き込んで非公開にしないよう、デフォルトは'published'
+-- 記事の状態。'draft'(書きかけ) / 'private'(書き上げたが今は公開しない) /
+-- 'scheduled'(予約投稿) / 'published'(公開中)の4種類。
+-- 下のRLSは'published'と時刻の来た'scheduled'だけを許可する形(許可リスト)なので、
+-- ここに新しい状態を足しても、それは自動的に非公開として扱われる。
+-- 既存記事を巻き込んで非公開にしないよう、デフォルトは'published'
 alter table public.articles add column if not exists status text not null default 'published';
 
 -- 予約投稿の公開予定日時(status='scheduled'の時だけ使う)
@@ -41,7 +45,7 @@ alter table public.articles add column if not exists content_en text not null de
 
 alter table public.articles enable row level security;
 
--- 閲覧は誰でも可能(公開ブログのため)。下書きは常に隠すが、
+-- 閲覧は誰でも可能(公開ブログのため)。下書き・非公開は常に隠すが、
 -- 予約投稿(status='scheduled')は予定日時を過ぎた瞬間に自動で見えるようになる(cron不要)
 drop policy if exists "articles_public_read" on public.articles;
 create policy "articles_public_read" on public.articles
@@ -399,6 +403,9 @@ $$;
 
 -- カテゴリ絞り込みの「All」ラベルのフォント(空文字なら本文フォントに従う)
 alter table public.site_settings add column if not exists all_font text not null default '';
+-- ブックリンクカード(Amazonなど)の枠線設定
+alter table public.site_settings add column if not exists card_border_enabled boolean not null default true;
+alter table public.site_settings add column if not exists card_border_color text not null default '';
 -- 配信メールの背景画像。埋め込み画像(data:)はメールで使えないため、
 -- 表示設定のグラデーション背景を1枚に焼き込んでStorageへ上げ、そのURLを持つ
 alter table public.site_settings add column if not exists digest_bg_image text not null default '';
@@ -420,4 +427,19 @@ alter table public.article_analysis enable row level security;
 
 drop policy if exists "article_analysis_auth_all" on public.article_analysis;
 create policy "article_analysis_auth_all" on public.article_analysis
+  for all to authenticated using (true) with check (true);
+
+-- 表示設定(site_settingsの内容)を丸ごとスナップショットして名前を付けて保存し、
+-- あとで呼び出して一括適用できるようにするためのプリセット
+create table if not exists public.site_setting_presets (
+  id bigint generated always as identity primary key,
+  name text not null,
+  data jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.site_setting_presets enable row level security;
+
+drop policy if exists "site_setting_presets_auth_all" on public.site_setting_presets;
+create policy "site_setting_presets_auth_all" on public.site_setting_presets
   for all to authenticated using (true) with check (true);
