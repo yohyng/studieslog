@@ -826,8 +826,10 @@
         <button onclick="openSubscribeModal()" class="glass-chip px-4 py-2 text-xs rounded hover:opacity-70 transition-opacity" style="background: color-mix(in srgb, var(--bg-color) 45%, transparent);">✉️ 更新をメールで受け取る</button>
     </div>
 
-    <div id="subscribe-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.5);" onmousedown="if(event.target === this) closeSubscribeModal()">
-        <div class="w-full max-w-sm p-6" style="background: color-mix(in srgb, var(--bg-color) 55%, transparent); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%); color: var(--text-color); border: 1px solid color-mix(in srgb, currentColor 20%, transparent);">
+    <div id="subscribe-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.3);" onmousedown="if(event.target === this) closeSubscribeModal()">
+        <!-- 下の本文が透けて見えるすりガラス。塗りを薄くしたぶん、文字が本文に紛れないよう
+             ぼかしを強めて背景側のコントラストを落としている(フッターバーと同じ質感の系統) -->
+        <div class="w-full max-w-sm p-6" style="background: color-mix(in srgb, var(--bg-color) 30%, transparent); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); color: var(--text-color); border: 1px solid color-mix(in srgb, currentColor 20%, transparent);">
             <div class="flex items-center justify-between mb-4">
                 <!-- 見出しは「サイトタイトル + letter｜購読する」をJSで組み立てる(updateSubscribeModalTitle)。
                      data-i18nを付けると言語切り替え時に翻訳だけで上書きされ、前半が消えてしまうので付けない。
