@@ -1,7 +1,7 @@
 // 管理画面から呼ばれる。購読者リストの中で「管理者用テストアドレス」に指定された1件だけに、
 // 実際にResendでダイジェストメールを送る(見え方の実機確認用。他の購読者には送らない)。
 
-const { buildDigestHtml, buildDigestSubject } = require('../lib/digest-template');
+const { buildDigestHtml, buildDigestSubject, buildDigestFrom } = require('../lib/digest-template');
 
 const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
 
@@ -81,7 +81,7 @@ module.exports = async function handler(req, res) {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            from: fromEmail,
+            from: buildDigestFrom({ siteTitle, fromEmail }),
             to: adminSub.email,
             subject: `【テスト】${buildDigestSubject({ siteTitle, articles })}`,
             html: buildDigestHtml({
