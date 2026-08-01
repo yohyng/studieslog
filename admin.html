@@ -1945,9 +1945,17 @@
         function sortArticleList(list) {
             const value = ARTICLE_SORT_VALUES[articleSort.key] || ARTICLE_SORT_VALUES.date;
             const sign = articleSort.dir === 'asc' ? 1 : -1;
+            // 書きかけの下書きは続きを書くために探すものなので、どの並び順でも先頭に集める。
+            // ただしステータスで並べているときは、指定した順が効かないように見えてしまうので外す
+            const pinDrafts = articleSort.key !== 'status';
             // 元の配列(articles)を壊さないよう複製してから並べ替える。
             // 同値のときはidの新しい順に固定して、並びが毎回変わらないようにする
             return [...list].sort((a, b) => {
+                if (pinDrafts) {
+                    const draftA = a.status === 'draft' ? 0 : 1;
+                    const draftB = b.status === 'draft' ? 0 : 1;
+                    if (draftA !== draftB) return draftA - draftB;
+                }
                 const x = value(a), y = value(b);
                 let d;
                 if (typeof x === 'number' && typeof y === 'number') d = x - y;
