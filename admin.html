@@ -355,7 +355,21 @@
                     <span id="edit-status-label" class="text-xs text-white/40"></span>
                     <button onclick="saveArticle('draft')" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">下書き保存</button>
                     <button onclick="saveArticle('private')" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors" title="書き上げた記事を、今は公開せず手元に置いておきます。公開中の記事に対して押すと公開を取り下げます">非公開にする</button>
-                    <input type="datetime-local" id="edit-scheduled-at" class="bg-white/5 text-xs rounded px-2 py-2.5 border border-white/10 focus:outline-none focus:border-white/30">
+                    <!-- datetime-localのカレンダーはブラウザ自前のもので、特定の日だけ色を変える手段がない。
+                         予約の重なりを避けたいので、予約済みの日が分かる自前のカレンダーを隣に置く -->
+                    <div class="relative flex items-center gap-1.5">
+                        <input type="datetime-local" id="edit-scheduled-at" class="bg-white/5 text-xs rounded px-2 py-2.5 border border-white/10 focus:outline-none focus:border-white/30">
+                        <button type="button" onclick="toggleScheduleCalendar()" title="予約済みの日を確認して選ぶ" class="px-2 py-2.5 text-xs bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors">📅</button>
+                        <div id="schedule-calendar" class="hidden absolute bottom-full left-0 mb-2 z-50 w-64 p-3 rounded border border-white/20 shadow-lg" style="background-color: #2f3438;">
+                            <div class="flex items-center justify-between mb-2">
+                                <button type="button" onclick="moveScheduleCalendar(-1)" class="px-2 py-0.5 text-xs text-white/50 hover:text-white transition-colors">‹</button>
+                                <span id="schedule-calendar-label" class="text-xs text-white/70"></span>
+                                <button type="button" onclick="moveScheduleCalendar(1)" class="px-2 py-0.5 text-xs text-white/50 hover:text-white transition-colors">›</button>
+                            </div>
+                            <div id="schedule-calendar-grid" class="grid grid-cols-7 gap-1 text-center"></div>
+                            <p class="text-xs text-white/30 mt-2 leading-relaxed">青い日はすでに予約があります。日付を押すと左の欄に入ります(時刻はそのまま)。</p>
+                        </div>
+                    </div>
                     <button onclick="saveScheduledArticle()" class="px-5 py-2.5 text-xs bg-white/10 hover:bg-white/20 rounded transition-colors">予約投稿</button>
                     <button onclick="saveArticle('published')" class="px-5 py-2.5 text-xs bg-white/20 hover:bg-white/30 rounded transition-colors">公開する</button>
                     <button onclick="backToList()" class="px-5 py-2.5 text-xs text-white/50 hover:text-white transition-colors">キャンセル</button>
@@ -2988,6 +3002,117 @@
             const scheduledAt = current && current.status === 'scheduled' ? current.scheduled_at : null;
             await saveArticle(status, scheduledAt);
         }
+
+        // --- 予約状況カレンダー ---
+        // 予約投稿が重ならないよう、どの日にすでに予約があるかを一目で分かるようにする。
+        // 表示中の月だけを描き、日付を押すと左のdatetime-local欄に反映する(時刻は今の値を保つ)
+        let scheduleCalendarMonth = null;   // その月の1日を指すDate
+
+        function pad2(n) {
+            return String(n).padStart(2, '0');
+        }
+
+        /** 'YYYY-MM-DD' → その日に予約されている記事タイトルの配列 */
+        function scheduledDateMap() {
+            const map = new Map();
+            (articles || []).forEach((a) => {
+                if (a.status !== 'scheduled' || !a.scheduled_at) return;
+                const d = new Date(a.scheduled_at);
+                const key = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+                if (!map.has(key)) map.set(key, []);
+                map.get(key).push(a.title || '(無題)');
+            });
+            return map;
+        }
+
+        function renderScheduleCalendar() {
+            const base = scheduleCalendarMonth;
+            const year = base.getFullYear(), month = base.getMonth();
+            document.getElementById('schedule-calendar-label').textContent = `${year}年${month + 1}月`;
+
+            const booked = scheduledDateMap();
+            const todayKey = (() => { const t = new Date(); return `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())}`; })();
+            const grid = document.getElementById('schedule-calendar-grid');
+            grid.innerHTML = '';
+
+            ['日', '月', '火', '水', '木', '金', '土'].forEach((w) => {
+                const head = document.createElement('div');
+                head.className = 'text-white/30';
+                head.style.fontSize = '0.65rem';
+                head.textContent = w;
+                grid.appendChild(head);
+            });
+
+            // 1日が何曜日から始まるかぶん空ける
+            for (let i = 0; i < new Date(year, month, 1).getDay(); i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            for (let day = 1; day <= lastDay; day++) {
+                const key = `${year}-${pad2(month + 1)}-${pad2(day)}`;
+                const titles = booked.get(key);
+                const cell = document.createElement('button');
+                cell.type = 'button';
+                cell.textContent = day;
+                cell.className = 'rounded py-1 transition-colors ' + (titles
+                    ? 'bg-sky-400/30 text-sky-100 hover:bg-sky-400/50'
+                    : 'text-white/70 hover:bg-white/10');
+                cell.style.fontSize = '0.7rem';
+                if (key === todayKey) cell.style.outline = '1px solid rgba(255,255,255,0.35)';
+                if (titles) cell.title = `予約済み: ${titles.join(' / ')}`;
+                cell.onclick = () => pickScheduleDate(year, month, day);
+                grid.appendChild(cell);
+            }
+        }
+
+        function pickScheduleDate(year, month, day) {
+            const input = document.getElementById('edit-scheduled-at');
+            // すでに時刻が入っていればそれを保ち、空なら朝9時を既定にする
+            const time = input.value.includes('T') ? input.value.split('T')[1] : '09:00';
+            input.value = `${year}-${pad2(month + 1)}-${pad2(day)}T${time}`;
+            closeScheduleCalendar();
+        }
+
+        function moveScheduleCalendar(diff) {
+            scheduleCalendarMonth = new Date(
+                scheduleCalendarMonth.getFullYear(), scheduleCalendarMonth.getMonth() + diff, 1);
+            renderScheduleCalendar();
+        }
+
+        function toggleScheduleCalendar() {
+            const panel = document.getElementById('schedule-calendar');
+            if (!panel.classList.contains('hidden')) {
+                closeScheduleCalendar();
+                return;
+            }
+            // 入力済みならその月を、空なら今月を開く
+            const current = document.getElementById('edit-scheduled-at').value;
+            const from = current ? new Date(current) : new Date();
+            scheduleCalendarMonth = new Date(from.getFullYear(), from.getMonth(), 1);
+            renderScheduleCalendar();
+            panel.classList.remove('hidden');
+            // 開いた直後のクリックで閉じないよう、次のフレームから外側クリックを見る
+            requestAnimationFrame(() => document.addEventListener('mousedown', onScheduleCalendarOutside));
+        }
+
+        function closeScheduleCalendar() {
+            document.getElementById('schedule-calendar').classList.add('hidden');
+            document.removeEventListener('mousedown', onScheduleCalendarOutside);
+        }
+
+        function onScheduleCalendarOutside(e) {
+            const panel = document.getElementById('schedule-calendar');
+            if (!panel.contains(e.target) && !e.target.closest('[onclick="toggleScheduleCalendar()"]')) {
+                closeScheduleCalendar();
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !document.getElementById('schedule-calendar').classList.contains('hidden')) {
+                closeScheduleCalendar();
+            }
+        });
 
         async function saveScheduledArticle() {
             const input = document.getElementById('edit-scheduled-at');
