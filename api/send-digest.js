@@ -1,7 +1,7 @@
 // Vercel Cron(vercel.jsonのcrons)から週1回呼ばれる。前回送信以降に公開された記事があれば、
 // 購読者全員にダイジェストメールを送る。なければ何もしない。
 
-const { buildDigestHtml } = require('../lib/digest-template');
+const { buildDigestHtml, buildDigestSubject } = require('../lib/digest-template');
 
 const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
 
@@ -101,7 +101,7 @@ module.exports = async function handler(req, res) {
     const messages = subscribers.map(sub => ({
         from: fromEmail,
         to: sub.email,
-        subject: `【${siteTitle}】今週の更新(${articles.length}件)`,
+        subject: buildDigestSubject({ siteTitle, articles }),
         html: buildDigestHtml({
             siteTitle,
             siteUrl,
