@@ -411,11 +411,30 @@
                 <h2 class="text-sm font-medium mb-1">投稿管理</h2>
                 <p class="text-xs text-white/40 mb-6">これまでに公開した記事と、これから公開される予約投稿を、月ごとに並べています。日付を直接編集して、公開の間隔や偏りを整えられます。</p>
 
+                <!-- 月カレンダー: 下のリストと同じデータを俯瞰する。塗りつぶし=公開済み、輪郭のみ=これからの予約。
+                     日を押すと下のリストの該当月までスクロールする -->
+                <div class="mb-8 pb-6 border-b border-white/10">
+                    <div class="flex items-center justify-between mb-2">
+                        <button type="button" onclick="moveTimelineCalendar(-1)" class="px-2 py-1 text-xs text-white/50 hover:text-white transition-colors">‹ 前の月</button>
+                        <span id="timeline-calendar-label" class="text-xs text-white/70"></span>
+                        <button type="button" onclick="moveTimelineCalendar(1)" class="px-2 py-1 text-xs text-white/50 hover:text-white transition-colors">次の月 ›</button>
+                    </div>
+                    <div id="timeline-calendar-grid" class="grid grid-cols-7 gap-1 text-center max-w-sm mx-auto"></div>
+                    <div class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-3 text-white/40" style="font-size: 0.65rem;">
+                        <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-sky-400/50"></span>log</span>
+                        <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-amber-400/50"></span>sketch</span>
+                        <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-400/50"></span>essay</span>
+                        <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-white/30"></span>未設定</span>
+                        <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-white/40"></span>公開済み</span>
+                        <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-sm border border-white/40"></span>これから</span>
+                    </div>
+                </div>
+
                 <div class="flex flex-wrap items-center gap-3 mb-6 pb-4 border-b border-white/10">
                     <span id="timeline-summary" class="text-xs text-white/50"></span>
                     <div class="ml-auto flex items-center gap-2">
                         <label class="text-xs text-white/40">カテゴリ</label>
-                        <select id="timeline-category" onchange="renderTimeline()" class="bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
+                        <select id="timeline-category" onchange="refreshTimelineView()" class="bg-white/5 text-xs rounded px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/30">
                             <option value="">すべて</option>
                             <option value="log">log</option>
                             <option value="sketch">sketch</option>
@@ -2008,6 +2027,7 @@
         // 公開済みとこれからの予約を1本の時間軸に月ごとに並べ、公開の間隔や偏りを見ながら
         // 日付を直せるようにする。記事一覧(articles)とは別に、この画面用に読み直す
         let timelineArticles = [];
+        let timelineCalendarMonth = null;   // 上のカレンダーが表示している月の1日を指すDate
 
         const CATEGORY_CHIP_COLORS = {
             log: 'bg-sky-400/25 text-sky-100',
@@ -2025,6 +2045,11 @@
             return a.status === 'scheduled' && a.scheduled_at && new Date(a.scheduled_at) > new Date();
         }
 
+        function filteredTimelineArticles() {
+            const filter = document.getElementById('timeline-category').value;
+            return timelineArticles.filter((a) => !filter || (filter === '__none__' ? !a.category : a.category === filter));
+        }
+
         async function loadTimeline() {
             const { data, error } = await sb.from('articles')
                 .select('id,title,date,category,status,scheduled_at')
@@ -2035,16 +2060,23 @@
                 return;
             }
             timelineArticles = data || [];
+            // タブを開くたびに今月を起点にする(予定を確認する画面なので、開くたびに前回見ていた月に
+            // 固定されているより「今」から見渡せる方が使いやすい)
+            const today = new Date();
+            timelineCalendarMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            refreshTimelineView();
+        }
+
+        function refreshTimelineView() {
             renderTimeline();
+            renderTimelineCalendar();
         }
 
         function renderTimeline() {
             const list = document.getElementById('timeline-list');
-            const filter = document.getElementById('timeline-category').value;
             list.innerHTML = '';
 
-            const shown = timelineArticles
-                .filter((a) => !filter || (filter === '__none__' ? !a.category : a.category === filter))
+            const shown = filteredTimelineArticles()
                 .sort((a, b) => {
                     const d = timelineKey(b).localeCompare(timelineKey(a));
                     return d !== 0 ? d : b.id - a.id;
@@ -2072,6 +2104,7 @@
                 if (month !== currentMonth) {
                     currentMonth = month;
                     const section = document.createElement('div');
+                    section.dataset.month = month;   // 上のカレンダーから該当月へスクロールするための目印
                     const head = document.createElement('div');
                     head.className = 'flex items-center gap-2 mb-2 pb-1 border-b border-white/10';
                     const label = month ? `${month.split('.')[0]}年${Number(month.split('.')[1])}月` : '日付なし';
@@ -2085,6 +2118,100 @@
                 }
                 monthBox.appendChild(timelineRow(a, slots));
             });
+        }
+
+        // --- 投稿管理の月カレンダー(俯瞰用) ---
+        // 塗りつぶし=公開済み、輪郭のみ=これからの予約、で同じカテゴリ色でも区別できるようにする
+        const CATEGORY_CALENDAR_OUTLINE = {
+            log: 'border border-sky-400/60 text-sky-200 hover:bg-sky-400/20',
+            sketch: 'border border-amber-400/60 text-amber-200 hover:bg-amber-400/20',
+            essay: 'border border-emerald-400/60 text-emerald-200 hover:bg-emerald-400/20',
+        };
+        const CATEGORY_CALENDAR_OUTLINE_DEFAULT = 'border border-white/40 text-white/70 hover:bg-white/10';
+
+        /** 'YYYY-MM-DD' → その日の投稿の [{ title, category, upcoming }](フィルタ後のデータで作る) */
+        function timelineDateMap() {
+            const map = new Map();
+            filteredTimelineArticles().forEach((a) => {
+                let d;
+                if (a.status === 'scheduled' && a.scheduled_at) {
+                    d = new Date(a.scheduled_at);
+                } else if (a.date) {
+                    const [y, m, day] = a.date.split('.').map(Number);
+                    if (!y || !m || !day) return;
+                    d = new Date(y, m - 1, day);
+                } else {
+                    return;
+                }
+                const key = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+                if (!map.has(key)) map.set(key, []);
+                map.get(key).push({ title: a.title || '(無題)', category: a.category || '', upcoming: isUpcoming(a) });
+            });
+            return map;
+        }
+
+        function renderTimelineCalendar() {
+            const base = timelineCalendarMonth;
+            const year = base.getFullYear(), month = base.getMonth();
+            document.getElementById('timeline-calendar-label').textContent = `${year}年${month + 1}月`;
+
+            const map = timelineDateMap();
+            const today = new Date();
+            const todayKey = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`;
+            const grid = document.getElementById('timeline-calendar-grid');
+            grid.innerHTML = '';
+
+            ['日', '月', '火', '水', '木', '金', '土'].forEach((w) => {
+                const head = document.createElement('div');
+                head.className = 'text-white/30';
+                head.style.fontSize = '0.65rem';
+                head.textContent = w;
+                grid.appendChild(head);
+            });
+
+            for (let i = 0; i < new Date(year, month, 1).getDay(); i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            for (let day = 1; day <= lastDay; day++) {
+                const key = `${year}-${pad2(month + 1)}-${pad2(day)}`;
+                const entries = map.get(key);
+                const cell = document.createElement('button');
+                cell.type = 'button';
+                cell.textContent = day;
+
+                let color = 'text-white/50 hover:bg-white/10';
+                if (entries) {
+                    // 同じ日に複数あるときは先頭の1件で代表させ、内訳はツールチップで見せる
+                    const cat = entries[0].category;
+                    color = entries[0].upcoming
+                        ? (CATEGORY_CALENDAR_OUTLINE[cat] || CATEGORY_CALENDAR_OUTLINE_DEFAULT)
+                        : (CATEGORY_CALENDAR_COLORS[cat] || CATEGORY_CALENDAR_DEFAULT);
+                }
+                cell.className = 'rounded py-1 transition-colors ' + color;
+                cell.style.fontSize = '0.7rem';
+                if (key === todayKey) cell.style.outline = '1px solid rgba(255,255,255,0.35)';
+                if (entries) {
+                    cell.title = entries
+                        .map((e) => `${e.category ? e.category + '｜' : ''}${e.title}${e.upcoming ? '(予約)' : ''}`)
+                        .join(' / ');
+                }
+                cell.onclick = () => scrollTimelineToMonth(`${year}.${pad2(month + 1)}`);
+                grid.appendChild(cell);
+            }
+        }
+
+        function moveTimelineCalendar(diff) {
+            timelineCalendarMonth = new Date(
+                timelineCalendarMonth.getFullYear(), timelineCalendarMonth.getMonth() + diff, 1);
+            renderTimelineCalendar();
+        }
+
+        /** カレンダーで押した月が、フィルタで下のリストに出ていない場合は何もしない */
+        function scrollTimelineToMonth(monthKey) {
+            const el = document.querySelector(`#timeline-list > [data-month="${monthKey}"]`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function timelineRow(a, slots) {
