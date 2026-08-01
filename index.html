@@ -829,7 +829,10 @@
     <div id="subscribe-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.5);" onmousedown="if(event.target === this) closeSubscribeModal()">
         <div class="w-full max-w-sm p-6" style="background: color-mix(in srgb, var(--bg-color) 55%, transparent); backdrop-filter: blur(14px) saturate(180%); -webkit-backdrop-filter: blur(14px) saturate(180%); color: var(--text-color); border: 1px solid color-mix(in srgb, currentColor 20%, transparent);">
             <div class="flex items-center justify-between mb-4">
-                <h2 id="subscribe-modal-title" data-i18n="subscribe_title" class="text-sm font-medium">購読する</h2>
+                <!-- 見出しは「サイトタイトル + letter｜購読する」をJSで組み立てる(updateSubscribeModalTitle)。
+                     data-i18nを付けると言語切り替え時に翻訳だけで上書きされ、前半が消えてしまうので付けない。
+                     フォントはサイトタイトルに揃える(サイドバーの見出しや検索ページの見出しと同じ扱い) -->
+                <h2 id="subscribe-modal-title" class="text-sm font-medium" style="font-family: var(--site-title-font, inherit);">購読する</h2>
                 <button onclick="closeSubscribeModal()" class="opacity-50 hover:opacity-100 transition-opacity text-lg leading-none" aria-label="閉じる">×</button>
             </div>
             <p data-i18n="subscribe_desc" class="text-xs opacity-60 mb-4">新着記事をメールで受け取れます(週1回、更新があった週だけ届きます)</p>
@@ -923,6 +926,8 @@
             });
             const searchInput = document.getElementById('search-input');
             if (searchInput) searchInput.placeholder = t('search_placeholder');
+            // 購読モーダルの見出しはサイトタイトルと組み合わせた文なので、data-i18nの一括置換とは別に組み直す
+            updateSubscribeModalTitle();
             document.getElementById('locale-btn-ja').classList.toggle('opacity-100', currentLocale === 'ja');
             document.getElementById('locale-btn-ja').classList.toggle('opacity-50', currentLocale !== 'ja');
             document.getElementById('locale-btn-ja').style.textDecoration = currentLocale === 'ja' ? 'underline' : 'none';
@@ -2864,11 +2869,19 @@
         // ニュースレター購読(週次ダイジェストの送信対象に登録する)
         let subscribeModalOpenedAt = 0;
 
+        // 購読モーダルの見出し。配信メールの見出し(「fragments letter」)と呼び方を揃える。
+        // モーダルを開くときと、言語を切り替えたときの両方から呼ぶ
+        function updateSubscribeModalTitle() {
+            const el = document.getElementById('subscribe-modal-title');
+            if (!el) return;
+            const siteTitleText = document.getElementById('site-title').textContent;
+            el.textContent = `${siteTitleText} letter｜${t('subscribe_title')}`;
+        }
+
         function openSubscribeModal() {
             document.getElementById('subscribe-modal').classList.remove('hidden');
             document.getElementById('subscribe-message').classList.add('hidden');
-            const siteTitleText = document.getElementById('site-title').textContent;
-            document.getElementById('subscribe-modal-title').textContent = `${siteTitleText} newsletter | ${t('subscribe_title')}`;
+            updateSubscribeModalTitle();
             document.getElementById('subscribe-email').focus();
             subscribeModalOpenedAt = Date.now();
         }
