@@ -1139,8 +1139,11 @@
             document.documentElement.style.setProperty('--title-text-opacity', data.title_text_opacity != null ? data.title_text_opacity : 1);
             // ブックリンクカード(Amazon등)の枠線設定
             const cardBorderEnabled = data.card_border_enabled !== false;
-            const cardBorderColor = data.card_border_color || '#ffffff';
-            const cardBorder = cardBorderEnabled ? `1px solid ${cardBorderColor}` : 'none';
+            const cardBorderColor = data.card_border_color || '';
+            // カスタム色未設定のときは記事カード・区切り線と同じ --divider-color を使う（太さも合わせて 0.5px）
+            const cardBorder = cardBorderEnabled
+                ? (cardBorderColor ? `1px solid ${cardBorderColor}` : '0.5px solid var(--divider-color)')
+                : 'none';
             document.documentElement.style.setProperty('--card-border', cardBorder);
             const footerTitle = data.site_title || document.getElementById('site-title').textContent;
             document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} ${footerTitle}`;
