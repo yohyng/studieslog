@@ -1137,10 +1137,16 @@
             document.documentElement.style.setProperty('--body-text-opacity', data.body_text_opacity != null ? data.body_text_opacity : 0.75);
             document.documentElement.style.setProperty('--header-spacing', (data.header_spacing != null ? data.header_spacing : 288) + 'px');
             document.documentElement.style.setProperty('--title-text-opacity', data.title_text_opacity != null ? data.title_text_opacity : 1);
-            // ブックリンクカード(Amazon등)の枠線設定
+            // ブックリンクカード(Amazon等)の枠線設定
+            // 太さ 0.5px・不透明度 75% を記事カードの --divider-color に揃える。
+            // カスタム色が設定済みでも color-mix で 75% 透過にして同じトーンにする
+            // (以前の保存で #ffffff が入っていても color-mix(#ffffff 75%) は rgba(255,255,255,.75) = --divider-color と同値)
             const cardBorderEnabled = data.card_border_enabled !== false;
-            const cardBorderColor = data.card_border_color || '#ffffff';
-            const cardBorder = cardBorderEnabled ? `1px solid ${cardBorderColor}` : 'none';
+            const cardBorderColor = data.card_border_color || '';
+            const borderColorVal = cardBorderColor
+                ? `color-mix(in srgb, ${cardBorderColor} 75%, transparent)`
+                : 'var(--divider-color)';
+            const cardBorder = cardBorderEnabled ? `0.5px solid ${borderColorVal}` : 'none';
             document.documentElement.style.setProperty('--card-border', cardBorder);
             const footerTitle = data.site_title || document.getElementById('site-title').textContent;
             document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} ${footerTitle}`;
