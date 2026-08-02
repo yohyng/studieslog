@@ -5032,10 +5032,14 @@
         // 他のサイトからのコピペで埋め込まれた書式(フォント・行間など)を持ち込まないよう、常にプレーンテキストとして貼り付ける。
         // ただしクリップボードに画像が含まれている場合(スクリーンショットのコピペなど)は、そのままアップロードして挿入する
         function setupPastePlainText() {
+            // capture: true で Tiptap 内部のハンドラより先にキャプチャフェーズで発火させる。
+            // stopPropagation() でイベントを子(Tiptap の contenteditable)に届かせないことで
+            // Tiptap の独自ペーストと二重挿入になるのを防ぐ
             document.getElementById('edit-content').addEventListener('paste', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 const clipboard = e.clipboardData || window.clipboardData;
                 const imageFiles = Array.from(clipboard.files || []).filter(f => f.type.startsWith('image/'));
-                e.preventDefault();
                 if (imageFiles.length) {
                     await insertImageFiles(imageFiles);
                     return;
@@ -5044,7 +5048,7 @@
                 const inst = tiptapEditors['edit-content'];
                 if (inst) window.StudiesEditor.insertPlainText(inst, text);
                 else document.execCommand('insertText', false, text);
-            });
+            }, { capture: true });
         }
 
         async function uploadImageFile(file) {
