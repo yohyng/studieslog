@@ -3010,8 +3010,11 @@
 
         function updateCardBorderPreview() {
             const cardBorderEnabled = document.getElementById('set-card-border-enabled').checked;
-            const cardBorderColor = document.getElementById('set-card-border-color').value || '#ffffff';
-            const cardBorder = cardBorderEnabled ? `1px solid ${cardBorderColor}` : 'none';
+            const cardBorderColor = document.getElementById('set-card-border-color').value || '';
+            const borderColorVal = cardBorderColor
+                ? `color-mix(in srgb, ${cardBorderColor} 75%, transparent)`
+                : 'var(--divider-color)';
+            const cardBorder = cardBorderEnabled ? `0.5px solid ${borderColorVal}` : 'none';
             document.documentElement.style.setProperty('--card-border', cardBorder);
         }
 
