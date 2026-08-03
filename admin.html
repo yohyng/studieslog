@@ -524,6 +524,11 @@
                     </div>
                     <div id="digest-bg-preview" class="hidden mb-6 rounded overflow-hidden border border-white/10" style="height: 90px; background-repeat: repeat;"></div>
 
+                    <label class="text-xs text-white/50 block mb-2">ニュースレター冒頭の定型文</label>
+                    <textarea id="set-digest-intro" rows="3" placeholder="例：「Fragments」は、空間・建築・デザインをめぐる思考と実践のニュースレターです。設計や読書、実験を通じて見えてきたことを、エッセイやノートの形でお届けします。"
+                              class="w-full text-xs bg-white/5 text-white/80 border border-white/10 rounded px-3 py-2 resize-none focus:outline-none focus:border-white/30 mb-1"></textarea>
+                    <p class="text-xs text-white/30 mb-6">毎回のメールの冒頭に固定で表示されます。空欄の場合は表示されません。</p>
+
                     <label class="text-xs text-white/50 block mb-2">Subscribeボタンの配色(サイドバー・記事下部共通のデフォルト。記事本文タブで記事下部だけ個別に上書き可)</label>
                     <div class="flex items-center gap-6 mb-4">
                         <div class="flex items-center gap-2">
@@ -3749,7 +3754,7 @@
         let subscribers = [];
 
         async function loadDigestColorSettings() {
-            const { data, error } = await sb.from('site_settings').select('digest_bg_color, digest_text_color, digest_bg_image, subscribe_bg_color, subscribe_text_color').eq('id', 1).single();
+            const { data, error } = await sb.from('site_settings').select('digest_bg_color, digest_text_color, digest_bg_image, digest_intro, subscribe_bg_color, subscribe_text_color').eq('id', 1).single();
             if (error) {
                 console.error(error);
                 return;
@@ -3757,6 +3762,7 @@
             document.getElementById('set-digest-bg-color').value = data.digest_bg_color || '#f4f1ea';
             showDigestBgPreview(data.digest_bg_image || '');
             document.getElementById('set-digest-text-color').value = data.digest_text_color || '#2b2b28';
+            document.getElementById('set-digest-intro').value = data.digest_intro || '';
             document.getElementById('set-subscribe-bg-color').value = data.subscribe_bg_color || '#ffffff';
             document.getElementById('set-subscribe-text-color').value = data.subscribe_text_color || '#6b7278';
         }
@@ -3765,6 +3771,7 @@
             const payload = {
                 digest_bg_color: document.getElementById('set-digest-bg-color').value,
                 digest_text_color: document.getElementById('set-digest-text-color').value,
+                digest_intro: document.getElementById('set-digest-intro').value.trim(),
                 subscribe_bg_color: document.getElementById('set-subscribe-bg-color').value,
                 subscribe_text_color: document.getElementById('set-subscribe-text-color').value,
             };
@@ -3950,7 +3957,7 @@
                     .order('date', { ascending: false })
                     .limit(5),
                 // 送信時と同じ見た目にするため、表示設定も一式取る
-                sb.from('site_settings').select('site_title, og_image, digest_bg_color, digest_text_color, digest_bg_image, font, title_font, font_size, line_height, letter_spacing, text_align, content_width, bg_color, text_color, body_text_opacity, title_text_opacity, footnote_color, footnote_bg_color').eq('id', 1).single(),
+                sb.from('site_settings').select('site_title, og_image, digest_bg_color, digest_text_color, digest_bg_image, digest_intro, font, title_font, font_size, line_height, letter_spacing, text_align, content_width, bg_color, text_color, body_text_opacity, title_text_opacity, footnote_color, footnote_bg_color').eq('id', 1).single(),
             ]);
             if (error) {
                 console.error(error);
@@ -3981,6 +3988,7 @@
                 fontFamily: settings.font,
                 typography: settings,
                 bgImage: settings.digest_bg_image,
+                digestIntro: settings.digest_intro || '',
             });
 
             document.getElementById('email-preview-subject').textContent = `件名: 【${settings.site_title || ''}】今週の更新(${articles.length}件) ※実際の送信内容そのままではなく、直近の公開記事を使った見た目確認用です`;

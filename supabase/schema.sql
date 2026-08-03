@@ -443,3 +443,5 @@ alter table public.site_setting_presets enable row level security;
 drop policy if exists "site_setting_presets_auth_all" on public.site_setting_presets;
 create policy "site_setting_presets_auth_all" on public.site_setting_presets
   for all to authenticated using (true) with check (true);
+
+alter table public.site_settings add column if not exists digest_intro text not null default '';
