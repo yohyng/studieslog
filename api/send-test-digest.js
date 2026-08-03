@@ -1,7 +1,7 @@
 // 管理画面から呼ばれる。購読者リストの中で「管理者用テストアドレス」に指定された1件だけに、
 // 実際にResendでダイジェストメールを送る(見え方の実機確認用。他の購読者には送らない)。
 
-const { buildDigestHtml, buildDigestSubject, buildDigestFrom } = require('../lib/digest-template');
+const { buildDigestHtml, buildDigestSubject, buildDigestFrom, sortDigestArticles } = require('../lib/digest-template');
 
 const SUPABASE_URL = 'https://eiyzlawmcyybchxzyozr.supabase.co';
 
@@ -61,13 +61,13 @@ module.exports = async function handler(req, res) {
         { headers: sbHeaders }
     );
     const rawArticles = await articlesRes.json();
-    const articles = (Array.isArray(rawArticles) ? rawArticles : []).reverse().map(a => ({
+    const articles = sortDigestArticles((Array.isArray(rawArticles) ? rawArticles : []).reverse().map(a => ({
         id: a.id,
         title: a.title,
         date: a.date,
         category: a.category || '',
         content: a.content || '',
-    }));
+    })));
 
     if (articles.length === 0) {
         res.status(400).json({ error: 'no published articles to include' });
