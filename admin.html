@@ -3959,13 +3959,15 @@
             }
             const settings = settingsData || {};
             const siteUrl = location.origin;
-            const articles = (items || []).slice().reverse().map(a => ({
-                id: a.id,
-                title: a.title,
-                date: a.date,
-                category: a.category || '',
-                content: a.content || '',
-            }));
+            const articles = window.DigestTemplate.sortDigestArticles(
+                (items || []).slice().reverse().map(a => ({
+                    id: a.id,
+                    title: a.title,
+                    date: a.date,
+                    category: a.category || '',
+                    content: a.content || '',
+                }))
+            );
 
             // 送信側(api/send-digest.js)と同じ lib/digest-template.js を使う。
             // 以前はここに別実装があり、見た目を手で揃える必要があった
