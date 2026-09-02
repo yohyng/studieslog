@@ -609,6 +609,13 @@
 
         .open-full { max-height: 2000px; mask-image: none; -webkit-mask-image: none; opacity: 1; cursor: text; }
 
+        /* allarticlesモードでは全記事を即時全開きにするため、アニメーションを無効化する */
+        #article-list.all-articles-mode .article-snippet {
+            transition: none;
+        }
+        #article-list.all-articles-mode .cursor-pointer { cursor: default; }
+        #article-list.all-articles-mode .group:hover .article-title { opacity: inherit; }
+
         /* パターンBのLatest本文プレビュー専用(.article-snippetとは別クラスにして、Tailwindのopacity-*
            ユーティリティと組み合わせた際の詳細度の衝突で.open-fullの不透明度が効かなくなる問題を避ける) */
         .latest-snippet {
@@ -1372,6 +1379,7 @@
         function renderAllArticlesPage() {
             hideAllViews();
             listContainer.classList.remove('hidden');
+            listContainer.classList.add('all-articles-mode');
             listContainer.innerHTML = '';
             allArticlesDisplayedCount = 0;
             renderAllArticlesBatch();
@@ -1383,10 +1391,11 @@
                 listContainer.insertAdjacentHTML('beforeend', buildArticleHtml(article));
                 const articleEl = document.getElementById(`article-${article.id}`);
                 forceLineHeight(article, articleEl);
+                const snippet = articleEl.querySelector('.article-snippet');
+                snippet.classList.add('open-full');
+                snippet.style.maxHeight = 'none';
+                // シェアボタンエリアは非表示のまま。クリックしても開閉しないよう無効化
                 const wrapper = articleEl.querySelector('.cursor-pointer.group');
-                openArticle(wrapper);
-                // 通常はタイトルクリックで開閉するが、このモードは常に全開きなので、
-                // クリックしてもホームへ遷移したりしないよう無効化しておく
                 wrapper.removeAttribute('onclick');
             });
             allArticlesDisplayedCount += items.length;
@@ -1546,7 +1555,9 @@
 
         // ルートに応じて表示するビューだけを残し、他は隠す
         function hideAllViews() {
-            document.getElementById('article-list').classList.add('hidden');
+            const articleList = document.getElementById('article-list');
+            articleList.classList.add('hidden');
+            articleList.classList.remove('all-articles-mode');
             document.getElementById('hub-view').classList.add('hidden');
             document.getElementById('card-view').classList.add('hidden');
             document.getElementById('title-list-view').classList.add('hidden');
