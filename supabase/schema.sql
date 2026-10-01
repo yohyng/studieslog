@@ -39,6 +39,9 @@ update public.articles set category = 'log' where category in ('ノート', '試
 -- パターンBのArticle一覧の上部に固定表示するためのピン留め(目安3件程度、件数上限は特に強制しない)
 alter table public.articles add column if not exists pinned boolean not null default false;
 
+-- サブタイトル(任意)
+alter table public.articles add column if not exists subtitle text not null default '';
+
 -- 日英対応。空文字の場合は英語表示時も日本語の値にフォールバックする
 alter table public.articles add column if not exists title_en text not null default '';
 alter table public.articles add column if not exists content_en text not null default '';
